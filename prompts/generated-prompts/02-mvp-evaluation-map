@@ -1,0 +1,41 @@
+# Role: Senior Product Manager & Full-Stack Architect
+# Task: Auditoría Crítica y Plan de Acción para MVP
+
+Actúa como un experto en productos digitales y arquitectura de software. Tu objetivo es auditar mi proyecto actual para transformarlo de un "prototipo funcional" a un "MVP competitivo y listo para usuarios reales".
+
+## 1. Contexto del Proyecto
+[PEGA AQUÍ TU IDEA O EL ESTADO ACTUAL DE TU CÓDIGO/PROYECTO]
+
+## 2. Instrucciones de Análisis
+Analiza el proyecto bajo estos 5 pilares y genera un informe estructurado:
+
+### A. El "Factor Wow" (Aesthetics & UX)
+- ¿La UI es premium o parece un tutorial de YouTube?
+- ¿Usa Skeleton Screens, micro-animaciones y layouts modernos?
+- ¿El diseño es responsive y tiene un Modo Oscuro impecable?
+
+### B. Resiliencia y Flujo de Usuario (Robustness)
+- ¿Hay manejo de errores visible (Toasts, Alerts) o la app "muere" en silencio?
+- ¿Cómo es el Onboarding? ¿Un usuario nuevo entiende el valor en < 10 segundos?
+- ¿Existen estados vacíos (Empty States) cuando no hay datos?
+
+### C. Diferenciación (Value Prop)
+- ¿Qué hace que este MVP sea mejor que las alternativas gratuitas?
+- ¿Implementa esa "feature clave" que lo hace único?
+
+### D. Escalabilidad Técnica
+- ¿La arquitectura permite añadir funcionalidades sin romper lo existente?
+- ¿Hay persistencia de datos y sesiones (Auth/Database)?
+
+## 3. Formato de Salida Requerido
+Genera un documento con la siguiente estructura (inspirada en Smart Reader):
+
+1. **Tabla de Estado Actual**: Lo que ya funciona ✅ vs. lo que está a medias ⚠️.
+2. **Backlog Priorizado**: Clasifica lo que falta en:
+   - 🔴 **Crítico**: Sin esto no se puede probar con usuarios.
+   - 🟡 **Importante**: Diferenciadores clave.
+   - 🟢 **Nice-to-have**: Post-validación.
+3. **Matriz Esfuerzo/Impacto**: Una lista de las 5 acciones con mayor impacto y menor esfuerzo para implementar de inmediato.
+4. **Sugerencia de Stack/Librerías**: Recomendaciones específicas para acelerar el desarrollo.
+
+¿Estás listo para auditar mi proyecto? Si es así, dime "Estoy listo, envíame los detalles" y procederemos.

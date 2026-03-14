@@ -1,0 +1,97 @@
+### PROMPT 1 — Maqueta inicial (interfaz + navegación)
+
+Crea una aplicación móvil con React Native y Expo (asume que ya está instalado).
+
+Quiero una app estilo foro de opiniones, pero enfocada en **opiniones sobre edificios** escritas por **personas que vivieron ahí**. En este primer paso quiero **solo la maqueta visual y la navegación funcionando**, con **datos simulados**, sin conexión real a internet, sin registro, sin guardar nada, y sin lógica compleja.
+
+#### Estructura general de la app (3 pestañas principales)
+
+La app debe tener **3 pestañas principales** visibles siempre:
+
+1. **Inicio (Noticias)**
+
+* Esta pantalla debe parecer un “feed” de noticias relacionadas con edificios y barrios.
+* Mostrar una lista vertical de tarjetas (con datos simulados) con:
+
+  * Título de la noticia
+  * Barrio
+  * Fecha (simulada)
+  * Imagen miniatura (simulada)
+  * Un texto corto de resumen
+* Al tocar una noticia:
+
+  * Abrir una pantalla de detalle de noticia con la imagen grande, el título, la fecha, el barrio y el texto completo (simulado).
+
+2. **Buscar (Edificios)**
+
+* Esta pantalla debe ser el “tab principal” para encontrar edificios.
+* Arriba debe haber:
+
+  * Un campo para buscar por **nombre del edificio**
+  * Un campo para buscar por **barrio**
+  * Un botón o acción clara para “Buscar” (aunque por ahora solo filtre datos simulados localmente)
+* Debajo, una lista de resultados con tarjetas de edificio (simulados) mostrando:
+
+  * Foto del edificio
+  * Nombre del edificio
+  * Barrio
+  * Un resumen tipo “calificación general” o “sentimiento” (simulado, por ejemplo: “Mayoría positiva”)
+  * Cantidad de comentarios (número simulado)
+* Al tocar un edificio:
+
+  * Abrir la pantalla **Detalle de edificio**.
+
+**Pantalla: Detalle de edificio (clave)**
+
+* Debe mostrar:
+
+  * Foto grande del edificio
+  * Nombre y barrio
+  * Un pequeño bloque con datos simulados (por ejemplo: “Año”, “Cantidad de pisos”, “Ambiente general”)
+  * Sección “Comentarios de residentes”
+* En “Comentarios de residentes” mostrar una lista de comentarios simulados, cada uno con:
+
+  * Nombre o alias (simulado)
+  * “Vivió allí” con un rango de fechas simulado (ej: 2019–2021)
+  * Texto del comentario
+  * Un indicador simple de sentimiento (ej: 👍 / 👎 o “Recomendado / No recomendado” simulado)
+
+> Importante: en este primer paso los comentarios solo se ven, **todavía no se puede publicar ni responder**.
+
+3. **Chat**
+
+* Esta pestaña es solo una maqueta.
+* Debe mostrar una lista de “conversaciones” simuladas (por ejemplo: “Grupo Barrio Palermo”, “Consulta Edificio Las Palmas”, etc.).
+* Al tocar una conversación:
+
+  * Abrir una pantalla de chat con mensajes simulados (burbujas izquierda/derecha).
+  * Incluir un campo de texto y botón de enviar **pero sin enviar realmente** (al tocar, no hace nada o muestra un aviso simple de “Función disponible pronto”).
+
+#### Reglas de este paso (obligatorias)
+
+* Mantener todo como **frontend únicamente**.
+* Usar **datos simulados** para noticias, edificios y comentarios.
+* **Sin login**, sin perfiles reales, sin guardar contenido.
+* **Sin persistencia**: si cierro y abro la app, vuelve a lo mismo.
+* Diseño **limpio y moderno**, con tarjetas, buen espaciado y tipografía clara.
+* Debe ser **compatible con Expo Go actual**.
+
+#### Qué debe funcionar al finalizar este paso
+
+* Navegar entre las 3 pestañas.
+* Abrir detalle de noticia desde Inicio.
+* Buscar/filtrar edificios con datos simulados (aunque sea básico).
+* Entrar a un edificio y ver su foto + lista de comentarios simulados.
+* Entrar a una conversación en Chat y ver la pantalla de mensajes simulados.
+
+#### Qué NO debe implementarse todavía
+
+* Publicar comentarios nuevos.
+* Responder comentarios, likes, reportes.
+* Registro de usuarios o verificación de “vivió allí”.
+* Notificaciones.
+* Guardado local o sincronización.
+
+---
+
+Cuando termines este paso, la app ya debe sentirse como un producto real en estructura y navegación, aunque todo sea simulado.

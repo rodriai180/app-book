@@ -1,0 +1,95 @@
+# 📱 Smart Reader App — Análisis MVP
+
+## Lo que YA tienes (funciona)
+
+| Feature | Estado | Detalle |
+|---|---|---|
+| Auth (Login/Register) | ✅ | Firebase Auth con persistencia de sesión |
+| Biblioteca personal | ✅ | CRUD de libros en Firestore por usuario |
+| Subida de PDFs | ✅ | Document picker + extracción de texto con pdf.js |
+| Portada automática | ✅ | Thumbnail generado desde la primera página del PDF |
+| Lector con TTS | ✅ | Text-to-Speech con expo-speech, controles play/pause/skip |
+| Progreso de lectura | ✅ | Se guarda el párrafo actual en Firestore (retoma donde dejaste) |
+| Velocidad de lectura | ✅ | 4 niveles (1x, 1.25x, 1.5x, 2x) |
+| Side Menu + Perfil | ✅ | Muestra nombre/email + logout |
+| Scroll automático | ✅ | El reader centra el párrafo activo |
+
+---
+
+## Lo que FALTA para un MVP competitivo
+
+### 🔴 Crítico (sin esto no es un MVP que se pueda probar con usuarios)
+
+1. **Onboarding / Pantalla de bienvenida**
+   - Primera impresión = todo. Un nuevo usuario abre la app y no sabe qué hace
+   - 2-3 slides explicando la propuesta de valor: "Sube un PDF → Te lo leo en voz alta → Recuerda dónde lo dejaste"
+
+2. **Manejo de errores visible al usuario**
+   - Si falla la subida de un PDF → no hay feedback (solo `console.error`)
+   - Si Firestore falla → la app queda en loading infinito
+   - Necesitas toasts/alerts para: error de red, PDF inválido, fallo de login
+
+3. **Settings funcionales (no solo UI)**
+   - La pantalla de Voz muestra opciones (perfil, velocidad, idioma, pitch) pero **ninguna hace nada** — los `onPress` están vacíos [() => { }](file:///c:/Users/rodri/OneDrive/Desktop/RodrigoAreaDeTrabajo/Apps/smart-reader-app/src/services/bookService.ts#16-26)
+   - Mínimo: que la velocidad seleccionada en settings se aplique al reader
+
+4. **Soporte de formatos adicionales (EPUB/TXT)** ✅ 
+   - Soporte para PDF, EPUB y TXT implementado satisfactoriamente.
+
+### 🟡 Importante (diferenciador para validar si gusta)
+
+5. **Búsqueda dentro del libro** ✅ (a probar) 
+   - Poder buscar una palabra/frase dentro del texto del libro abierto
+
+6. **Modo oscuro**✅ 
+   - Fundamental para lectura — muchos usuarios leen de noche
+   - La UI actual es 100% blanca
+
+7. **Recuperar contraseña (Forgot Password)**✅ 
+   - No hay flujo de "olvidé mi contraseña" → usuarios bloqueados
+   - Firebase Auth lo soporta con `sendPasswordResetEmail`, es muy fácil de añadir
+
+8. **Loading states y skeleton screens** ✅ 
+   - Cuando se abre la biblioteca solo hay un `ActivityIndicator`
+   - Skeleton screens dan sensación de rapidez y profesionalismo
+
+9. **Barra de progreso visual en el reader**  ✅ 
+   - Solo hay un `%` numérico. Una barra de progreso al pie es más intuitiva
+
+10. **Compartir / Exportar notas** ✅ 
+    - Marcar párrafos favoritos o tomar notas y poder compartirlas
+
+### 🟢 Nice-to-have (post-validación)
+
+11. **Organización de biblioteca** — Carpetas, etiquetas, ordenar por reciente/título/autor
+12. **Sincronización offline** — Firestore offline mode para leer sin conexión
+13. **Notificaciones / Recordatorio de lectura** — "Llevas 3 días sin leer"
+14. **Analytics** — Saber cuánto leen los usuarios, qué libros suben, dónde abandonan
+15. **Internacionalización (i18n)** — La app está en español hardcoded, necesitas al menos EN/ES
+16. **Landing page / Página web** — Para captar usuarios y explicar la propuesta de valor
+17. **Términos y condiciones / Política de privacidad** — Necesario antes de publicar
+
+---
+
+## Mi recomendación de prioridad para MVP
+
+Si quieres lanzar rápido para validar, yo haría **en este orden**:
+
+| # | Feature | Esfuerzo | Impacto |
+|---|---|---|---|
+| 1 | Conectar Settings al Reader (velocidad real) | 🟢 Bajo | 🔴 Alto |
+| 2 | Manejo de errores con alertas/toasts | 🟢 Bajo | 🔴 Alto |
+| 3 | Forgot Password | 🟢 Bajo | 🟡 Medio |
+| 4 | Modo oscuro | 🟡 Medio | 🔴 Alto |
+| 5 | Onboarding (2-3 slides) | 🟡 Medio | 🔴 Alto |
+| 6 | Soporte TXT | 🟢 Bajo | 🟡 Medio |
+| 7 | Barra de progreso visual | 🟢 Bajo | 🟡 Medio |
+| 8 | Términos y privacidad | 🟢 Bajo | 🟡 Necesario |
+
+> **Con estos 8 puntos tendrías un MVP sólido para testear con usuarios reales.** Las features 🟡 y 🟢 las puedes ir añadiendo según el feedback que recibas.
+
+---
+
+## ¿Quieres que implemente alguno?
+
+Dime cuáles quieres priorizar y empiezo a implementarlos. Puedo ir en el orden de la tabla o en el que tú prefieras.

@@ -1,0 +1,32 @@
+Crea un prompt estilo Rocket siguiendo esta estructura para **PROMPT 1 — Estructura inicial (maqueta + navegación)**.
+
+Te voy a dar una idea de app (en pocas líneas). Tu respuesta debe ser **solo un prompt final listo para copiar y pegar**, en **español**, usando **lenguaje natural**, sin explicar implementación.
+
+Reglas obligatorias del prompt generado:
+
+* Debe empezar exactamente con: **“Crea una aplicación móvil con React Native y Expo (asume que ya está instalado).”**
+* Debe ser una **primera versión solo de interfaz**, con navegación funcionando y **datos simulados**.
+* No incluir login, no guardar progreso, no persistencia, no lógica real avanzada.
+* No mencionar librerías, arquitectura, comandos, carpetas ni detalles técnicos internos.
+* Debe tener **un objetivo claro**: maqueta + navegación.
+* Debe incluir secciones principales accesibles desde una **barra inferior**, con nombres claros.
+* Debe incluir “Detalles de pantallas” en formato de viñetas, describiendo:
+
+  * Qué ve el usuario
+  * Qué puede tocar
+  * A qué pantalla lleva
+* Debe incluir un bloque final de **Requisitos** y otro de **Qué NO debe implementarse todavía**.
+
+Formato exacto que tenés que devolver:
+
+1. Primeros 2–3 renglones de contexto (tipo “Quiero una primera versión…”)
+2. “Estructura la app en X secciones principales…”
+3. Lista numerada de secciones
+4. “Detalles de pantallas:” + viñetas por sección
+5. “Requisitos:” + viñetas
+6. “Qué NO debe implementarse todavía:” + viñetas
+
+Ahora generá el prompt usando esta idea de app:
+**[PEGAR AQUÍ LA IDEA EN 3–8 LÍNEAS]**
+
+
