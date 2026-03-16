@@ -388,13 +388,22 @@ export default function ReaderScreen() {
 
     const handleTogglePlayback = useCallback(() => {
         if (pages.length === 0) return;
-        // Close search when starting playback
+        
+        // 1. Update UI state IMMEDIATELY for responsiveness
+        const newIsPlaying = !isPlaying;
+        setIsPlaying(newIsPlaying);
+
+        // 2. Background cleanup
         if (searchVisible) {
             setSearchVisible(false);
             setSearchQuery('');
         }
-        setIsPlaying(prev => !prev);
-    }, [pages, searchVisible]);
+
+        // 3. Audio handling logic
+        if (!newIsPlaying) {
+          AudioService.stop();
+        }
+    }, [pages, searchVisible, isPlaying]);
 
     const handleNextPage = () => {
         if (currentPage < pages.length - 1) {

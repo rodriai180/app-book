@@ -1,4 +1,5 @@
 import * as Speech from 'expo-speech';
+import { Platform } from 'react-native';
 
 export interface SpeechOptions {
   voice?: string;
@@ -14,90 +15,105 @@ export interface SpeechOptions {
 
 export class AudioService {
   private static isSpeaking = false;
+  private static voicesCache: Speech.Voice[] = [];
+
+  private static async getVoices(lang: string): Promise<Speech.Voice[]> {
+    try {
+      if (this.voicesCache.length > 0) return this.voicesCache;
+      
+      const voices = await Speech.getAvailableVoicesAsync();
+      if (voices && voices.length > 0) {
+        this.voicesCache = voices;
+      }
+      return voices || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  private static preprocessText(text: string): string {
+    if (!text) return '';
+    let processed = text.replace(/^#+\s+/g, '');
+    processed = processed.replace(/[*_~`]/g, '');
+    processed = processed.replace(/([.?!,;:])\s*/g, '$1 ');
+    return processed.trim();
+  }
+
+  private static async getBestVoice(lang: string): Promise<string | undefined> {
+    try {
+      const voices = await this.getVoices(lang);
+      const langPrefix = lang.split('-')[0].toLowerCase();
+      const langVoices = voices.filter(v => v.language.toLowerCase().startsWith(langPrefix));
+      
+      if (langVoices.length === 0) return undefined;
+
+      langVoices.sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        
+        const aScore = 
+          (aName.includes('pablo') || aName.includes('sergio') || aName.includes('male') || aName.includes('masculine') ? 50 : 0) +
+          (aName.includes('google') ? 20 : 0) + 
+          (a.quality === 'Enhanced' ? 10 : 0) +
+          (aName.includes('natural') || aName.includes('neural') ? 15 : 0);
+          
+        const bScore = 
+          (bName.includes('pablo') || bName.includes('sergio') || bName.includes('male') || bName.includes('masculine') ? 50 : 0) +
+          (bName.includes('google') ? 20 : 0) + 
+          (b.quality === 'Enhanced' ? 10 : 0) +
+          (bName.includes('natural') || bName.includes('neural') ? 15 : 0);
+          
+        return bScore - aScore;
+      });
+
+      return langVoices[0].identifier;
+    } catch (e) {
+      return undefined;
+    }
+  }
 
   static async speak(text: string, options: SpeechOptions = {}) {
     try {
       if (this.isSpeaking) {
-        await Speech.stop();
+        this.stop();
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // If it's a page marker, we skip speaking it entirely
-      if (text.startsWith('--- ')) {
+      const cleanText = this.preprocessText(text);
+      if (!cleanText || cleanText.startsWith('---')) {
         options.onDone?.();
         return;
       }
 
-      // Clean structural markers (# Header -> Header)
-      let cleanText = text.replace(/^#+\s+/g, '');
-
       this.isSpeaking = true;
-      
-      // Try to find a specific voice if requested
-      let voiceId: string | undefined;
       const lang = options.language || 'es-ES';
+      const voiceId = await this.getBestVoice(lang);
 
-      if (options.voice && options.voice !== 'Predeterminada') {
+      if (Platform.OS === 'web') {
         try {
-          const voices = await Speech.getAvailableVoicesAsync();
-          
-          // Debug: Log all available voices for this language
-          const langPrefix = lang.split('-')[0];
-          let langVoices = voices.filter(v => v.language.startsWith(langPrefix));
-          
-          console.log(`[AudioService] Available voices for ${lang}:`, langVoices.map(v => v.name));
-          
-          if (langVoices.length === 0) langVoices = voices;
-
-          const isRequestedMale = options.voice === 'Pablo' || options.voice === 'Sergio';
-          
-          // 1. Try EXACT name match
-          let selectedVoice = langVoices.find(v => v.name.toLowerCase().includes(options.voice!.toLowerCase()));
-          
-          // 2. If not found, try GENDER heuristic
-          if (!selectedVoice) {
-            selectedVoice = langVoices.find(v => {
-              const lowerName = v.name.toLowerCase();
-              if (isRequestedMale) {
-                // Both Pablo and Sergio prefer the same high-quality profile (which the user says sounds male)
-                return lowerName.includes('male') || 
-                       lowerName.includes('pablo') || 
-                       lowerName.includes('sergio') ||
-                       lowerName.includes('andres') ||
-                       lowerName.includes('manuel') || 
-                       lowerName.includes('guy') || 
-                       lowerName.includes('paco') ||
-                       lowerName.includes('google español') || // Mapping the preferred voice here
-                       (lowerName.includes('sabina') === false && lowerName.includes('helena') === false && lowerName.includes('elena') === false);
+          Speech.speak(cleanText, {
+            language: lang,
+            voice: voiceId,
+            onStart: options.onStart,
+            onDone: () => {
+              this.isSpeaking = false;
+              options.onDone?.();
+            },
+            onError: (err) => {
+              if (this.isSpeaking && voiceId) {
+                Speech.speak(cleanText, {
+                  language: lang,
+                  onDone: () => { this.isSpeaking = false; options.onDone?.(); }
+                });
               } else {
-                // Secondary heuristic for other voices
-                return lowerName.includes('female') || 
-                       lowerName.includes('elena') || 
-                       lowerName.includes('lucia') || 
-                       lowerName.includes('monica') || 
-                       lowerName.includes('zira') ||
-                       lowerName.includes('helena');
+                this.isSpeaking = false;
               }
-            });
-          }
-
-          // 3. Fallback to quality
-          if (!selectedVoice && langVoices.length > 0) {
-             langVoices.sort((a, b) => {
-               const aScore = (a.quality === 'Enhanced' ? 10 : 0) + (a.name.includes('Google') ? 5 : 0);
-               const bScore = (b.quality === 'Enhanced' ? 10 : 0) + (b.name.includes('Google') ? 5 : 0);
-               return bScore - aScore;
-             });
-             selectedVoice = langVoices[0];
-          }
-
-          if (selectedVoice) {
-            console.log(`[AudioService] Selected: ${selectedVoice.name} (Gender Match: ${isRequestedMale ? 'Male' : 'Female'})`);
-            voiceId = selectedVoice.identifier;
-          } else {
-            console.log(`[AudioService] No voice found for ${options.voice}, using system default.`);
-          }
-        } catch (e) {
-          console.warn('Could not fetch voices:', e);
+            }
+          });
+          return;
+        } catch (webErr) {
+          this.isSpeaking = false;
+          return;
         }
       }
 
@@ -108,45 +124,34 @@ export class AudioService {
         voice: voiceId,
         onStart: options.onStart,
         onDone: () => {
-          AudioService.isSpeaking = false;
+          this.isSpeaking = false;
           options.onDone?.();
         },
         onStopped: () => {
-          AudioService.isSpeaking = false;
+          this.isSpeaking = false;
           options.onStopped?.();
         },
         onError: (e) => {
-          AudioService.isSpeaking = false;
+          console.warn('[AudioService] Native TTS Error:', e);
+          this.isSpeaking = false;
           options.onError?.(e);
-        },
-        onBoundary: (event) => {
-          options.onBoundary?.(event);
         },
       });
     } catch (error) {
-      console.error('TTS Speak Error:', error);
-      AudioService.isSpeaking = false;
+      console.error('[AudioService] Critical Error:', error);
+      this.isSpeaking = false;
     }
   }
 
-  static async stop() {
+  static stop() {
+    this.isSpeaking = false;
     try {
-      await Speech.stop();
-      this.isSpeaking = false;
-    } catch (error) {
-      console.error('TTS Stop Error:', error);
-    }
+      Speech.stop().catch(() => {});
+    } catch (e) {}
   }
 
   static async pause() {
-    // Note: expo-speech pause is only available on iOS in some versions
-    // We will use stop/start logic for cross-platform reliability if pause is not stable
-    try {
-      await Speech.stop();
-      this.isSpeaking = false;
-    } catch (error) {
-      console.error('TTS Pause Error:', error);
-    }
+    this.stop();
   }
 
   static async isSpeakingNow(): Promise<boolean> {

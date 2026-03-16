@@ -1,9 +1,16 @@
 import { useEffect } from 'react';
+import { LogBox, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthProvider, useAuth } from '../src/services/authContext';
 import { ThemeProvider } from '../src/services/themeContext';
 import { SettingsProvider } from '../src/services/settingsContext';
+
+// NUCLEAR OPTION: Completely disable the red error box (LogBox)
+LogBox.ignoreAllLogs(true);
+if (typeof window !== 'undefined') {
+    (window as any).__expo_log_box_disabled = true;
+}
+
 
 function RootNavigator() {
     const { user, loading } = useAuth();

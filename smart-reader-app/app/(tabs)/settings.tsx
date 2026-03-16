@@ -137,12 +137,7 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>Preferencias de Lectura</Text>
                     <View style={[styles.card, { backgroundColor: colors.background }]}>
-                        <SettingItem
-                            icon={Mic2}
-                            label="Perfil de Voz"
-                            value={settings.voice === 'Predeterminada' ? 'Mujer (Elena)' : settings.voice}
-                            onPress={() => setActiveModal('voice')}
-                        />
+                        {/* Perfil de voz oculto por ahora */}
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <SettingItem
                             icon={Volume2}
@@ -178,14 +173,7 @@ export default function SettingsScreen() {
             </ScrollView>
 
             {/* Modals */}
-            <ChoiceModal
-                visible={activeModal === 'voice'}
-                title="Perfil de Voz"
-                options={VOICES}
-                currentValue={settings.voice}
-                onSelect={(val: string) => updateSettings({ voice: val })}
-                onClose={() => setActiveModal(null)}
-            />
+            {/* Voice selection modal removed */}
             <ChoiceModal
                 visible={activeModal === 'rate'}
                 title="Velocidad de lectura"

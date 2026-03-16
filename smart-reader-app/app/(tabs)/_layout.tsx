@@ -24,14 +24,14 @@ export default function TabLayout() {
                 screenOptions={{
                     tabBarActiveTintColor: colors.tint,
                     tabBarInactiveTintColor: colors.secondaryText,
+                    tabBarShowLabel: false,
                     tabBarStyle: {
                         backgroundColor: colors.background,
                         borderTopWidth: 1,
                         borderTopColor: colors.border,
-                        height: 60,
-                        paddingBottom: 8,
-                        paddingTop: 8,
+                        height: 55,
                     },
+
                     headerStyle: {
                         backgroundColor: colors.background,
                         borderBottomWidth: 1,
@@ -50,15 +50,13 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="index"
                     options={{
-                        title: 'Biblioteca',
-                        tabBarIcon: ({ color }) => <Book size={24} color={color} />,
+                        tabBarIcon: ({ color }) => <Book size={32} color={color} />,
                     }}
                 />
                 <Tabs.Screen
                     name="settings"
                     options={{
-                        title: 'Voz',
-                        tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+                        tabBarIcon: ({ color }) => <Settings size={32} color={color} />,
                     }}
                 />
             </Tabs>

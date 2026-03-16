@@ -19,8 +19,8 @@ interface SettingsContextType {
 
 const DEFAULT_SETTINGS: ReadingSettings = {
     voice: 'Pablo',
-    rate: 1.0,
-    pitch: 1.0,
+    rate: 0.9,
+    pitch: 0.5,
     language: 'es-ES',
 };
 
