@@ -50,12 +50,14 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="index"
                     options={{
+                        title: 'Mi Biblioteca',
                         tabBarIcon: ({ color }) => <Book size={32} color={color} />,
                     }}
                 />
                 <Tabs.Screen
                     name="settings"
                     options={{
+                        title: 'Ajustes',
                         tabBarIcon: ({ color }) => <Settings size={32} color={color} />,
                     }}
                 />

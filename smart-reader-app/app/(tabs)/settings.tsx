@@ -116,10 +116,6 @@ export default function SettingsScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-            <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Ajustes</Text>
-            </View>
-
             <ScrollView style={styles.content}>
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>Apariencia</Text>
@@ -205,15 +201,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    header: {
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-        borderBottomWidth: 0.5,
-    },
-    headerTitle: {
-        fontSize: 28,
-        fontWeight: '800',
     },
     content: {
         flex: 1,

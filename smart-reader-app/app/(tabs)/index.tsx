@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
 import { Plus, Trash2 } from 'lucide-react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { useAuth } from '../../src/services/authContext';
@@ -15,6 +15,25 @@ export default function LibraryScreen() {
     const [books, setBooks] = useState<BookMetadata[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const navigation = useNavigation();
+
+    React.useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <TouchableOpacity 
+                    onPress={handlePickDocument} 
+                    style={{ marginRight: 16 }}
+                    disabled={uploading}
+                >
+                    {uploading ? (
+                        <ActivityIndicator size="small" color={colors.tint} />
+                    ) : (
+                        <Plus size={24} color={colors.tint} />
+                    )}
+                </TouchableOpacity>
+            ),
+        });
+    }, [navigation, uploading, colors.tint]);
 
     // Load books from Firestore when screen focuses
     useFocusEffect(
@@ -127,12 +146,6 @@ export default function LibraryScreen() {
     if (loading) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={styles.header}>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Mi Biblioteca</Text>
-                    <View style={[styles.addButton, { opacity: 0.5 }]}>
-                        <Plus size={24} color="#FFFFFF" />
-                    </View>
-                </View>
                 <View style={styles.skeletonGrid}>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                         <BookCardSkeleton key={i} />
@@ -144,20 +157,7 @@ export default function LibraryScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Mi Biblioteca</Text>
-                <TouchableOpacity
-                    style={[styles.addButton, uploading && styles.addButtonDisabled]}
-                    onPress={handlePickDocument}
-                    disabled={uploading}
-                >
-                    {uploading ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                        <Plus size={24} color="#FFFFFF" />
-                    )}
-                </TouchableOpacity>
-            </View>
+            <View style={{ height: 10 }} /> 
 
             {books.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -190,38 +190,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-    },
-    headerTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#1C1C1E',
-    },
-    addButton: {
-        backgroundColor: '#007AFF',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 5,
-    },
-    addButtonDisabled: {
-        opacity: 0.6,
-    },
     skeletonGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         paddingHorizontal: 15,
+        marginTop: 15,
     },
     listContainer: {
         paddingHorizontal: 15,
