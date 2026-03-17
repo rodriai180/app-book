@@ -196,74 +196,92 @@ export class DocumentService {
         
         if (items.length === 0) continue;
 
-        // 1. Heuristic for median font size
+        // 1. Median font size
         const fontSizes = items.filter(it => it.str.trim()).map(it => Math.abs(it.transform[0]));
         fontSizes.sort((a, b) => a - b);
         const medianSize = fontSizes[Math.floor(fontSizes.length / 2)] || 12;
 
-        // 2. Group items into structural blocks
+        // 2. Sort: Top to Bottom, Left to Right
         items.sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
 
-        const blocks: { text: string; size: number; y: number; x: number; isBold: boolean; fontName: string }[] = [];
+        const blocks: { text: string; size: number; y: number; x: number; isBold: boolean }[] = [];
         let currentBlock: any = null;
 
         for (const item of items) {
-          if (!item.str.trim()) continue;
+          const text = item.str;
+          if (!text.trim() && text !== " ") continue;
 
           const y = item.transform[5];
           const x = item.transform[4];
-          const fontSize = Math.round(Math.abs(item.transform[0]) * 100) / 100;
-          const fontName = item.fontName || '';
-          const isBold = fontName.toLowerCase().includes('bold') || 
-                         fontName.toLowerCase().includes('black') || 
-                         fontName.toLowerCase().includes('-b') || 
-                         fontName.toLowerCase().includes('heavy') ||
-                         fontName.toLowerCase().includes('semibold') ||
-                         fontName.toLowerCase().includes('demi');
+          const fontSize = Math.round(Math.abs(item.transform[0]) * 10) / 10;
+          const fontName = (item.fontName || '').toLowerCase();
+          const isBold = fontName.includes('bold') || fontName.includes('black') || fontName.includes('-b');
           
           if (!currentBlock) {
-            currentBlock = { text: item.str, size: fontSize, y, x, isBold, fontName };
+            currentBlock = { text, size: fontSize, y, x, isBold };
           } else {
-            const verticalGap = Math.abs(y - currentBlock.y);
-            const sizeChanged = Math.abs(fontSize - currentBlock.size) > 0.1;
-            const fontChanged = fontName !== currentBlock.fontName;
-            const boldChanged = isBold !== currentBlock.isBold;
+            const vGap = Math.abs(y - currentBlock.y);
+            const isSameLine = vGap < 3;
+            const isNextLine = vGap >= 3 && vGap < fontSize * 2.8; 
+            const sameStyle = Math.abs(fontSize - currentBlock.size) < 1.5 && isBold === currentBlock.isBold;
 
-            // Decision: break if style changed or vertical gap > 1.2x font size
-            if (sizeChanged || boldChanged || fontChanged || verticalGap > fontSize * 1.2) {
-              blocks.push({ ...currentBlock });
-              currentBlock = { text: item.str, size: fontSize, y, x, isBold, fontName };
+            if (isSameLine) {
+                currentBlock.text += text;
+            } else if (sameStyle && isNextLine) {
+                currentBlock.text += " " + text;
+                currentBlock.y = y;
             } else {
-              const isNewLine = verticalGap > 3;
-              currentBlock.text += (isNewLine ? " " : (item.str.startsWith(' ') ? "" : " ")) + item.str;
-              currentBlock.y = y;
-              currentBlock.x = x;
+                blocks.push({ ...currentBlock });
+                currentBlock = { text, size: fontSize, y, x, isBold };
             }
           }
         }
         if (currentBlock) blocks.push(currentBlock);
 
-        // 3. Transform blocks into readable segments with Markdown markers
-        const pageBlocks = blocks.map(b => {
-          const text = b.text.replace(/\s+/g, ' ').trim();
-          if (text.length < 2) return '';
+        // 3. Transform with smart heading detection
+        const pageParagraphs: string[] = [];
+        for (const b of blocks) {
+            let cleanText = b.text.replace(/\s+/g, ' ').trim();
+            if (cleanText.length < 2) continue;
 
-          const isH1 = b.size > medianSize * 1.35;
-          const isH2 = (b.size > medianSize * 1.08) || (b.isBold && text.length < 150);
-          const isCentered = b.x > 140 && b.x < 300 && text.length < 60;
+            const isH1 = b.size > medianSize * 1.35;
+            const isH2 = (b.size > medianSize * 1.1) || (b.isBold && cleanText.length < 80);
+            
+            // A title should NOT end with a comma or lowercase letter (if it's long)
+            const endsWithContinuation = /[a-z,;:]\s*$/i.test(cleanText);
+            const isActuallyHeading = (isH1 || isH2) && !endsWithContinuation;
 
-          if (isH1 || isH2 || isCentered) {
-            const marker = (isH1 || (isCentered && b.size > medianSize)) ? '# ' : '## ';
-            return `${marker}${text}`;
-          }
-          return text;
-        }).filter(t => t !== '');
+            if (isActuallyHeading) {
+                const marker = isH1 ? '# ' : '## ';
+                pageParagraphs.push(`${marker}${cleanText}`);
+            } else {
+                pageParagraphs.push(cleanText);
+            }
+        }
 
         if (i > 1) allExtractedBlocks.push(`--- PÁGINA ${i} ---`);
-        allExtractedBlocks.push(...pageBlocks);
+        allExtractedBlocks.push(...pageParagraphs);
+      }
+
+      // 4. Global Consolidation pass
+      const finalParagraphs: string[] = [];
+      for (const p of allExtractedBlocks) {
+          const last = finalParagraphs[finalParagraphs.length - 1];
+          const isPageMarker = p.startsWith('---');
+          
+          if (last && !last.startsWith('#') && !isPageMarker && !last.startsWith('---')) {
+              const lastEndsWithPunct = /[.!?]\s*$/.test(last.trim());
+              const currentStartsLower = /^[a-z]/.test(p.trim());
+              
+              if (!lastEndsWithPunct || currentStartsLower) {
+                  finalParagraphs[finalParagraphs.length - 1] = last + " " + p;
+                  continue;
+              }
+          }
+          finalParagraphs.push(p);
       }
       
-      return allExtractedBlocks.length > 0 ? allExtractedBlocks : ['No se pudo extraer texto del documento.'];
+      return finalParagraphs.length > 0 ? finalParagraphs : ['No se pudo extraer texto del documento.'];
     } catch (error) {
       console.error('Error extracting PDF:', error);
       return ['Error al leer el archivo PDF.'];
