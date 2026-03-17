@@ -196,12 +196,10 @@ export class DocumentService {
         
         if (items.length === 0) continue;
 
-        // 1. Median font size
         const fontSizes = items.filter(it => it.str.trim()).map(it => Math.abs(it.transform[0]));
         fontSizes.sort((a, b) => a - b);
         const medianSize = fontSizes[Math.floor(fontSizes.length / 2)] || 12;
 
-        // 2. Sort: Top to Bottom, Left to Right
         items.sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
 
         const blocks: { text: string; size: number; y: number; x: number; isBold: boolean }[] = [];
@@ -222,12 +220,13 @@ export class DocumentService {
           } else {
             const vGap = Math.abs(y - currentBlock.y);
             const isSameLine = vGap < 3;
-            const isNextLine = vGap >= 3 && vGap < fontSize * 2.8; 
-            const sameStyle = Math.abs(fontSize - currentBlock.size) < 1.5 && isBold === currentBlock.isBold;
+            const isNextLine = vGap >= 3 && vGap < fontSize * 3.5;
+            const endsWithTerminal = /[.!?]\s*$/.test(currentBlock.text.trim());
+            const sameStyle = Math.abs(fontSize - currentBlock.size) < 2 && isBold === currentBlock.isBold;
 
             if (isSameLine) {
                 currentBlock.text += text;
-            } else if (sameStyle && isNextLine) {
+            } else if ((!endsWithTerminal || (sameStyle && isNextLine)) && vGap < 100) {
                 currentBlock.text += " " + text;
                 currentBlock.y = y;
             } else {
@@ -238,50 +237,45 @@ export class DocumentService {
         }
         if (currentBlock) blocks.push(currentBlock);
 
-        // 3. Transform with smart heading detection
-        const pageParagraphs: string[] = [];
+        const pageSegments: string[] = [];
         for (const b of blocks) {
             let cleanText = b.text.replace(/\s+/g, ' ').trim();
             if (cleanText.length < 2) continue;
 
-            const isH1 = b.size > medianSize * 1.35;
-            const isH2 = (b.size > medianSize * 1.1) || (b.isBold && cleanText.length < 80);
+            const isHeadingSize = b.size > medianSize * 1.15;
+            const isShort = cleanText.length < 80;
+            const endsWithContinuation = /[a-z0-9,;:]\s*$/i.test(cleanText);
             
-            // A title should NOT end with a comma or lowercase letter (if it's long)
-            const endsWithContinuation = /[a-z,;:]\s*$/i.test(cleanText);
-            const isActuallyHeading = (isH1 || isH2) && !endsWithContinuation;
-
-            if (isActuallyHeading) {
-                const marker = isH1 ? '# ' : '## ';
-                pageParagraphs.push(`${marker}${cleanText}`);
+            if (isHeadingSize && isShort && !endsWithContinuation && b.isBold) {
+                const marker = b.size > medianSize * 1.3 ? '# ' : '## ';
+                pageSegments.push(`${marker}${cleanText}`);
             } else {
-                pageParagraphs.push(cleanText);
+                pageSegments.push(cleanText);
             }
         }
 
         if (i > 1) allExtractedBlocks.push(`--- PÁGINA ${i} ---`);
-        allExtractedBlocks.push(...pageParagraphs);
+        allExtractedBlocks.push(...pageSegments);
       }
 
-      // 4. Global Consolidation pass
-      const finalParagraphs: string[] = [];
-      for (const p of allExtractedBlocks) {
-          const last = finalParagraphs[finalParagraphs.length - 1];
-          const isPageMarker = p.startsWith('---');
+      const finalSegments: string[] = [];
+      for (const s of allExtractedBlocks) {
+          const last = finalSegments[finalSegments.length - 1];
+          const isMarker = s.startsWith('---') || s.startsWith('#');
           
-          if (last && !last.startsWith('#') && !isPageMarker && !last.startsWith('---')) {
+          if (last && !last.startsWith('#') && !last.startsWith('---') && !isMarker) {
               const lastEndsWithPunct = /[.!?]\s*$/.test(last.trim());
-              const currentStartsLower = /^[a-z]/.test(p.trim());
+              const currentStartsLower = /^[a-z0-9]/.test(s.trim()) && !/^[A-Z]/.test(s.trim());
               
               if (!lastEndsWithPunct || currentStartsLower) {
-                  finalParagraphs[finalParagraphs.length - 1] = last + " " + p;
+                  finalSegments[finalSegments.length - 1] = last + " " + s;
                   continue;
               }
           }
-          finalParagraphs.push(p);
+          finalSegments.push(s);
       }
       
-      return finalParagraphs.length > 0 ? finalParagraphs : ['No se pudo extraer texto del documento.'];
+      return finalSegments.length > 0 ? finalSegments : ['No se pudo extraer texto del documento.'];
     } catch (error) {
       console.error('Error extracting PDF:', error);
       return ['Error al leer el archivo PDF.'];

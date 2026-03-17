@@ -18,20 +18,55 @@ export default function TabLayout() {
         </TouchableOpacity>
     );
 
+    const CustomTabBar = ({ state, descriptors, navigation }: any) => (
+        <View style={{
+            flexDirection: 'row',
+            height: 60,
+            backgroundColor: colors.background,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+        }}>
+            {state.routes.map((route: any, index: number) => {
+                const { options } = descriptors[route.key];
+                const isFocused = state.index === index;
+
+                const onPress = () => {
+                    const event = navigation.emit({
+                        type: 'tabPress',
+                        target: route.key,
+                        canPreventDefault: true,
+                    });
+
+                    if (!isFocused && !event.defaultPrevented) {
+                        navigation.navigate(route.name);
+                    }
+                };
+
+                return (
+                    <TouchableOpacity
+                        key={route.key}
+                        onPress={onPress}
+                        activeOpacity={0.7}
+                        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+                    >
+                        {options.tabBarIcon && options.tabBarIcon({
+                            focused: isFocused,
+                            color: isFocused ? colors.tint : colors.secondaryText,
+                            size: 32
+                        })}
+                    </TouchableOpacity>
+                );
+            })}
+        </View>
+    );
+
     return (
         <View style={{ flex: 1 }}>
             <Tabs
+                tabBar={(props) => <CustomTabBar {...props} />}
                 screenOptions={{
-                    tabBarActiveTintColor: colors.tint,
-                    tabBarInactiveTintColor: colors.secondaryText,
-                    tabBarShowLabel: false,
-                    tabBarStyle: {
-                        backgroundColor: colors.background,
-                        borderTopWidth: 1,
-                        borderTopColor: colors.border,
-                        height: 55,
-                    },
-
                     headerStyle: {
                         backgroundColor: colors.background,
                         borderBottomWidth: 1,
