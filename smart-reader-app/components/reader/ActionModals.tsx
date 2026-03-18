@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { Heart, StickyNote, Share2, X } from 'lucide-react-native';
 
@@ -37,6 +37,15 @@ export const ActionModals = ({
     openNoteModal,
     saveNote,
 }: ActionModalsProps) => {
+    // Blur any background elements on web when a modal opens to prevent aria-hidden focus errors
+    useEffect(() => {
+        if ((showActions || showNoteModal) && Platform.OS === 'web') {
+            if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+        }
+    }, [showActions, showNoteModal]);
+
     return (
         <>
             <Modal

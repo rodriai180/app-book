@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Pressable, Platform } from 'react-native';
 import { ChevronRight, Volume2, Mic2, Languages, Moon, Sun, Play, Check, X } from 'lucide-react-native';
 import { useTheme } from '../../src/services/themeContext';
 import { useSettings } from '../../src/services/settingsContext';
@@ -19,6 +19,15 @@ export default function SettingsScreen() {
     const { settings, updateSettings } = useSettings();
 
     const [activeModal, setActiveModal] = useState<string | null>(null);
+    
+    // Blur any background elements on web when a modal opens to prevent aria-hidden focus errors
+    useEffect(() => {
+        if (activeModal && Platform.OS === 'web') {
+            if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+        }
+    }, [activeModal]);
 
     const toggleTheme = () => {
         if (themeMode === 'system') setThemeMode('light');

@@ -2,9 +2,15 @@ import { useState } from 'react';
 import { Share } from 'react-native';
 import { BookService } from '../../services/bookService';
 
-export const useReaderAnnotations = (user: any, bookId: string | undefined, pages: string[]) => {
-    const [favorites, setFavorites] = useState<number[]>([]);
-    const [notes, setNotes] = useState<Record<string, string>>({});
+export const useReaderAnnotations = (
+    user: any, 
+    bookId: string | undefined, 
+    pages: string[],
+    favorites: number[],
+    setFavorites: React.Dispatch<React.SetStateAction<number[]>>,
+    notes: Record<string, string>,
+    setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>
+) => {
     const [selectedParagraph, setSelectedParagraph] = useState<number | null>(null);
     const [showActions, setShowActions] = useState(false);
     const [showNoteModal, setShowNoteModal] = useState(false);

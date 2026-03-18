@@ -27,7 +27,16 @@ export default function ReaderScreen() {
     const { bookId } = useLocalSearchParams<{ bookId: string; title: string }>();
 
     // Hooks Logic
-    const { pages, currentPage, setCurrentPage, loading } = useReaderContent(user, bookId);
+    const { 
+        pages, 
+        currentPage, 
+        setCurrentPage, 
+        favorites, 
+        setFavorites, 
+        notes, 
+        setNotes, 
+        loading 
+    } = useReaderContent(user, bookId);
     
     // Playback Logic
     const playback = useReaderPlayback(pages, currentPage, setCurrentPage, settings);
@@ -55,10 +64,8 @@ export default function ReaderScreen() {
     } = search;
 
     // Annotations Logic
-    const annotations = useReaderAnnotations(user, bookId, pages);
+    const annotations = useReaderAnnotations(user, bookId, pages, favorites, setFavorites, notes, setNotes);
     const {
-        favorites,
-        notes,
         selectedParagraph,
         setSelectedParagraph,
         showActions,

@@ -7,6 +7,7 @@ import {
     Animated,
     Dimensions,
     TouchableWithoutFeedback,
+    Platform,
 } from 'react-native';
 import { LogOut, X } from 'lucide-react-native';
 import { useAuth } from '../src/services/authContext';
@@ -53,6 +54,15 @@ export default function SideMenu({ isOpen, onClose }: SideMenuProps) {
                     useNativeDriver: true,
                 }),
             ]).start();
+        }
+    }, [isOpen]);
+
+    // Blur background focus on web when menu opens
+    useEffect(() => {
+        if (isOpen && Platform.OS === 'web') {
+            if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
         }
     }, [isOpen]);
 

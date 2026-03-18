@@ -4,6 +4,8 @@ import { BookService } from '../../services/bookService';
 export const useReaderContent = (user: any, bookId: string | undefined) => {
     const [pages, setPages] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState<number>(0);
+    const [favorites, setFavorites] = useState<number[]>([]);
+    const [notes, setNotes] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState<boolean>(true);
     const savedBookId = useRef<string>(bookId || '');
 
@@ -16,15 +18,17 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
                     if (book) {
                         setPages(book.paragraphs);
                         setCurrentPage(book.currentParagraph || 0);
-                        return book; // Return to allow hooks to sync their state
+                        setFavorites(book.favorites || []);
+                        setNotes(book.notes || {});
                     } else {
                         setPages(['No se encontró el libro.']);
                     }
                 } catch (error) {
                     console.error('Error loading book:', error);
                     setPages(['Error al cargar el libro.']);
+                } finally {
+                    setLoading(false);
                 }
-                setLoading(false);
             } else {
                 setPages([
                     `Este es un ejemplo del contenido de un libro o documento procesado.`,
@@ -50,6 +54,10 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
         setPages,
         currentPage,
         setCurrentPage,
+        favorites,
+        setFavorites,
+        notes,
+        setNotes,
         loading,
         setLoading
     };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs } from 'expo-router';
-import { TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View, Platform } from 'react-native';
 import { Book, Settings, Menu } from 'lucide-react-native';
 import SideMenu from '../../components/SideMenu';
 import { useTheme } from '../../src/services/themeContext';
@@ -64,39 +64,48 @@ export default function TabLayout() {
 
     return (
         <View style={{ flex: 1 }}>
-            <Tabs
-                tabBar={(props) => <CustomTabBar {...props} />}
-                screenOptions={{
-                    headerStyle: {
-                        backgroundColor: colors.background,
-                        borderBottomWidth: 1,
-                        borderBottomColor: colors.border,
-                        elevation: 0,
-                        shadowOpacity: 0,
-                    },
-                    headerTitleStyle: {
-                        fontWeight: '700',
-                        fontSize: 20,
-                        color: colors.text,
-                    },
-                    headerLeft: () => <MenuButton />,
-                }}
+            <View 
+                style={{ flex: 1 }}
+                {...(isMenuOpen && Platform.OS === 'web' ? { 
+                    'aria-hidden': true,
+                    // Use dataSet for inert as it's not a standard RN prop
+                    dataSet: { inert: '' } 
+                } : {})}
             >
-                <Tabs.Screen
-                    name="index"
-                    options={{
-                        title: 'Mi Biblioteca',
-                        tabBarIcon: ({ color }) => <Book size={32} color={color} />,
+                <Tabs
+                    tabBar={(props) => <CustomTabBar {...props} />}
+                    screenOptions={{
+                        headerStyle: {
+                            backgroundColor: colors.background,
+                            borderBottomWidth: 1,
+                            borderBottomColor: colors.border,
+                            elevation: 0,
+                            shadowOpacity: 0,
+                        },
+                        headerTitleStyle: {
+                            fontWeight: '700',
+                            fontSize: 20,
+                            color: colors.text,
+                        },
+                        headerLeft: () => <MenuButton />,
                     }}
-                />
-                <Tabs.Screen
-                    name="settings"
-                    options={{
-                        title: 'Ajustes',
-                        tabBarIcon: ({ color }) => <Settings size={32} color={color} />,
-                    }}
-                />
-            </Tabs>
+                >
+                    <Tabs.Screen
+                        name="index"
+                        options={{
+                            title: 'Mi Biblioteca',
+                            tabBarIcon: ({ color }) => <Book size={32} color={color} />,
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="settings"
+                        options={{
+                            title: 'Ajustes',
+                            tabBarIcon: ({ color }) => <Settings size={32} color={color} />,
+                        }}
+                    />
+                </Tabs>
+            </View>
 
             {/* Side Menu overlay */}
             {isMenuOpen && <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />}
