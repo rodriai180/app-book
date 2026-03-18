@@ -163,24 +163,34 @@ export const ReaderContent = ({
                             <View style={styles.pageDividerDot} />
                             <View style={[styles.pageDividerLine, { backgroundColor: isDark ? '#444' : '#DDD' }]} />
                         </View>
-                    ) : (
-                        <Text style={[
-                            styles.paragraph,
-                            { color: colors.text },
-                            pageText.startsWith('# ') ? [styles.headerH1, { color: colors.tint }] : null,
-                            pageText.startsWith('## ') ? styles.headerH2 : null,
-                            !searchVisible ? (
-                                index === currentPage
-                                    ? { color: colors.tint, fontWeight: '700' }
-                                    : { color: colors.text, opacity: isDark ? 0.35 : 0.45 }
-                            ) : { color: colors.text, opacity: 0.4 },
-                        ]}>
-                            {searchVisible
-                                ? renderHighlightedText(pageText.replace(/^#+\s+/g, ''), index)
-                                : pageText.replace(/^#+\s+/g, '')
-                            }
-                        </Text>
-                    )}
+                    ) : (() => {
+                        const isCentered = pageText.startsWith('>## ') || pageText.startsWith('># ') || pageText.startsWith('> ');
+                        const isH1 = pageText.startsWith('# ') || pageText.startsWith('># ');
+                        const isH2 = pageText.startsWith('## ') || pageText.startsWith('>## ') || pageText.startsWith('> ');
+                        const isHeading = isH1 || isH2;
+                        const cleanText = pageText.replace(/^>?#+\s+/, '').replace(/^>\s+/, '');
+                        return (
+                            <Text style={[
+                                styles.paragraph,
+                                { color: colors.text },
+                                isH1 ? styles.headerH1 : null,
+                                isH2 ? styles.headerH2 : null,
+                                isCentered ? { textAlign: 'center' } : null,
+                                !searchVisible ? (
+                                    index === currentPage
+                                        ? { color: colors.tint, fontWeight: '700' }
+                                        : isHeading
+                                            ? { color: colors.text, opacity: isDark ? 0.75 : 0.8 }
+                                            : { color: colors.text, opacity: isDark ? 0.35 : 0.45 }
+                                ) : { color: colors.text, opacity: 0.4 },
+                            ]}>
+                                {searchVisible
+                                    ? renderHighlightedText(cleanText, index)
+                                    : cleanText
+                                }
+                            </Text>
+                        );
+                    })()}
                     {notes[index.toString()] && visibleNotes[index.toString()] && (
                         <NoteBubble
                             text={notes[index.toString()]}
