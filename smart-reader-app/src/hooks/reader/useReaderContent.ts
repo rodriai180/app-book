@@ -6,6 +6,8 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [favorites, setFavorites] = useState<number[]>([]);
     const [notes, setNotes] = useState<Record<string, string>>({});
+    const [pdfUrl, setPdfUrl] = useState<string | undefined>(undefined);
+    const [pageNotes, setPageNotes] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState<boolean>(true);
     const savedBookId = useRef<string>(bookId || '');
 
@@ -20,6 +22,8 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
                         setCurrentPage(book.currentParagraph || 0);
                         setFavorites(book.favorites || []);
                         setNotes(book.notes || {});
+                        setPdfUrl(book.pdfUrl);
+                        setPageNotes(book.pageNotes || {});
                     } else {
                         setPages(['No se encontró el libro.']);
                     }
@@ -58,6 +62,9 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
         setFavorites,
         notes,
         setNotes,
+        pdfUrl,
+        pageNotes,
+        setPageNotes,
         loading,
         setLoading
     };

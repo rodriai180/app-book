@@ -11,7 +11,8 @@ import {
     serverTimestamp,
     Timestamp,
 } from 'firebase/firestore';
-import { db } from '../../constants/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../constants/firebaseConfig';
 
 export interface Book {
     id?: string;
@@ -22,6 +23,9 @@ export interface Book {
     currentParagraph: number;
     favorites?: number[];
     notes?: Record<string, string>;
+    // Canvas mode fields
+    pdfUrl?: string;
+    pageNotes?: Record<string, string>;
     createdAt?: Timestamp;
     updatedAt?: Timestamp;
 }
@@ -33,6 +37,7 @@ export interface BookMetadata {
     cover?: string;
     currentParagraph: number;
     totalParagraphs: number;
+    pdfUrl?: string;
     createdAt?: Timestamp;
 }
 
@@ -55,6 +60,20 @@ export class BookService {
     }
 
     /**
+     * Upload a PDF file (from a URI) to Firebase Storage and update the book's pdfUrl.
+     */
+    static async uploadPdf(userId: string, bookId: string, fileUri: string): Promise<string> {
+        const response = await fetch(fileUri);
+        const blob = await response.blob();
+        const storageRef = ref(storage, `users/${userId}/books/${bookId}.pdf`);
+        await uploadBytes(storageRef, blob);
+        const downloadUrl = await getDownloadURL(storageRef);
+        const bookRef = doc(db, 'users', userId, 'books', bookId);
+        await updateDoc(bookRef, { pdfUrl: downloadUrl, updatedAt: serverTimestamp() });
+        return downloadUrl;
+    }
+
+    /**
      * Get all books for a user (metadata only — no paragraphs to save bandwidth).
      */
     static async getUserBooks(userId: string): Promise<BookMetadata[]> {
@@ -71,6 +90,7 @@ export class BookService {
                 cover: data.cover,
                 currentParagraph: data.currentParagraph || 0,
                 totalParagraphs: data.paragraphs?.length || 0,
+                pdfUrl: data.pdfUrl,
                 createdAt: data.createdAt,
             };
         });
@@ -136,7 +156,7 @@ export class BookService {
     }
 
     /**
-     * Save a note for a paragraph.
+     * Save a note for a paragraph (text mode).
      */
     static async saveNote(userId: string, bookId: string, paragraphIndex: number, note: string): Promise<void> {
         const bookRef = doc(db, 'users', userId, 'books', bookId);
@@ -154,6 +174,29 @@ export class BookService {
 
         await updateDoc(bookRef, {
             notes,
+            updatedAt: serverTimestamp(),
+        });
+    }
+
+    /**
+     * Save a note for a PDF page (canvas mode).
+     */
+    static async savePageNote(userId: string, bookId: string, pdfPage: number, note: string): Promise<void> {
+        const bookRef = doc(db, 'users', userId, 'books', bookId);
+        const bookSnap = await getDoc(bookRef);
+        if (!bookSnap.exists()) return;
+
+        const data = bookSnap.data();
+        let pageNotes = data.pageNotes || {};
+
+        if (note.trim()) {
+            pageNotes[pdfPage.toString()] = note;
+        } else {
+            delete pageNotes[pdfPage.toString()];
+        }
+
+        await updateDoc(bookRef, {
+            pageNotes,
             updatedAt: serverTimestamp(),
         });
     }
