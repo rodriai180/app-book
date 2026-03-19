@@ -16,6 +16,7 @@ interface ReaderHeaderProps {
     goToPrevMatch: () => void;
     goToNextMatch: () => void;
     onBack: () => void;
+    showSearch?: boolean;
 }
 
 export const ReaderHeader = ({
@@ -31,6 +32,7 @@ export const ReaderHeader = ({
     toggleSearch,
     goToPrevMatch,
     goToNextMatch,
+    showSearch = true,
     onBack,
 }: ReaderHeaderProps) => {
     return (
@@ -93,16 +95,18 @@ export const ReaderHeader = ({
                 </View>
             )}
 
-            <TouchableOpacity
-                onPress={toggleSearch}
-                style={[styles.headerButton, { backgroundColor: colors.card }]}
-            >
-                {searchVisible ? (
-                    <X size={22} color={colors.tint} />
-                ) : (
-                    <Search size={22} color={colors.secondaryText} />
-                )}
-            </TouchableOpacity>
+            {showSearch && (
+                <TouchableOpacity
+                    onPress={toggleSearch}
+                    style={[styles.headerButton, { backgroundColor: colors.card }]}
+                >
+                    {searchVisible ? (
+                        <X size={22} color={colors.tint} />
+                    ) : (
+                        <Search size={22} color={colors.secondaryText} />
+                    )}
+                </TouchableOpacity>
+            )}
         </Animated.View>
     );
 };

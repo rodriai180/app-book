@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
@@ -16,6 +16,7 @@ import { useReaderContent } from '../src/hooks/reader/useReaderContent';
 // Components
 import { ReaderHeader } from '../components/reader/ReaderHeader';
 import { ReaderContent } from '../components/reader/ReaderContent';
+import { ReaderPdfContent } from '../components/reader/ReaderPdfContent';
 import { ReaderControls } from '../components/reader/ReaderControls';
 import { ActionModals } from '../components/reader/ActionModals';
 
@@ -27,15 +28,16 @@ export default function ReaderScreen() {
     const { bookId } = useLocalSearchParams<{ bookId: string; title: string }>();
 
     // Hooks Logic
-    const { 
-        pages, 
-        currentPage, 
-        setCurrentPage, 
-        favorites, 
-        setFavorites, 
-        notes, 
-        setNotes, 
-        loading 
+    const {
+        pages,
+        currentPage,
+        setCurrentPage,
+        favorites,
+        setFavorites,
+        notes,
+        setNotes,
+        localPdfUri,
+        loading
     } = useReaderContent(user, bookId);
     
     // Playback Logic
@@ -121,51 +123,79 @@ export default function ReaderScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-            <ReaderHeader
-                colors={colors}
-                isDark={isDark}
-                headerAnim={headerAnim}
-                searchVisible={searchVisible}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                matches={matches}
-                currentMatchIndex={currentMatchIndex}
-                searchInputRef={searchInputRef}
-                toggleSearch={toggleSearch}
-                goToPrevMatch={goToPrevMatch}
-                goToNextMatch={goToNextMatch}
-                onBack={() => {
-                    stopPlayback();
-                    if (router.canGoBack()) router.back();
-                    else router.replace('/(tabs)');
-                }}
-            />
+            {!localPdfUri && (
+                <ReaderHeader
+                    colors={colors}
+                    isDark={isDark}
+                    headerAnim={headerAnim}
+                    searchVisible={searchVisible}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    matches={matches}
+                    currentMatchIndex={currentMatchIndex}
+                    searchInputRef={searchInputRef}
+                    toggleSearch={toggleSearch}
+                    goToPrevMatch={goToPrevMatch}
+                    goToNextMatch={goToNextMatch}
+                    onBack={() => {
+                        stopPlayback();
+                        if (router.canGoBack()) router.back();
+                        else router.replace('/(tabs)');
+                    }}
+                />
+            )}
 
-            <ReaderContent
-                pages={pages}
-                currentPage={currentPage}
-                searchVisible={searchVisible}
-                searchQuery={searchQuery}
-                matches={matches}
-                currentMatchIndex={currentMatchIndex}
-                favorites={favorites}
-                notes={notes}
-                visibleNotes={visibleNotes}
-                colors={colors}
-                isDark={isDark}
-                scrollViewRef={scrollViewRef}
-                pageLayouts={pageLayouts}
-                setViewHeight={setViewHeight}
-                handleParagraphPress={onParagraphPress}
-                handleParagraphLongPress={onParagraphLongPress}
-                toggleNoteVisibility={toggleNoteVisibility}
-                deleteNote={deleteNote}
-                openNoteModal={(idx) => {
-                    setSelectedParagraph(idx);
-                    openNoteModal();
-                }}
-                isPlaying={isPlaying}
-            />
+            {localPdfUri ? (
+                // ── Modo canvas: PDF renderizado página por página ─────────────
+                <ReaderPdfContent
+                    pdfUrl={localPdfUri}
+                    pages={pages}
+                    currentPage={currentPage}
+                    pageNotes={{}}
+                    colors={colors}
+                    isDark={isDark}
+                    showPageNoteModal={false}
+                    tempPageNote=""
+                    selectedPdfPage={null}
+                    setTempPageNote={() => {}}
+                    setShowPageNoteModal={() => {}}
+                    openPageNoteModal={() => {}}
+                    savePageNote={() => {}}
+                    deletePageNote={() => {}}
+                    onBack={() => {
+                        stopPlayback();
+                        if (router.canGoBack()) router.back();
+                        else router.replace('/(tabs)');
+                    }}
+                />
+            ) : (
+                // ── Modo texto: párrafos extraídos ────────────────────────────
+                <ReaderContent
+                    pages={pages}
+                    currentPage={currentPage}
+                    searchVisible={searchVisible}
+                    searchQuery={searchQuery}
+                    matches={matches}
+                    currentMatchIndex={currentMatchIndex}
+                    favorites={favorites}
+                    notes={notes}
+                    visibleNotes={visibleNotes}
+                    colors={colors}
+                    isDark={isDark}
+                    scrollViewRef={scrollViewRef}
+                    pageLayouts={pageLayouts}
+                    setViewHeight={setViewHeight}
+                    handleParagraphPress={onParagraphPress}
+                    handleParagraphLongPress={onParagraphLongPress}
+                    toggleNoteVisibility={toggleNoteVisibility}
+                    deleteNote={deleteNote}
+                    openNoteModal={(idx) => {
+                        setSelectedParagraph(idx);
+                        openNoteModal();
+                    }}
+                    isPlaying={isPlaying}
+                />
+            )}
 
             <View style={[styles.progressBarTrack, { backgroundColor: isDark ? '#333' : '#E5E5EA' }]}>
                 <Animated.View

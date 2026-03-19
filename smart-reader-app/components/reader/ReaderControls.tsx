@@ -37,7 +37,7 @@ export const ReaderControls = ({
                     disabled={currentPage === 0}
                 >
                     <SkipBack
-                        size={28}
+                        size={20}
                         color={currentPage === 0 ? (isDark ? '#444' : '#C7C7CC') : colors.text}
                         fill={currentPage === 0 ? (isDark ? '#444' : '#C7C7CC') : colors.text}
                     />
@@ -49,9 +49,9 @@ export const ReaderControls = ({
                         onPress={handleTogglePlayback}
                     >
                         {isPlaying ? (
-                            <Pause size={24} color="#FFFFFF" fill="#FFFFFF" />
+                            <Pause size={18} color="#FFFFFF" fill="#FFFFFF" />
                         ) : (
-                            <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
+                            <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
                         )}
                     </TouchableOpacity>
 
@@ -72,7 +72,7 @@ export const ReaderControls = ({
                         disabled={currentPage === pages.length - 1}
                     >
                         <SkipForward
-                            size={28}
+                            size={20}
                             color={currentPage === pages.length - 1 ? (isDark ? '#444' : '#C7C7CC') : colors.text}
                             fill={currentPage === pages.length - 1 ? (isDark ? '#444' : '#C7C7CC') : colors.text}
                         />
@@ -85,8 +85,8 @@ export const ReaderControls = ({
 
 const styles = StyleSheet.create({
     controlsContainer: {
-        paddingBottom: 34, // Safe area for iOS
-        paddingTop: 16,
+        paddingBottom: 16,
+        paddingTop: 8,
         paddingHorizontal: 24,
         borderTopWidth: 1,
     },
@@ -100,9 +100,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     playButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: "#000",
@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     controlButton: {
-        width: 44,
-        height: 44,
+        width: 32,
+        height: 32,
         justifyContent: 'center',
         alignItems: 'center',
     },

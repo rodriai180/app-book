@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
 import { BookService, BookMetadata } from '../../src/services/bookService';
+import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
 import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
 import BookCardSkeleton from '../../components/BookCardSkeleton';
@@ -68,17 +69,27 @@ export default function LibraryScreen() {
                 return;
             }
 
-            // Extract text paragraphs from the PDF
+            const isPdf = newDoc.mimeType === 'application/pdf' ||
+                newDoc.uri.toLowerCase().endsWith('.pdf');
+
+            // Extraer texto (para TTS + búsqueda)
             const paragraphs = await DocumentService.extractText(newDoc.uri);
 
-            // Save to Firestore
-            await BookService.saveBook(user.uid, {
+            // Guardar libro en Firestore
+            const bookId = await BookService.saveBook(user.uid, {
                 title: newDoc.title,
                 author: newDoc.author,
                 cover: newDoc.cover || '',
                 paragraphs,
                 currentParagraph: 0,
             });
+
+            // Si es PDF: guardar el archivo localmente (IndexedDB en web, FileSystem en nativo)
+            if (isPdf) {
+                PdfLocalStorage.save(bookId, newDoc.uri)
+                    .then(() => BookService.markHasPdf(user.uid, bookId))
+                    .catch(err => console.warn('PDF local save failed:', err));
+            }
 
             // Reload the list
             await loadBooks();

@@ -192,6 +192,8 @@ export class DocumentService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+
   private static normalizeForMatch(text: string): string {
     return text
       .toLowerCase()

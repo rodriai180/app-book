@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { BookService } from '../../services/bookService';
+import { PdfLocalStorage } from '../../services/PdfLocalStorage';
 
 export const useReaderContent = (user: any, bookId: string | undefined) => {
     const [pages, setPages] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [favorites, setFavorites] = useState<number[]>([]);
     const [notes, setNotes] = useState<Record<string, string>>({});
-    const [pdfUrl, setPdfUrl] = useState<string | undefined>(undefined);
-    const [pageNotes, setPageNotes] = useState<Record<string, string>>({});
+    const [localPdfUri, setLocalPdfUri] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const savedBookId = useRef<string>(bookId || '');
 
@@ -22,8 +22,16 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
                         setCurrentPage(book.currentParagraph || 0);
                         setFavorites(book.favorites || []);
                         setNotes(book.notes || {});
-                        setPdfUrl(book.pdfUrl);
-                        setPageNotes(book.pageNotes || {});
+
+                        // Cargar URI del PDF local si existe (bloquea loading para evitar flash de texto)
+                        if (book.hasPdf) {
+                            try {
+                                const uri = await PdfLocalStorage.getUri(bookId);
+                                setLocalPdfUri(uri);
+                            } catch (err) {
+                                console.warn('Could not load local PDF:', err);
+                            }
+                        }
                     } else {
                         setPages(['No se encontró el libro.']);
                     }
@@ -62,9 +70,7 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
         setFavorites,
         notes,
         setNotes,
-        pdfUrl,
-        pageNotes,
-        setPageNotes,
+        localPdfUri,
         loading,
         setLoading
     };
