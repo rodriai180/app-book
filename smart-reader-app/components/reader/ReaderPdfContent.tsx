@@ -7,6 +7,10 @@ import {
 import { StickyNote, Trash2, X, ArrowLeft } from 'lucide-react-native';
 import * as pdfjsLib from 'pdfjs-dist';
 
+interface WordPosition {
+    x: number; y: number; w: number; h: number; // viewport pixels (scale 1.8)
+}
+
 interface ReaderPdfContentProps {
     pdfUrl: string;
     pages: string[];
@@ -23,6 +27,10 @@ interface ReaderPdfContentProps {
     savePageNote: () => void;
     deletePageNote: (pdfPage: number) => void;
     onBack: () => void;
+    // Word highlight
+    isPlaying?: boolean;
+    currentWordInfo?: { charIndex: number; charLength: number } | null;
+    currentPageText?: string;
 }
 
 /** Calcula en qué página PDF cae el párrafo `paragraphIndex` */
@@ -32,6 +40,95 @@ export function paragraphToPdfPage(pages: string[], paragraphIndex: number): num
         if (pages[i] === '---') pdfPage++;
     }
     return pdfPage;
+}
+
+/** Replica el preprocesado de AudioService para obtener el texto hablado */
+function preprocessSpokenText(text: string): string {
+    if (!text) return '';
+    let t = text.replace(/^#+\s+/g, '');
+    t = t.replace(/[*_~`]/g, '');
+    t = t.replace(/([.?!,;:])\s*/g, '$1 ');
+    return t.trim();
+}
+
+/** Dado el texto y un charIndex, devuelve el índice de la palabra */
+function wordIndexFromCharIndex(text: string, charIndex: number): number {
+    let wordIdx = 0;
+    let inWord = false;
+    for (let i = 0; i < charIndex && i < text.length; i++) {
+        if (/\s/.test(text[i])) {
+            if (inWord) { wordIdx++; inWord = false; }
+        } else {
+            inWord = true;
+        }
+    }
+    return wordIdx;
+}
+
+/** Extrae palabras con posiciones de la página PDF usando PDF.js */
+async function extractPageWordPositions(page: any, scale: number): Promise<Array<{ text: string; pos: WordPosition }>> {
+    const viewport = page.getViewport({ scale });
+    const textContent = await page.getTextContent();
+    const result: Array<{ text: string; pos: WordPosition }> = [];
+
+    for (const item of (textContent.items as any[])) {
+        if (!item.str?.trim()) continue;
+
+        // Convertir posición PDF a coordenadas de viewport
+        const [vx, vy] = viewport.convertToViewportPoint(item.transform[4], item.transform[5]);
+        const itemH = Math.abs(item.transform[3]) * scale;
+        const itemW = (item.width || 0) * scale;
+
+        const parts = item.str.split(/(\s+)/);
+        let curX = vx;
+        const charWidth = itemW / (item.str.length || 1);
+
+        for (const part of parts) {
+            const partW = part.length * charWidth;
+            if (part.trim()) {
+                result.push({
+                    text: part.replace(/[.,!?;:"'()]/g, '').toLowerCase(),
+                    pos: { x: curX, y: vy - itemH, w: partW, h: itemH },
+                });
+            }
+            curX += partW;
+        }
+    }
+
+    return result;
+}
+
+/** Mapea palabras del texto hablado a posiciones del PDF (matching secuencial) */
+function mapSpokenWordsToPositions(
+    spokenText: string,
+    pdfWords: Array<{ text: string; pos: WordPosition }>
+): Array<WordPosition | null> {
+    const spoken = spokenText
+        .split(/\s+/)
+        .filter(w => w.length > 0)
+        .map(w => w.replace(/[.,!?;:"'()]/g, '').toLowerCase());
+
+    const positions: Array<WordPosition | null> = [];
+    let pdfIdx = 0;
+
+    for (const word of spoken) {
+        if (!word) { positions.push(null); continue; }
+
+        let found = false;
+        // Buscar hacia adelante en las palabras del PDF
+        for (let i = pdfIdx; i < Math.min(pdfIdx + 40, pdfWords.length); i++) {
+            const pdfWord = pdfWords[i].text;
+            if (pdfWord === word || pdfWord.includes(word) || word.includes(pdfWord)) {
+                positions.push(pdfWords[i].pos);
+                pdfIdx = i + 1;
+                found = true;
+                break;
+            }
+        }
+        if (!found) positions.push(null);
+    }
+
+    return positions;
 }
 
 export const ReaderPdfContent = ({
@@ -50,40 +147,104 @@ export const ReaderPdfContent = ({
     savePageNote,
     deletePageNote,
     onBack,
+    isPlaying,
+    currentWordInfo,
+    currentPageText,
 }: ReaderPdfContentProps) => {
     const [pageImage, setPageImage] = useState<string | null>(null);
     const [aspectRatio, setAspectRatio] = useState(0.707);
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
-    const pdfRef = useRef<any>(null);
-    const currentPdfPage = paragraphToPdfPage(pages, currentPage);
+    const [viewportWidth, setViewportWidth] = useState(1);
+    const [containerWidth, setContainerWidth] = useState(0);
+    const [spokenWordPositions, setSpokenWordPositions] = useState<Array<WordPosition | null>>([]);
+    const [highlightBox, setHighlightBox] = useState<WordPosition | null>(null);
 
-    // Cargar el PDF una sola vez
+    const pdfRef = useRef<any>(null);
+    // Cache de palabras PDF por número de página para evitar race conditions
+    const pdfWordsCache = useRef<Map<number, Array<{ text: string; pos: WordPosition }>>>(new Map());
+    const currentPdfPage = paragraphToPdfPage(pages, currentPage);
+    const SCALE = 1.8;
+
+    // Cargar PDF
     useEffect(() => {
         if (!pdfUrl) return;
         pdfjsLib.getDocument(pdfUrl).promise
             .then(pdf => {
                 pdfRef.current = pdf;
                 setTotalPages(pdf.numPages);
+                console.log('[HL] PDF cargado, páginas:', pdf.numPages);
             })
             .catch(console.error);
     }, [pdfUrl]);
 
-    // Renderizar cuando cambia la página o se carga el PDF
+    // Renderizar imagen del PDF cuando cambia la página + precachear páginas adyacentes
     useEffect(() => {
-        if (pdfRef.current && totalPages > 0) {
-            renderPage(currentPdfPage);
-        }
+        if (!pdfRef.current || totalPages === 0) return;
+        renderPage(currentPdfPage);
+
+        // Precachear posiciones de páginas adyacentes en background
+        const prewarm = async (pageNum: number) => {
+            if (pageNum < 1 || pageNum > totalPages) return;
+            if (pdfWordsCache.current.has(pageNum)) return;
+            try {
+                const page = await pdfRef.current.getPage(pageNum);
+                const pdfWords = await extractPageWordPositions(page, SCALE);
+                pdfWordsCache.current.set(pageNum, pdfWords);
+            } catch (_) {}
+        };
+        prewarm(currentPdfPage - 1);
+        prewarm(currentPdfPage + 1);
     }, [currentPdfPage, totalPages]);
+
+    // Re-extraer posiciones cuando cambia el párrafo hablado (sin re-renderizar imagen)
+    useEffect(() => {
+        if (!pdfRef.current || !currentPageText || totalPages === 0) {
+            setSpokenWordPositions([]);
+            setHighlightBox(null);
+            return;
+        }
+
+        const spoken = preprocessSpokenText(currentPageText);
+
+        // Usar caché si ya está disponible (evita race condition con TTS corto)
+        const cached = pdfWordsCache.current.get(currentPdfPage);
+        if (cached) {
+            console.log('[HL] Usando caché para página', currentPdfPage, '| palabras:', cached.length);
+            const mapped = mapSpokenWordsToPositions(spoken, cached);
+            const valid = mapped.filter(Boolean).length;
+            console.log('[HL] Palabras mapeadas (caché):', mapped.length, '/ con posición:', valid);
+            setSpokenWordPositions(mapped);
+            return;
+        }
+
+        // Fallback: extraer async si la caché aún no está lista
+        const extractPositions = async () => {
+            try {
+                const page = await pdfRef.current.getPage(currentPdfPage);
+                const pdfWords = await extractPageWordPositions(page, SCALE);
+                pdfWordsCache.current.set(currentPdfPage, pdfWords);
+                console.log('[HL] Spoken text:', spoken.slice(0, 60));
+                console.log('[HL] PDF words en página:', pdfWords.length);
+                const mapped = mapSpokenWordsToPositions(spoken, pdfWords);
+                const valid = mapped.filter(Boolean).length;
+                console.log('[HL] Palabras mapeadas (async):', mapped.length, '/ con posición:', valid);
+                setSpokenWordPositions(mapped);
+            } catch (e) {
+                console.error('[HL] Error extrayendo posiciones:', e);
+            }
+        };
+        extractPositions();
+    }, [currentPageText, currentPdfPage, totalPages]);
 
     const renderPage = async (pageNum: number) => {
         if (!pdfRef.current) return;
         setLoading(true);
         try {
             const page = await pdfRef.current.getPage(pageNum);
-            const scale = 1.8;
-            const viewport = page.getViewport({ scale });
+            const viewport = page.getViewport({ scale: SCALE });
             setAspectRatio(viewport.width / viewport.height);
+            setViewportWidth(viewport.width);
 
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
@@ -91,7 +252,14 @@ export const ReaderPdfContent = ({
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
-            await page.render({ canvasContext: ctx, viewport }).promise;
+            // Pre-extraer posiciones de palabras en paralelo con el render
+            const [, pdfWords] = await Promise.all([
+                page.render({ canvasContext: ctx, viewport }).promise,
+                extractPageWordPositions(page, SCALE),
+            ]);
+            pdfWordsCache.current.set(pageNum, pdfWords);
+            console.log('[HL] Página renderizada. viewportWidth:', viewport.width, '| palabras cacheadas:', pdfWords.length);
+
             setPageImage(canvas.toDataURL('image/jpeg', 0.92));
         } catch (e) {
             console.error('Error rendering PDF page:', e);
@@ -100,6 +268,21 @@ export const ReaderPdfContent = ({
         }
     };
 
+    // Actualizar highlight box cuando cambia la palabra activa
+    useEffect(() => {
+        console.log('[HL] wordInfo:', currentWordInfo, '| isPlaying:', isPlaying, '| positions:', spokenWordPositions.length, '| containerW:', containerWidth);
+        if (!isPlaying || !currentWordInfo || spokenWordPositions.length === 0) {
+            setHighlightBox(null);
+            return;
+        }
+        const spoken = preprocessSpokenText(currentPageText || '');
+        const wordIdx = wordIndexFromCharIndex(spoken, currentWordInfo.charIndex);
+        const pos = spokenWordPositions[wordIdx] ?? null;
+        console.log('[HL] wordIdx:', wordIdx, '| pos:', pos);
+        setHighlightBox(pos);
+    }, [currentWordInfo, isPlaying, spokenWordPositions, currentPageText]);
+
+    const scale = containerWidth > 0 ? containerWidth / viewportWidth : 1;
     const hasNote = !!pageNotes[currentPdfPage.toString()];
 
     return (
@@ -125,21 +308,44 @@ export const ReaderPdfContent = ({
                 </TouchableOpacity>
             </View>
 
-            {/* Página renderizada */}
+            {/* Página renderizada + overlay */}
             <ScrollView
                 contentContainerStyle={[styles.canvasArea, { backgroundColor: isDark ? '#000' : '#888' }]}
                 showsVerticalScrollIndicator={false}
+                onLayout={(e) => {
+                    // padding: 12 a cada lado → ancho real de la imagen
+                    const w = e.nativeEvent.layout.width - 24;
+                    console.log('[HL] ScrollView layout width:', w);
+                    setContainerWidth(w);
+                }}
             >
                 {loading ? (
                     <View style={styles.loaderWrap}>
                         <ActivityIndicator size="large" color={colors.tint} />
                     </View>
                 ) : pageImage ? (
-                    <Image
-                        source={{ uri: pageImage }}
-                        style={[styles.pageImage, { aspectRatio }]}
-                        resizeMode="contain"
-                    />
+                    <View style={[styles.imageWrapper, { aspectRatio }]}>
+                        <Image
+                            source={{ uri: pageImage }}
+                            style={StyleSheet.absoluteFill}
+                            resizeMode="contain"
+                        />
+                        {/* Rectángulo de highlight sobre la palabra actual */}
+                        {highlightBox && containerWidth > 0 && (
+                            <View
+                                pointerEvents="none"
+                                style={[
+                                    styles.wordOverlay,
+                                    {
+                                        left: highlightBox.x * scale - 3,
+                                        top: highlightBox.y * scale - 2,
+                                        width: highlightBox.w * scale + 6,
+                                        height: highlightBox.h * scale + 4,
+                                    }
+                                ]}
+                            />
+                        )}
+                    </View>
                 ) : null}
             </ScrollView>
 
@@ -216,7 +422,17 @@ const styles = StyleSheet.create({
     noteBtnText: { fontSize: 13, fontWeight: '600' },
     canvasArea: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 12 },
     loaderWrap: { paddingVertical: 80 },
-    pageImage: { width: '100%', borderRadius: 4 },
+    imageWrapper: {
+        alignSelf: 'stretch',
+        position: 'relative',
+    },
+    wordOverlay: {
+        position: 'absolute',
+        backgroundColor: 'rgba(255, 214, 0, 0.45)',
+        borderRadius: 3,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 180, 0, 0.7)',
+    },
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
     modalBox: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

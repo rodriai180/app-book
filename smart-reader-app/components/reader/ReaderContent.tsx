@@ -24,6 +24,7 @@ interface ReaderContentProps {
     deleteNote: (index: number) => void;
     openNoteModal: (index: number) => void;
     isPlaying: boolean;
+    currentWordInfo?: { charIndex: number; charLength: number } | null;
 }
 
 export const ReaderContent = ({
@@ -47,7 +48,22 @@ export const ReaderContent = ({
     deleteNote,
     openNoteModal,
     isPlaying,
+    currentWordInfo,
 }: ReaderContentProps) => {
+
+    const renderWordHighlight = (text: string) => {
+        if (!currentWordInfo) return <Text>{text}</Text>;
+        const { charIndex, charLength } = currentWordInfo;
+        if (charIndex < 0 || charIndex >= text.length) return <Text>{text}</Text>;
+        const end = Math.min(charIndex + charLength, text.length);
+        return (
+            <Text>
+                <Text>{text.slice(0, charIndex)}</Text>
+                <Text style={styles.wordHighlight}>{text.slice(charIndex, end)}</Text>
+                <Text>{text.slice(end)}</Text>
+            </Text>
+        );
+    };
 
     const renderHighlightedText = (text: string, paragraphIndex: number) => {
         if (!searchQuery || searchQuery.length < 2) {
@@ -186,7 +202,9 @@ export const ReaderContent = ({
                             ]}>
                                 {searchVisible
                                     ? renderHighlightedText(cleanText, index)
-                                    : cleanText
+                                    : (isPlaying && index === currentPage && currentWordInfo)
+                                        ? renderWordHighlight(cleanText)
+                                        : cleanText
                                 }
                             </Text>
                         );
@@ -254,6 +272,10 @@ const styles = StyleSheet.create({
     activeHighlight: {
         borderRadius: 4,
         fontWeight: 'bold',
+    },
+    wordHighlight: {
+        backgroundColor: 'rgba(0, 122, 255, 0.25)',
+        borderRadius: 3,
     },
     paragraphHeader: {
         flexDirection: 'row',

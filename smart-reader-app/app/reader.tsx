@@ -42,7 +42,10 @@ export default function ReaderScreen() {
     
     // Playback Logic
     const playback = useReaderPlayback(pages, currentPage, setCurrentPage, settings);
-    const { isPlaying, setIsPlaying, headerAnim, handleTogglePlayback, stopPlayback } = playback;
+    const { isPlaying, setIsPlaying, currentWordInfo, headerAnim, handleTogglePlayback, stopPlayback } = playback;
+
+    // PDF / Text mode toggle (default: text mode with word highlight)
+    const [showPdfMode, setShowPdfMode] = useState(false);
 
     // Common Refs/State needed by multiple hooks
     const [viewHeight, setViewHeight] = useState<number>(0);
@@ -123,7 +126,7 @@ export default function ReaderScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-            {!localPdfUri && (
+            {!showPdfMode && (
                 <ReaderHeader
                     colors={colors}
                     isDark={isDark}
@@ -142,10 +145,12 @@ export default function ReaderScreen() {
                         if (router.canGoBack()) router.back();
                         else router.replace('/(tabs)');
                     }}
+                    hasPdf={!!localPdfUri}
+                    onTogglePdf={() => setShowPdfMode(true)}
                 />
             )}
 
-            {localPdfUri ? (
+            {localPdfUri && showPdfMode ? (
                 // ── Modo canvas: PDF renderizado página por página ─────────────
                 <ReaderPdfContent
                     pdfUrl={localPdfUri}
@@ -162,14 +167,13 @@ export default function ReaderScreen() {
                     openPageNoteModal={() => {}}
                     savePageNote={() => {}}
                     deletePageNote={() => {}}
-                    onBack={() => {
-                        stopPlayback();
-                        if (router.canGoBack()) router.back();
-                        else router.replace('/(tabs)');
-                    }}
+                    onBack={() => setShowPdfMode(false)}
+                    isPlaying={isPlaying}
+                    currentWordInfo={currentWordInfo}
+                    currentPageText={pages[currentPage]}
                 />
             ) : (
-                // ── Modo texto: párrafos extraídos ────────────────────────────
+                // ── Modo texto: párrafos extraídos + word highlight ────────────
                 <ReaderContent
                     pages={pages}
                     currentPage={currentPage}
@@ -194,6 +198,7 @@ export default function ReaderScreen() {
                         openNoteModal();
                     }}
                     isPlaying={isPlaying}
+                    currentWordInfo={currentWordInfo}
                 />
             )}
 

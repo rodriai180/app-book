@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Animated } from 'react-native';
-import { ArrowLeft, Search, X, ChevronUp, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Search, X, ChevronUp, ChevronDown, FileText } from 'lucide-react-native';
 
 interface ReaderHeaderProps {
     colors: any;
@@ -17,6 +17,8 @@ interface ReaderHeaderProps {
     goToNextMatch: () => void;
     onBack: () => void;
     showSearch?: boolean;
+    hasPdf?: boolean;
+    onTogglePdf?: () => void;
 }
 
 export const ReaderHeader = ({
@@ -34,6 +36,8 @@ export const ReaderHeader = ({
     goToNextMatch,
     showSearch = true,
     onBack,
+    hasPdf,
+    onTogglePdf,
 }: ReaderHeaderProps) => {
     return (
         <Animated.View style={[
@@ -93,6 +97,15 @@ export const ReaderHeader = ({
                         </View>
                     )}
                 </View>
+            )}
+
+            {hasPdf && !searchVisible && (
+                <TouchableOpacity
+                    onPress={onTogglePdf}
+                    style={[styles.headerButton, { backgroundColor: colors.card }]}
+                >
+                    <FileText size={20} color={colors.secondaryText} />
+                </TouchableOpacity>
             )}
 
             {showSearch && (
