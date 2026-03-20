@@ -17,8 +17,11 @@ export class AudioService {
   private static isSpeaking = false;
   private static voicesCache: Speech.Voice[] = [];
   private static wordTimer: any = null;
+  // Factor de calibración adaptativa: ajusta el timer según velocidad real de la voz
+  // < 1.0 = acelerar timer (voz más rápida que estimado), > 1.0 = frenar timer
+  private static calibrationFactor = 0.95;
 
-  private static async getVoices(lang: string): Promise<Speech.Voice[]> {
+  private static async getVoices(_lang: string): Promise<Speech.Voice[]> {
     try {
       if (this.voicesCache.length > 0) return this.voicesCache;
       
@@ -148,9 +151,11 @@ export class AudioService {
               scanPos = (idx >= 0 ? idx : scanPos) + word.length;
             }
             const rate = options.rate ?? 1.0;
-            // ms por carácter hablado (calibrado para español ~130wpm, ~5 chars/word)
-            const msPerChar = 75 / rate;
+            // ms base por carácter — se multiplica por calibrationFactor cada vez
+            const msPerChar = (72 / rate) * AudioService.calibrationFactor;
             let usedRealEvents = false;
+            let estimatedTotalMs = 0;
+            let timerStartTime = 0;
 
             const startWordTimer = () => {
               let wordIdx = 0;
@@ -162,15 +167,18 @@ export class AudioService {
                 wordIdx++;
                 if (wordIdx >= words.length) return;
 
-                // Duración proporcional a la longitud de la palabra actual
-                let ms = Math.max(70, word.length * msPerChar);
-                // Pausa extra según puntuación que sigue a la palabra
+                let ms = Math.max(60, word.length * msPerChar);
+                // Las pausas de puntuación son independientes del factor de calibración
+                // — son pausas naturales de respiración/entonación, no de velocidad de fonemas
                 const tail = cleanText[charIdx + word.length];
-                if (/[.!?]/.test(tail))      ms += 380 / rate;
-                else if (/[,;:]/.test(tail)) ms += 160 / rate;
+                if (/[.!?]/.test(tail))   ms += 600 / rate;   // pausa larga: fin de frase
+                else if (/[;]/.test(tail)) ms += 420 / rate;   // pausa media: punto y coma
+                else if (/[,:]/.test(tail)) ms += 320 / rate;  // pausa corta: coma / dos puntos
 
+                estimatedTotalMs += ms;
                 AudioService.wordTimer = setTimeout(scheduleNext, ms);
               };
+              timerStartTime = Date.now();
               scheduleNext();
             };
 
@@ -182,7 +190,7 @@ export class AudioService {
               if (event.name === 'word') {
                 if (!usedRealEvents) {
                   usedRealEvents = true;
-                  clearInterval(AudioService.wordTimer);
+                  clearTimeout(AudioService.wordTimer);
                   AudioService.wordTimer = null;
                 }
                 options.onBoundary?.({
@@ -192,10 +200,22 @@ export class AudioService {
               }
             };
             utterance.onend = () => {
-              clearInterval(AudioService.wordTimer);
+              clearTimeout(AudioService.wordTimer);
               AudioService.wordTimer = null;
+              // Calibración adaptativa: ajustar factor para próxima vez
+              if (!usedRealEvents && estimatedTotalMs > 300 && timerStartTime > 0) {
+                const actualMs = Date.now() - timerStartTime;
+                // estimatedTotalMs / calibrationFactor = lo que hubiera sido con factor=1.0
+                const baseEstimate = estimatedTotalMs / AudioService.calibrationFactor;
+                if (baseEstimate > 0) {
+                  const newFactor = actualMs / baseEstimate;
+                  // Media móvil exponencial: 20% nuevo, 80% anterior (convergencia suave)
+                  AudioService.calibrationFactor = 0.80 * AudioService.calibrationFactor + 0.20 * newFactor;
+                  AudioService.calibrationFactor = Math.max(0.5, Math.min(1.6, AudioService.calibrationFactor));
+                  console.log('[TTS] calibración:', AudioService.calibrationFactor.toFixed(3), '| real:', actualMs, 'ms | estimado:', estimatedTotalMs, 'ms');
+                }
+              }
               this.isSpeaking = false;
-
               options.onDone?.();
             };
             utterance.onerror = (e: any) => {
