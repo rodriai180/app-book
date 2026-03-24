@@ -118,7 +118,11 @@ function mapSpokenWordsToPositions(
         // Buscar hacia adelante en las palabras del PDF
         for (let i = pdfIdx; i < Math.min(pdfIdx + 40, pdfWords.length); i++) {
             const pdfWord = pdfWords[i].text;
-            if (pdfWord === word || pdfWord.includes(word) || word.includes(pdfWord)) {
+            const exact = pdfWord === word;
+            // Solo permitir substring match en palabras largas (evita "lo" matcheando "los")
+            const partial = word.length > 4 && pdfWord.length > 4 &&
+                (pdfWord.includes(word) || word.includes(pdfWord));
+            if (exact || partial) {
                 positions.push(pdfWords[i].pos);
                 pdfIdx = i + 1;
                 found = true;
@@ -255,10 +259,23 @@ export const ReaderPdfContent = ({
 
     // Actualizar highlight box cuando cambia la palabra activa
     useEffect(() => {
-        if (!isPlaying || !currentWordInfo || spokenWordPositions.length === 0) {
+        if (spokenWordPositions.length === 0) {
             setHighlightBox(null);
             return;
         }
+        if (!isPlaying) {
+            if (currentWordInfo) {
+                // Pausa: mantener la última palabra leída
+                const spoken = preprocessSpokenText(currentPageText || '');
+                const wordIdx = wordIndexFromCharIndex(spoken, currentWordInfo.charIndex);
+                setHighlightBox(spokenWordPositions[wordIdx] ?? null);
+            } else {
+                // Sin wordInfo: no mostrar highlight (evita posición incorrecta antes de arrancar)
+                setHighlightBox(null);
+            }
+            return;
+        }
+        if (!currentWordInfo) { setHighlightBox(null); return; }
         const spoken = preprocessSpokenText(currentPageText || '');
         const wordIdx = wordIndexFromCharIndex(spoken, currentWordInfo.charIndex);
         setHighlightBox(spokenWordPositions[wordIdx] ?? null);

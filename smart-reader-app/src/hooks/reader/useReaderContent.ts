@@ -19,7 +19,13 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
                     const book = await BookService.getBook(user.uid, bookId);
                     if (book) {
                         setPages(book.paragraphs);
-                        setCurrentPage(book.currentParagraph || 0);
+                        // localStorage tiene prioridad: es síncrono y más reciente que Firebase
+                        let savedPage = book.currentParagraph || 0;
+                        try {
+                            const local = localStorage.getItem(`rp_${bookId}`);
+                            if (local !== null) savedPage = parseInt(local) || savedPage;
+                        } catch (_) {}
+                        setCurrentPage(savedPage);
                         setFavorites(book.favorites || []);
                         setNotes(book.notes || {});
 
@@ -55,9 +61,13 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
     }, [bookId, user]);
 
     useEffect(() => {
+        if (pages.length > 0 && savedBookId.current) {
+            // Guardar en localStorage sincrónicamente (siempre funciona, incluso si Firebase falla)
+            try { localStorage.setItem(`rp_${savedBookId.current}`, String(currentPage)); } catch (_) {}
+        }
         if (user && savedBookId.current && pages.length > 0 && currentPage > 0) {
             BookService.updateReadingProgress(user.uid, savedBookId.current, currentPage)
-                .catch((err) => console.warn('Could not save progress:', err));
+                .catch(() => {});
         }
     }, [currentPage, user, pages.length]);
 

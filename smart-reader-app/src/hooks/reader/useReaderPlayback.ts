@@ -72,7 +72,7 @@ export const useReaderPlayback = (pages: string[], currentPage: number, setCurre
 
     const stopPlayback = useCallback(() => {
         setIsPlaying(false);
-        setCurrentWordInfo(null);
+        // No borramos currentWordInfo: queremos mantener la última palabra leída visible
         AudioService.stop();
     }, []);
 

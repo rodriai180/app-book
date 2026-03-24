@@ -158,27 +158,41 @@ export class AudioService {
             let timerStartTime = 0;
 
             const startWordTimer = () => {
+              // Pre-calcular tiempo absoluto (desde inicio) de cada palabra
+              // Esto permite corregir drift: cada palabra se dispara en su tiempo exacto
+              // sin acumular el error de los setTimeout anteriores
+              const wordAbsMs: number[] = [];
+              let cumMs = 0;
+              for (let i = 0; i < words.length; i++) {
+                wordAbsMs.push(cumMs);
+                let ms = Math.max(60, words[i].length * msPerChar);
+                const tail = cleanText[charOffsets[i] + words[i].length];
+                if (/[.!?]/.test(tail))    ms += 600 / rate;
+                else if (/[;]/.test(tail))  ms += 420 / rate;
+                else if (/[,:]/.test(tail)) ms += 320 / rate;
+                cumMs += ms;
+              }
+              estimatedTotalMs = cumMs;
+
               let wordIdx = 0;
+              const startTime = Date.now();
+              timerStartTime = startTime;
+
               const scheduleNext = () => {
                 if (usedRealEvents || wordIdx >= words.length) return;
-                const word = words[wordIdx];
-                const charIdx = charOffsets[wordIdx];
-                options.onBoundary?.({ charIndex: charIdx, charLength: word.length });
+
+                // Disparar la palabra actual
+                options.onBoundary?.({ charIndex: charOffsets[wordIdx], charLength: words[wordIdx].length });
                 wordIdx++;
                 if (wordIdx >= words.length) return;
 
-                let ms = Math.max(60, word.length * msPerChar);
-                // Las pausas de puntuación son independientes del factor de calibración
-                // — son pausas naturales de respiración/entonación, no de velocidad de fonemas
-                const tail = cleanText[charIdx + word.length];
-                if (/[.!?]/.test(tail))   ms += 600 / rate;   // pausa larga: fin de frase
-                else if (/[;]/.test(tail)) ms += 420 / rate;   // pausa media: punto y coma
-                else if (/[,:]/.test(tail)) ms += 320 / rate;  // pausa corta: coma / dos puntos
-
-                estimatedTotalMs += ms;
-                AudioService.wordTimer = setTimeout(scheduleNext, ms);
+                // Delay hasta la próxima palabra = tiempo absoluto esperado - tiempo ya transcurrido
+                // Esto corrige cualquier drift acumulado de setTimeout anteriores
+                const elapsed = Date.now() - startTime;
+                const delay = Math.max(10, wordAbsMs[wordIdx] - elapsed);
+                AudioService.wordTimer = setTimeout(scheduleNext, delay);
               };
-              timerStartTime = Date.now();
+
               scheduleNext();
             };
 
