@@ -1,3 +1,4 @@
+// v2
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -43,9 +44,6 @@ export default function ReaderScreen() {
     // Playback Logic
     const playback = useReaderPlayback(pages, currentPage, setCurrentPage, settings);
     const { isPlaying, setIsPlaying, currentWordInfo, headerAnim, handleTogglePlayback, stopPlayback } = playback;
-
-    // PDF / Text mode toggle (default: text mode with word highlight)
-    const [showPdfMode, setShowPdfMode] = useState(false);
 
     // Common Refs/State needed by multiple hooks
     const [viewHeight, setViewHeight] = useState<number>(0);
@@ -126,7 +124,7 @@ export default function ReaderScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-            {!showPdfMode && (
+            {!localPdfUri && (
                 <ReaderHeader
                     colors={colors}
                     isDark={isDark}
@@ -145,13 +143,11 @@ export default function ReaderScreen() {
                         if (router.canGoBack()) router.back();
                         else router.replace('/(tabs)');
                     }}
-                    hasPdf={!!localPdfUri}
-                    onTogglePdf={() => setShowPdfMode(true)}
                 />
             )}
 
-            {localPdfUri && showPdfMode ? (
-                // ── Modo canvas: PDF renderizado página por página ─────────────
+            {localPdfUri ? (
+                // ── Modo PDF ──────────────────────────────────────────────────
                 <ReaderPdfContent
                     pdfUrl={localPdfUri}
                     pages={pages}
@@ -167,7 +163,11 @@ export default function ReaderScreen() {
                     openPageNoteModal={() => {}}
                     savePageNote={() => {}}
                     deletePageNote={() => {}}
-                    onBack={() => setShowPdfMode(false)}
+                    onBack={() => {
+                        stopPlayback();
+                        if (router.canGoBack()) router.back();
+                        else router.replace('/(tabs)');
+                    }}
                     isPlaying={isPlaying}
                     currentWordInfo={currentWordInfo}
                     currentPageText={pages[currentPage]}

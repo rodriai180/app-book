@@ -133,7 +133,7 @@ export class AudioService {
               const best = pickBestWebVoice(voices);
               if (best) {
                 utterance.voice = best;
-                console.log('[TTS] Voz seleccionada:', best.name, '| lang:', best.lang, '| local:', best.localService);
+
               }
             };
             applyVoice();
@@ -212,7 +212,7 @@ export class AudioService {
                   // Media móvil exponencial: 20% nuevo, 80% anterior (convergencia suave)
                   AudioService.calibrationFactor = 0.80 * AudioService.calibrationFactor + 0.20 * newFactor;
                   AudioService.calibrationFactor = Math.max(0.5, Math.min(1.6, AudioService.calibrationFactor));
-                  console.log('[TTS] calibración:', AudioService.calibrationFactor.toFixed(3), '| real:', actualMs, 'ms | estimado:', estimatedTotalMs, 'ms');
+
                 }
               }
               this.isSpeaking = false;
@@ -256,14 +256,14 @@ export class AudioService {
           options.onStopped?.();
         },
         onError: (e) => {
-          console.warn('[AudioService] Native TTS Error:', e);
+
           this.isSpeaking = false;
           options.onError?.(e);
         },
         onBoundary: options.onBoundary,
       });
     } catch (error) {
-      console.error('[AudioService] Critical Error:', error);
+
       this.isSpeaking = false;
     }
   }

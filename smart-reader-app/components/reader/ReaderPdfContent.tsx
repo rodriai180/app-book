@@ -173,9 +173,8 @@ export const ReaderPdfContent = ({
             .then(pdf => {
                 pdfRef.current = pdf;
                 setTotalPages(pdf.numPages);
-                console.log('[HL] PDF cargado, páginas:', pdf.numPages);
             })
-            .catch(console.error);
+            .catch(() => {});
     }, [pdfUrl]);
 
     // Renderizar imagen del PDF cuando cambia la página + precachear páginas adyacentes
@@ -210,11 +209,7 @@ export const ReaderPdfContent = ({
         // Usar caché si ya está disponible (evita race condition con TTS corto)
         const cached = pdfWordsCache.current.get(currentPdfPage);
         if (cached) {
-            console.log('[HL] Usando caché para página', currentPdfPage, '| palabras:', cached.length);
-            const mapped = mapSpokenWordsToPositions(spoken, cached);
-            const valid = mapped.filter(Boolean).length;
-            console.log('[HL] Palabras mapeadas (caché):', mapped.length, '/ con posición:', valid);
-            setSpokenWordPositions(mapped);
+            setSpokenWordPositions(mapSpokenWordsToPositions(spoken, cached));
             return;
         }
 
@@ -224,15 +219,8 @@ export const ReaderPdfContent = ({
                 const page = await pdfRef.current.getPage(currentPdfPage);
                 const pdfWords = await extractPageWordPositions(page, SCALE);
                 pdfWordsCache.current.set(currentPdfPage, pdfWords);
-                console.log('[HL] Spoken text:', spoken.slice(0, 60));
-                console.log('[HL] PDF words en página:', pdfWords.length);
-                const mapped = mapSpokenWordsToPositions(spoken, pdfWords);
-                const valid = mapped.filter(Boolean).length;
-                console.log('[HL] Palabras mapeadas (async):', mapped.length, '/ con posición:', valid);
-                setSpokenWordPositions(mapped);
-            } catch (e) {
-                console.error('[HL] Error extrayendo posiciones:', e);
-            }
+                setSpokenWordPositions(mapSpokenWordsToPositions(spoken, pdfWords));
+            } catch (_) {}
         };
         extractPositions();
     }, [currentPageText, currentPdfPage, totalPages]);
@@ -258,11 +246,8 @@ export const ReaderPdfContent = ({
                 extractPageWordPositions(page, SCALE),
             ]);
             pdfWordsCache.current.set(pageNum, pdfWords);
-            console.log('[HL] Página renderizada. viewportWidth:', viewport.width, '| palabras cacheadas:', pdfWords.length);
-
             setPageImage(canvas.toDataURL('image/jpeg', 0.92));
-        } catch (e) {
-            console.error('Error rendering PDF page:', e);
+        } catch (_) {
         } finally {
             setLoading(false);
         }
@@ -270,16 +255,13 @@ export const ReaderPdfContent = ({
 
     // Actualizar highlight box cuando cambia la palabra activa
     useEffect(() => {
-        console.log('[HL] wordInfo:', currentWordInfo, '| isPlaying:', isPlaying, '| positions:', spokenWordPositions.length, '| containerW:', containerWidth);
         if (!isPlaying || !currentWordInfo || spokenWordPositions.length === 0) {
             setHighlightBox(null);
             return;
         }
         const spoken = preprocessSpokenText(currentPageText || '');
         const wordIdx = wordIndexFromCharIndex(spoken, currentWordInfo.charIndex);
-        const pos = spokenWordPositions[wordIdx] ?? null;
-        console.log('[HL] wordIdx:', wordIdx, '| pos:', pos);
-        setHighlightBox(pos);
+        setHighlightBox(spokenWordPositions[wordIdx] ?? null);
     }, [currentWordInfo, isPlaying, spokenWordPositions, currentPageText]);
 
     const scale = containerWidth > 0 ? containerWidth / viewportWidth : 1;
@@ -315,7 +297,6 @@ export const ReaderPdfContent = ({
                 onLayout={(e) => {
                     // padding: 12 a cada lado → ancho real de la imagen
                     const w = e.nativeEvent.layout.width - 24;
-                    console.log('[HL] ScrollView layout width:', w);
                     setContainerWidth(w);
                 }}
             >
