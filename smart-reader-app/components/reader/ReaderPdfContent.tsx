@@ -4,7 +4,7 @@ import {
     ActivityIndicator, ScrollView, Image, Modal,
     TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { StickyNote, Trash2, X, ArrowLeft } from 'lucide-react-native';
+import { StickyNote, Trash2, X, ArrowLeft, List } from 'lucide-react-native';
 import * as pdfjsLib from 'pdfjs-dist';
 
 interface WordPosition {
@@ -27,6 +27,7 @@ interface ReaderPdfContentProps {
     savePageNote: () => void;
     deletePageNote: (pdfPage: number) => void;
     onBack: () => void;
+    onNavigateToPdfPage?: (pdfPage: number) => void;
     // Word highlight
     isPlaying?: boolean;
     currentWordInfo?: { charIndex: number; charLength: number } | null;
@@ -153,6 +154,7 @@ export const ReaderPdfContent = ({
     savePageNote,
     deletePageNote,
     onBack,
+    onNavigateToPdfPage,
     isPlaying,
     currentWordInfo,
     currentPageText,
@@ -169,6 +171,11 @@ export const ReaderPdfContent = ({
     const pdfRef = useRef<any>(null);
     // Cache de palabras PDF por número de página para evitar race conditions
     const pdfWordsCache = useRef<Map<number, Array<{ text: string; pos: WordPosition }>>>(new Map());
+    const [showNotesListModal, setShowNotesListModal] = useState(false);
+
+    const noteEntries = Object.keys(pageNotes)
+        .map(k => ({ page: parseInt(k), text: pageNotes[k] }))
+        .sort((a, b) => a.page - b.page);
     const currentPdfPage = paragraphToPdfPage(pages, currentPage);
     const SCALE = 1.8;
 
@@ -298,15 +305,28 @@ export const ReaderPdfContent = ({
                         Página {currentPdfPage}{totalPages > 0 ? ` / ${totalPages}` : ''}
                     </Text>
                 </View>
-                <TouchableOpacity
-                    onPress={() => openPageNoteModal(currentPdfPage)}
-                    style={[styles.noteBtn, { backgroundColor: hasNote ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
-                >
-                    <StickyNote size={14} color={hasNote ? '#FFF' : colors.tint} />
-                    <Text style={[styles.noteBtnText, { color: hasNote ? '#FFF' : colors.tint }]}>
-                        {hasNote ? 'Ver nota' : 'Agregar nota'}
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.topBarRight}>
+                    {noteEntries.length > 0 && (
+                        <TouchableOpacity
+                            onPress={() => setShowNotesListModal(true)}
+                            style={[styles.notesListBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+                        >
+                            <List size={14} color={colors.tint} />
+                            <Text style={[styles.noteBtnText, { color: colors.tint }]}>
+                                {noteEntries.length}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                        onPress={() => openPageNoteModal(currentPdfPage)}
+                        style={[styles.noteBtn, { backgroundColor: hasNote ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
+                    >
+                        <StickyNote size={14} color={hasNote ? '#FFF' : colors.tint} />
+                        <Text style={[styles.noteBtnText, { color: hasNote ? '#FFF' : colors.tint }]}>
+                            {hasNote ? 'Ver nota' : 'Agregar nota'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Página renderizada + overlay */}
@@ -350,6 +370,40 @@ export const ReaderPdfContent = ({
                     </View>
                 ) : null}
             </ScrollView>
+
+            {/* Modal lista de notas */}
+            <Modal
+                visible={showNotesListModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowNotesListModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalBox, { backgroundColor: isDark ? '#1C1C1E' : '#FFF' }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Notas del libro</Text>
+                            <TouchableOpacity onPress={() => setShowNotesListModal(false)}>
+                                <X size={20} color={colors.secondaryText} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={{ maxHeight: 360 }}>
+                            {noteEntries.map(({ page, text }) => (
+                                <TouchableOpacity
+                                    key={page}
+                                    style={[styles.noteListItem, { borderBottomColor: isDark ? '#2C2C2E' : '#F0F0F0' }]}
+                                    onPress={() => {
+                                        setShowNotesListModal(false);
+                                        onNavigateToPdfPage?.(page);
+                                    }}
+                                >
+                                    <Text style={[styles.noteListPage, { color: colors.tint }]}>Página {page}</Text>
+                                    <Text style={[styles.noteListText, { color: colors.secondaryText }]} numberOfLines={2}>{text}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Modal de nota por página */}
             <Modal
@@ -415,6 +469,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1,
     },
     topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    notesListBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
+    noteListItem: { paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1 },
+    noteListPage: { fontSize: 13, fontWeight: '700', marginBottom: 3 },
+    noteListText: { fontSize: 14, lineHeight: 20 },
     backBtn: { padding: 4 },
     pageLabel: { fontSize: 13 },
     noteBtn: {

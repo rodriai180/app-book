@@ -151,6 +151,15 @@ export default function ReaderScreen() {
         setIsPlaying(true);
     };
 
+    const navigateToPdfPage = (pdfPage: number) => {
+        // Encontrar el primer párrafo que corresponde a esa página PDF
+        let page = 1;
+        for (let i = 0; i < pages.length; i++) {
+            if (page === pdfPage) { setCurrentPage(i); return; }
+            if (pages[i] === '---') page++;
+        }
+    };
+
     const onParagraphLongPress = (index: number) => {
         setSelectedParagraph(index);
         setShowActions(true);
@@ -201,6 +210,7 @@ export default function ReaderScreen() {
                     openPageNoteModal={openPageNoteModal}
                     savePageNote={savePageNote}
                     deletePageNote={deletePageNote}
+                    onNavigateToPdfPage={navigateToPdfPage}
                     onBack={() => {
                         stopPlayback();
                         if (router.canGoBack()) router.back();
