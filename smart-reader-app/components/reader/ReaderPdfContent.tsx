@@ -45,8 +45,10 @@ export function paragraphToPdfPage(pages: string[], paragraphIndex: number): num
 /** Replica el preprocesado de AudioService para obtener el texto hablado */
 function preprocessSpokenText(text: string): string {
     if (!text) return '';
-    let t = text.replace(/^#+\s+/g, '');
+    let t = text.replace(/^#+\s*/gm, '');
     t = t.replace(/[*_~`]/g, '');
+    t = t.replace(/<[^>]+>/g, '');
+    t = t.replace(/[#<>|\\^{}[\]]/g, '');
     t = t.replace(/([.?!,;:])\s*/g, '$1 ');
     return t.trim();
 }
@@ -325,7 +327,7 @@ export const ReaderPdfContent = ({
                     <View style={[styles.imageWrapper, { aspectRatio }]}>
                         <Image
                             source={{ uri: pageImage }}
-                            style={StyleSheet.absoluteFill}
+                            style={[StyleSheet.absoluteFill, isDark && { filter: 'invert(1)' } as any]}
                             resizeMode="contain"
                         />
                         {/* Rectángulo de highlight sobre la palabra actual */}
@@ -339,6 +341,8 @@ export const ReaderPdfContent = ({
                                         top: highlightBox.y * scale - 2,
                                         width: highlightBox.w * scale + 6,
                                         height: highlightBox.h * scale + 4,
+                                        backgroundColor: isDark ? 'rgba(0,180,255,0.35)' : 'rgba(255,214,0,0.45)',
+                                        borderColor: isDark ? 'rgba(0,160,255,0.8)' : 'rgba(255,180,0,0.7)',
                                     }
                                 ]}
                             />
@@ -426,10 +430,8 @@ const styles = StyleSheet.create({
     },
     wordOverlay: {
         position: 'absolute',
-        backgroundColor: 'rgba(255, 214, 0, 0.45)',
         borderRadius: 3,
         borderWidth: 1.5,
-        borderColor: 'rgba(255, 180, 0, 0.7)',
     },
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
     modalBox: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },

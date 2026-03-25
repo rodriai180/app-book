@@ -37,8 +37,10 @@ export class AudioService {
 
   private static preprocessText(text: string): string {
     if (!text) return '';
-    let processed = text.replace(/^#+\s+/g, '');
+    let processed = text.replace(/^#+\s*/gm, '');
     processed = processed.replace(/[*_~`]/g, '');
+    processed = processed.replace(/<[^>]+>/g, '');
+    processed = processed.replace(/[#<>|\\^{}[\]]/g, '');
     processed = processed.replace(/([.?!,;:])\s*/g, '$1 ');
     return processed.trim();
   }
