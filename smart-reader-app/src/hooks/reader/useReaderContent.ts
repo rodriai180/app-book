@@ -7,6 +7,7 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [favorites, setFavorites] = useState<number[]>([]);
     const [notes, setNotes] = useState<Record<string, string>>({});
+    const [pageNotes, setPageNotes] = useState<Record<string, string>>({});
     const [localPdfUri, setLocalPdfUri] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const savedBookId = useRef<string>(bookId || '');
@@ -28,6 +29,7 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
                         setCurrentPage(savedPage);
                         setFavorites(book.favorites || []);
                         setNotes(book.notes || {});
+                        setPageNotes((book as any).pageNotes || {});
 
                         // Cargar URI del PDF local si existe (bloquea loading para evitar flash de texto)
                         if (book.hasPdf) {
@@ -80,6 +82,8 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
         setFavorites,
         notes,
         setNotes,
+        pageNotes,
+        setPageNotes,
         localPdfUri,
         loading,
         setLoading

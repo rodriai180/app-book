@@ -13,6 +13,7 @@ import { useReaderSearch } from '../src/hooks/reader/useReaderSearch';
 import { useReaderPlayback } from '../src/hooks/reader/useReaderPlayback';
 import { useReaderAnnotations } from '../src/hooks/reader/useReaderAnnotations';
 import { useReaderContent } from '../src/hooks/reader/useReaderContent';
+import { BookService } from '../src/services/bookService';
 
 // Components
 import { ReaderHeader } from '../components/reader/ReaderHeader';
@@ -37,9 +38,46 @@ export default function ReaderScreen() {
         setFavorites,
         notes,
         setNotes,
+        pageNotes,
+        setPageNotes,
         localPdfUri,
         loading
     } = useReaderContent(user, bookId);
+
+    // Page notes state
+    const [showPageNoteModal, setShowPageNoteModal] = useState(false);
+    const [tempPageNote, setTempPageNote] = useState('');
+    const [selectedPdfPage, setSelectedPdfPage] = useState<number | null>(null);
+
+    const openPageNoteModal = (pdfPage: number) => {
+        setSelectedPdfPage(pdfPage);
+        setTempPageNote(pageNotes[pdfPage.toString()] || '');
+        setShowPageNoteModal(true);
+    };
+
+    const savePageNote = async () => {
+        if (selectedPdfPage === null) return;
+        const updated = { ...pageNotes };
+        if (tempPageNote.trim()) {
+            updated[selectedPdfPage.toString()] = tempPageNote.trim();
+        } else {
+            delete updated[selectedPdfPage.toString()];
+        }
+        setPageNotes(updated);
+        setShowPageNoteModal(false);
+        if (user && bookId) {
+            BookService.savePageNote(user.uid, bookId, selectedPdfPage, tempPageNote).catch(() => {});
+        }
+    };
+
+    const deletePageNote = (pdfPage: number) => {
+        const updated = { ...pageNotes };
+        delete updated[pdfPage.toString()];
+        setPageNotes(updated);
+        if (user && bookId) {
+            BookService.savePageNote(user.uid, bookId, pdfPage, '').catch(() => {});
+        }
+    };
     
     // Playback Logic
     const playback = useReaderPlayback(pages, currentPage, setCurrentPage, settings);
@@ -152,17 +190,17 @@ export default function ReaderScreen() {
                     pdfUrl={localPdfUri}
                     pages={pages}
                     currentPage={currentPage}
-                    pageNotes={{}}
+                    pageNotes={pageNotes}
                     colors={colors}
                     isDark={isDark}
-                    showPageNoteModal={false}
-                    tempPageNote=""
-                    selectedPdfPage={null}
-                    setTempPageNote={() => {}}
-                    setShowPageNoteModal={() => {}}
-                    openPageNoteModal={() => {}}
-                    savePageNote={() => {}}
-                    deletePageNote={() => {}}
+                    showPageNoteModal={showPageNoteModal}
+                    tempPageNote={tempPageNote}
+                    selectedPdfPage={selectedPdfPage}
+                    setTempPageNote={setTempPageNote}
+                    setShowPageNoteModal={setShowPageNoteModal}
+                    openPageNoteModal={openPageNoteModal}
+                    savePageNote={savePageNote}
+                    deletePageNote={deletePageNote}
                     onBack={() => {
                         stopPlayback();
                         if (router.canGoBack()) router.back();

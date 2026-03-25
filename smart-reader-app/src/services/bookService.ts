@@ -147,6 +147,26 @@ export class BookService {
     }
 
     /**
+     * Save a note for a PDF page.
+     */
+    static async savePageNote(userId: string, bookId: string, pdfPage: number, note: string): Promise<void> {
+        const bookRef = doc(db, 'users', userId, 'books', bookId);
+        const bookSnap = await getDoc(bookRef);
+        if (!bookSnap.exists()) return;
+
+        const data = bookSnap.data();
+        const pageNotes = data.pageNotes || {};
+
+        if (note.trim()) {
+            pageNotes[pdfPage.toString()] = note;
+        } else {
+            delete pageNotes[pdfPage.toString()];
+        }
+
+        await updateDoc(bookRef, { pageNotes, updatedAt: serverTimestamp() });
+    }
+
+    /**
      * Save a note for a paragraph.
      */
     static async saveNote(userId: string, bookId: string, paragraphIndex: number, note: string): Promise<void> {
