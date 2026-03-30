@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs } from 'expo-router';
 import { TouchableOpacity, View, Platform } from 'react-native';
-import { Book, Settings, Menu } from 'lucide-react-native';
+import { Book, Menu, Compass, BookOpen } from 'lucide-react-native';
 import SideMenu from '../../components/SideMenu';
 import { useTheme } from '../../src/services/themeContext';
 
@@ -10,7 +10,7 @@ export default function TabLayout() {
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
 
     const MenuButton = () => (
         <TouchableOpacity onPress={toggleMenu} style={{ paddingLeft: 16 }}>
@@ -98,12 +98,20 @@ export default function TabLayout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="settings"
+                        name="summaries"
                         options={{
-                            title: 'Ajustes',
-                            tabBarIcon: ({ color }) => <Settings size={32} color={color} />,
+                            title: 'Descubrir',
+                            tabBarIcon: ({ color }) => <Compass size={32} color={color} />,
                         }}
                     />
+                    <Tabs.Screen
+                        name="resumenes"
+                        options={{
+                            title: 'Resúmenes',
+                            tabBarIcon: ({ color }) => <BookOpen size={32} color={color} />,
+                        }}
+                    />
+                  
                 </Tabs>
             </View>
 

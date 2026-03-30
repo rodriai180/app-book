@@ -9,7 +9,8 @@ import {
     TouchableWithoutFeedback,
     Platform,
 } from 'react-native';
-import { LogOut, X } from 'lucide-react-native';
+import { LogOut, X, Settings } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../src/services/authContext';
 import { useTheme } from '../src/services/themeContext';
 
@@ -24,6 +25,7 @@ interface SideMenuProps {
 export default function SideMenu({ isOpen, onClose }: SideMenuProps) {
     const { user, logout } = useAuth();
     const { colors, isDark } = useTheme();
+    const router = useRouter();
     const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -123,6 +125,15 @@ export default function SideMenu({ isOpen, onClose }: SideMenuProps) {
 
                 {/* Menu Items */}
                 <View style={styles.menuItems}>
+                    {/* Settings */}
+                    <TouchableOpacity
+                        style={[styles.menuItem, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}
+                        onPress={() => { onClose(); router.push('/settings'); }}
+                    >
+                        <Settings size={20} color={colors.text} />
+                        <Text style={[styles.menuItemText, { color: colors.text }]}>Configuración</Text>
+                    </TouchableOpacity>
+
                     {/* Spacer to push logout to bottom */}
                     <View style={{ flex: 1 }} />
 
@@ -217,6 +228,20 @@ const styles = StyleSheet.create({
     },
     menuItems: {
         flex: 1,
+        gap: 8,
+        paddingTop: 8,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        gap: 12,
+    },
+    menuItemText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
     logoutButton: {
         flexDirection: 'row',

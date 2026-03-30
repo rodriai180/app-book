@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Pressable, Platform } from 'react-native';
 import { ChevronRight, Volume2, Mic2, Languages, Moon, Sun, Play, Check, X } from 'lucide-react-native';
-import { useTheme } from '../../src/services/themeContext';
-import { useSettings } from '../../src/services/settingsContext';
-import { AudioService } from '../../src/services/AudioService';
+import { useTheme } from '../src/services/themeContext';
+import { useSettings } from '../src/services/settingsContext';
+import { AudioService } from '../src/services/AudioService';
 
 const RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 const PITCHES = [0.5, 1.0, 1.5];

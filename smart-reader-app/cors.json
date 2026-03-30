@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:8081", "https://smart-reader-app-3665c.web.app"],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization"]
+  }
+]
