@@ -79,7 +79,11 @@ export default function ResumenesScreen() {
     const renderItem = ({ item }: { item: Summary }) => {
         const isPlaying = playingId === item.id;
         return (
-            <View style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+            <TouchableOpacity
+                onPress={() => router.push({ pathname: '/summary-detail', params: { id: item.id } })}
+                activeOpacity={0.7}
+                style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
+            >
                 {item.coverUrl ? (
                     <Image source={{ uri: item.coverUrl }} style={styles.cover} resizeMode="cover" />
                 ) : (
@@ -98,7 +102,7 @@ export default function ResumenesScreen() {
                 </View>
 
                 <TouchableOpacity
-                    onPress={() => handlePlay(item)}
+                    onPress={(e) => { e.stopPropagation(); handlePlay(item); }}
                     style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
                 >
                     {isPlaying
@@ -106,7 +110,7 @@ export default function ResumenesScreen() {
                         : <Play size={16} color={colors.tint} fill={colors.tint} />
                     }
                 </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
         );
     };
 

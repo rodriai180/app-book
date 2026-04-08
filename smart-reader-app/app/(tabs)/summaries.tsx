@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    Image, ActivityIndicator, useWindowDimensions, Linking,
+    Image, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, ShoppingCart } from 'lucide-react-native';
-import { useFocusEffect } from 'expo-router';
+import { Play, Square, Eye } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../../constants/firebaseConfig';
 import { AudioService } from '../../src/services/AudioService';
@@ -23,8 +23,10 @@ interface Summary {
 
 export default function SummariesScreen() {
     const { colors, isDark } = useTheme();
+    const router = useRouter();
     const { settings } = useSettings();
-    const { width, height } = useWindowDimensions();
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const { width, height } = containerSize;
     const [summaries, setSummaries] = useState<Summary[]>([]);
     const [loading, setLoading] = useState(true);
     const [playingId, setPlayingId] = useState<string | null>(null);
@@ -121,15 +123,13 @@ export default function SummariesScreen() {
                             </Text>
                         </TouchableOpacity>
 
-                        {item.buyLink ? (
-                            <TouchableOpacity
-                                onPress={() => Linking.openURL(item.buyLink!)}
-                                style={[styles.buyBtn, { borderColor: colors.tint }]}
-                            >
-                                <ShoppingCart size={16} color={colors.tint} />
-                                <Text style={[styles.btnLabel, { color: colors.tint }]}>Comprar</Text>
-                            </TouchableOpacity>
-                        ) : null}
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/summary-detail', params: { id: item.id } })}
+                            style={[styles.buyBtn, { borderColor: colors.tint }]}
+                        >
+                            <Eye size={16} color={colors.tint} />
+                            <Text style={[styles.btnLabel, { color: colors.tint }]}>Ver</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -165,10 +165,11 @@ export default function SummariesScreen() {
             renderItem={renderItem}
             pagingEnabled
             showsVerticalScrollIndicator={false}
-            snapToInterval={height}
+            snapToInterval={height || undefined}
             snapToAlignment="start"
             decelerationRate="fast"
-            style={[{ backgroundColor: colors.background }, { scrollSnapType: 'y mandatory' } as any]}
+            onLayout={e => setContainerSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+            style={[{ backgroundColor: colors.background, flex: 1 }, { scrollSnapType: 'y mandatory' } as any]}
         />
     );
 }
