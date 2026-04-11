@@ -1,6 +1,6 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, terminate } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -13,12 +13,26 @@ const firebaseConfig = {
   measurementId: "G-1X7BQ2V7NP",
 };
 
-// Inicializar Firebase
-const app = initializeApp(firebaseConfig);
+// Inicializar Firebase (evitar duplicados en hot-reload)
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Exportar instancias de Firestore, Authentication y Storage
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+/**
+ * Resetea la conexión de Firestore cuando el SDK queda atascado en backoff.
+ * Usar cuando aparece "Write stream exhausted" o "Using maximum backoff delay".
+ * Después de llamar esto, recargar la página para reinicializar limpiamente.
+ */
+export const resetFirestore = async (): Promise<void> => {
+    try {
+        await terminate(db);
+        console.log('[Firestore] Conexión terminada. Recargá la página para reinicializar.');
+    } catch (e) {
+        console.warn('[Firestore] Error al terminar la conexión:', e);
+    }
+};
 
 export default app;

@@ -1,10 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
-import { Plus, Trash2 } from 'lucide-react-native';
+import {
+    View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
+    ActivityIndicator, ScrollView,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Plus, Trash2, BookMarked } from 'lucide-react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
+import { getSavedBooks } from '../../src/services/bookContentService';
+import { BookData } from '../../src/models/BookModels';
 import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
 import BookCardSkeleton from '../../components/BookCardSkeleton';
@@ -13,44 +19,46 @@ export default function LibraryScreen() {
     const { colors, isDark } = useTheme();
     const router = useRouter();
     const { user } = useAuth();
+    const navigation = useNavigation();
+
     const [books, setBooks] = useState<BookMetadata[]>([]);
+    const [savedBooks, setSavedBooks] = useState<BookData[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-    const navigation = useNavigation();
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <TouchableOpacity 
-                    onPress={handlePickDocument} 
+                <TouchableOpacity
+                    onPress={handlePickDocument}
                     style={{ marginRight: 16 }}
                     disabled={uploading}
                 >
-                    {uploading ? (
-                        <ActivityIndicator size="small" color={colors.tint} />
-                    ) : (
-                        <Plus size={24} color={colors.tint} />
-                    )}
+                    {uploading
+                        ? <ActivityIndicator size="small" color={colors.tint} />
+                        : <Plus size={24} color={colors.tint} />
+                    }
                 </TouchableOpacity>
             ),
         });
     }, [navigation, uploading, colors.tint]);
 
-    // Load books from Firestore when screen focuses
     useFocusEffect(
         useCallback(() => {
-            if (user) {
-                loadBooks();
-            }
+            if (user) loadAll();
         }, [user])
     );
 
-    const loadBooks = async () => {
+    const loadAll = async () => {
         if (!user) return;
+        setLoading(true);
         try {
-            setLoading(true);
-            const userBooks = await BookService.getUserBooks(user.uid);
+            const [userBooks, saved] = await Promise.all([
+                BookService.getUserBooks(user.uid),
+                getSavedBooks(user.uid),
+            ]);
             setBooks(userBooks);
+            setSavedBooks(saved);
         } catch (error) {
             console.error('Error loading books:', error);
         } finally {
@@ -60,22 +68,15 @@ export default function LibraryScreen() {
 
     const handlePickDocument = async () => {
         if (!user) return;
-
         try {
             setUploading(true);
             const newDoc = await DocumentService.pickDocument();
-            if (!newDoc) {
-                setUploading(false);
-                return;
-            }
+            if (!newDoc) return;
 
             const isPdf = newDoc.mimeType === 'application/pdf' ||
                 newDoc.uri.toLowerCase().endsWith('.pdf');
 
-            // Extraer texto (para TTS + búsqueda)
             const paragraphs = await DocumentService.extractText(newDoc.uri);
-
-            // Guardar libro en Firestore
             const bookId = await BookService.saveBook(user.uid, {
                 title: newDoc.title,
                 author: newDoc.author,
@@ -84,15 +85,13 @@ export default function LibraryScreen() {
                 currentParagraph: 0,
             });
 
-            // Si es PDF: guardar el archivo localmente (IndexedDB en web, FileSystem en nativo)
             if (isPdf) {
                 PdfLocalStorage.save(bookId, newDoc.uri)
                     .then(() => BookService.markHasPdf(user.uid, bookId))
                     .catch(err => console.warn('PDF local save failed:', err));
             }
 
-            // Reload the list
-            await loadBooks();
+            await loadAll();
         } catch (error) {
             console.error('Error uploading book:', error);
         } finally {
@@ -102,29 +101,44 @@ export default function LibraryScreen() {
 
     const handleDeleteBook = async (bookId: string, title: string) => {
         if (!user) return;
-
-        // Simple confirmation (works on web and native)
         const confirmed = typeof window !== 'undefined'
             ? window.confirm(`¿Eliminar "${title}" de tu biblioteca?`)
             : true;
-
         if (!confirmed) return;
-
         try {
             await BookService.deleteBook(user.uid, bookId);
-            setBooks((prev) => prev.filter((b) => b.id !== bookId));
+            setBooks(prev => prev.filter(b => b.id !== bookId));
         } catch (error) {
             console.error('Error deleting book:', error);
         }
     };
 
-    const renderItem = ({ item }: { item: BookMetadata }) => (
+    // ── Render saved book card (horizontal) ───────────────────────────────────
+    const renderSavedBook = ({ item }: { item: BookData }) => (
+        <TouchableOpacity
+            style={[styles.savedCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+            onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
+            activeOpacity={0.75}
+        >
+            {item.coverImageUrl ? (
+                <Image source={{ uri: item.coverImageUrl }} style={styles.savedCover} resizeMode="cover" />
+            ) : (
+                <View style={[styles.savedCover, styles.savedCoverFallback, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
+                    <Text style={[styles.savedCoverInitial, { color: colors.tint }]}>
+                        {item.title.charAt(0).toUpperCase()}
+                    </Text>
+                </View>
+            )}
+            <Text style={[styles.savedTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+            <Text style={[styles.savedAuthor, { color: colors.secondaryText }]} numberOfLines={1}>{item.author}</Text>
+        </TouchableOpacity>
+    );
+
+    // ── Render uploaded book card (grid) ──────────────────────────────────────
+    const renderBook = ({ item }: { item: BookMetadata }) => (
         <TouchableOpacity
             style={styles.bookCard}
-            onPress={() => router.push({
-                pathname: '/reader',
-                params: { bookId: item.id, title: item.title }
-            })}
+            onPress={() => router.push({ pathname: '/reader', params: { bookId: item.id, title: item.title } })}
         >
             <View style={[styles.coverPlaceholder, { backgroundColor: colors.card }]}>
                 {item.cover ? (
@@ -134,7 +148,6 @@ export default function LibraryScreen() {
                         <Text style={[styles.emptyCoverText, { color: colors.tint }]}>{item.title.charAt(0)}</Text>
                     </View>
                 )}
-                {/* Delete button */}
                 <TouchableOpacity
                     style={[styles.deleteButton, { backgroundColor: isDark ? 'rgba(44,44,46,0.9)' : 'rgba(255,255,255,0.9)' }]}
                     onPress={() => handleDeleteBook(item.id, item.title)}
@@ -158,146 +171,129 @@ export default function LibraryScreen() {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.skeletonGrid}>
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <BookCardSkeleton key={i} />
-                    ))}
+                    {[1, 2, 3, 4, 5, 6].map(i => <BookCardSkeleton key={i} />)}
                 </View>
             </SafeAreaView>
         );
     }
 
+    const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={{ height: 10 }} /> 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
 
-            {books.length === 0 ? (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>📚</Text>
-                    <Text style={[styles.emptyTitle, { color: colors.text }]}>Tu biblioteca está vacía</Text>
-                    <Text style={[styles.emptySubtitle, { color: colors.secondaryText }]}>
-                        Pulsa el botón + para añadir tu primer libro
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={books}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id}
-                    numColumns={2}
-                    contentContainerStyle={styles.listContainer}
-                    showsVerticalScrollIndicator={false}
-                />
-            )}
+                {/* ── Libros guardados ── */}
+                {savedBooks.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <BookMarked size={16} color={colors.tint} />
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Guardados</Text>
+                        </View>
+                        <FlatList
+                            data={savedBooks}
+                            keyExtractor={item => item.id!}
+                            renderItem={renderSavedBook}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.savedList}
+                            scrollEnabled
+                        />
+                    </View>
+                )}
+
+                {/* Divider entre secciones */}
+                {savedBooks.length > 0 && books.length > 0 && (
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                )}
+
+                {/* ── Mis libros (subidos) ── */}
+                {books.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Mis libros</Text>
+                        </View>
+                        <FlatList
+                            data={books}
+                            renderItem={renderBook}
+                            keyExtractor={item => item.id}
+                            numColumns={2}
+                            contentContainerStyle={styles.listContainer}
+                            showsVerticalScrollIndicator={false}
+                            scrollEnabled={false}
+                        />
+                    </View>
+                )}
+
+                {/* ── Empty state ── */}
+                {savedBooks.length === 0 && books.length === 0 && (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyIcon}>📚</Text>
+                        <Text style={[styles.emptyTitle, { color: colors.text }]}>Tu biblioteca está vacía</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.secondaryText }]}>
+                            Guardá libros desde Descubrir o subí tu propio archivo con +
+                        </Text>
+                    </View>
+                )}
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
+    container: { flex: 1 },
+
+    // Sections
+    section: { paddingTop: 12 },
+    sectionHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingHorizontal: 16, paddingBottom: 10,
     },
-    centerContent: {
-        justifyContent: 'center',
-        alignItems: 'center',
+    sectionTitle: { fontSize: 17, fontWeight: '700' },
+    divider: { height: 1, marginHorizontal: 16, marginVertical: 4 },
+
+    // Saved books (horizontal)
+    savedList: { paddingHorizontal: 16, gap: 12 },
+    savedCard: {
+        width: 110, borderRadius: 12, overflow: 'hidden',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
     },
-    skeletonGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: 15,
-        marginTop: 15,
-    },
-    listContainer: {
-        paddingHorizontal: 15,
-        paddingBottom: 20,
-    },
-    bookCard: {
-        flex: 1,
-        margin: 8,
-        maxWidth: '46%',
-    },
+    savedCover: { width: 110, height: 150 },
+    savedCoverFallback: { justifyContent: 'center', alignItems: 'center' },
+    savedCoverInitial: { fontSize: 36, fontWeight: '700' },
+    savedTitle: { fontSize: 12, fontWeight: '600', padding: 8, paddingBottom: 2, lineHeight: 16 },
+    savedAuthor: { fontSize: 11, paddingHorizontal: 8, paddingBottom: 8 },
+
+    // Uploaded books (grid)
+    skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 15, marginTop: 15 },
+    listContainer: { paddingHorizontal: 15, paddingBottom: 20 },
+    bookCard: { flex: 1, margin: 8, maxWidth: '46%' },
     coverPlaceholder: {
-        width: '100%',
-        aspectRatio: 2 / 3,
-        backgroundColor: '#F2F2F7',
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginBottom: 8,
+        width: '100%', aspectRatio: 2 / 3,
+        backgroundColor: '#F2F2F7', borderRadius: 12, overflow: 'hidden', marginBottom: 8,
     },
-    coverImage: {
-        width: '100%',
-        height: '100%',
-    },
-    emptyCover: {
-        flex: 1,
-        backgroundColor: '#E6F4FE',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    emptyCoverText: {
-        fontSize: 40,
-        fontWeight: '700',
-        color: '#007AFF',
-    },
+    coverImage: { width: '100%', height: '100%' },
+    emptyCover: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyCoverText: { fontSize: 40, fontWeight: '700' },
     deleteButton: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        position: 'absolute', top: 8, right: 8,
+        width: 30, height: 30, borderRadius: 15,
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
     },
-    bookTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1C1C1E',
-        marginBottom: 2,
-    },
-    bookAuthor: {
-        fontSize: 14,
-        color: '#8E8E93',
-    },
+    bookTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+    bookAuthor: { fontSize: 14 },
     progressBadge: {
-        marginTop: 4,
-        backgroundColor: '#E6F4FE',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
+        marginTop: 4, paddingHorizontal: 8, paddingVertical: 2,
+        borderRadius: 8, alignSelf: 'flex-start',
     },
-    progressText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#007AFF',
-    },
-    emptyState: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-    emptyIcon: {
-        fontSize: 60,
-        marginBottom: 16,
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1C1C1E',
-        marginBottom: 8,
-    },
-    emptySubtitle: {
-        fontSize: 16,
-        color: '#8E8E93',
-        textAlign: 'center',
-        lineHeight: 22,
-    },
+    progressText: { fontSize: 12, fontWeight: '600' },
+
+    // Empty
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, paddingTop: 80 },
+    emptyIcon: { fontSize: 60, marginBottom: 16 },
+    emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+    emptySubtitle: { fontSize: 16, textAlign: 'center', lineHeight: 22 },
 });

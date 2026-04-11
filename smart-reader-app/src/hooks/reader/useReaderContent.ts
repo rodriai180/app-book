@@ -62,15 +62,22 @@ export const useReaderContent = (user: any, bookId: string | undefined) => {
         loadContent();
     }, [bookId, user]);
 
+    // Debounce: espera 1.5s sin cambios antes de escribir a Firestore
+    const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (pages.length > 0 && savedBookId.current) {
-            // Guardar en localStorage sincrónicamente (siempre funciona, incluso si Firebase falla)
             try { localStorage.setItem(`rp_${savedBookId.current}`, String(currentPage)); } catch (_) {}
         }
         if (user && savedBookId.current && pages.length > 0 && currentPage > 0) {
-            BookService.updateReadingProgress(user.uid, savedBookId.current, currentPage)
-                .catch(() => {});
+            if (progressTimer.current) clearTimeout(progressTimer.current);
+            progressTimer.current = setTimeout(() => {
+                BookService.updateReadingProgress(user.uid, savedBookId.current, currentPage)
+                    .catch(() => {});
+            }, 1500);
         }
+        return () => {
+            if (progressTimer.current) clearTimeout(progressTimer.current);
+        };
     }, [currentPage, user, pages.length]);
 
     return {

@@ -1,66 +1,118 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    Image, ActivityIndicator,
+    ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, Eye } from 'lucide-react-native';
+import { Play, Square, BookOpen, ChevronRight, Bookmark } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { db } from '../../constants/firebaseConfig';
+import { QueryDocumentSnapshot } from 'firebase/firestore';
+import {
+    getMicrolearningsFeed, saveBook, unsaveBook, getSavedBooks,
+} from '../../src/services/bookContentService';
+import { MicrolearningData } from '../../src/models/BookModels';
 import { AudioService } from '../../src/services/AudioService';
 import { useTheme } from '../../src/services/themeContext';
 import { useSettings } from '../../src/services/settingsContext';
+import { useAuth } from '../../src/services/authContext';
 
-interface Summary {
-    id: string;
-    title: string;
-    author?: string;
-    coverUrl?: string;
-    summaryText: string;
-    buyLink?: string;
-}
+const PAGE_SIZE = 10;
 
 export default function SummariesScreen() {
     const { colors, isDark } = useTheme();
-    const router = useRouter();
     const { settings } = useSettings();
-    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-    const { width, height } = containerSize;
-    const [summaries, setSummaries] = useState<Summary[]>([]);
+    const { user } = useAuth();
+    const router = useRouter();
+
+    const [items, setItems] = useState<MicrolearningData[]>([]);
+    const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [playingId, setPlayingId] = useState<string | null>(null);
+
+    const lastDocRef = useRef<QueryDocumentSnapshot | null>(null);
+
+    // ── Carga inicial / refresh ───────────────────────────────────────────────
+    const loadFeed = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true);
+        else setLoading(true);
+
+        lastDocRef.current = null;
+        try {
+            const [{ items: fetched, lastDoc }, saved] = await Promise.all([
+                getMicrolearningsFeed(undefined, undefined, PAGE_SIZE),
+                user ? getSavedBooks(user.uid) : Promise.resolve([]),
+            ]);
+            lastDocRef.current = lastDoc;
+            setItems(fetched);
+            setSavedBookIds(new Set(saved.map(b => b.id!)));
+            setHasMore(fetched.length === PAGE_SIZE);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
-            loadSummaries();
+            loadFeed();
             return () => { AudioService.stop(); setPlayingId(null); };
         }, [])
     );
 
-    const loadSummaries = async () => {
-        setLoading(true);
+    // ── Paginación ────────────────────────────────────────────────────────────
+    const loadMore = async () => {
+        if (loadingMore || !hasMore || !lastDocRef.current) return;
+        setLoadingMore(true);
         try {
-            const q = query(collection(db, 'summaries'), orderBy('createdAt', 'desc'));
-            const snap = await getDocs(q);
-            setSummaries(snap.docs.map(d => ({ id: d.id, ...d.data() } as Summary)));
-        } catch {
-            const snap = await getDocs(collection(db, 'summaries'));
-            setSummaries(snap.docs.map(d => ({ id: d.id, ...d.data() } as Summary)));
+            const { items: more, lastDoc } = await getMicrolearningsFeed(
+                undefined, lastDocRef.current, PAGE_SIZE
+            );
+            lastDocRef.current = lastDoc;
+            setItems(prev => [...prev, ...more]);
+            setHasMore(more.length === PAGE_SIZE);
         } finally {
-            setLoading(false);
+            setLoadingMore(false);
         }
     };
 
-    const handlePlay = (item: Summary) => {
+    // ── Bookmark ──────────────────────────────────────────────────────────────
+    const toggleSave = async (bookId: string) => {
+        if (!user) return;
+        const isSaved = savedBookIds.has(bookId);
+        setSavedBookIds(prev => {
+            const next = new Set(prev);
+            isSaved ? next.delete(bookId) : next.add(bookId);
+            return next;
+        });
+        try {
+            isSaved ? await unsaveBook(user.uid, bookId) : await saveBook(user.uid, bookId);
+        } catch {
+            setSavedBookIds(prev => {
+                const next = new Set(prev);
+                isSaved ? next.add(bookId) : next.delete(bookId);
+                return next;
+            });
+        }
+    };
+
+    // ── TTS ───────────────────────────────────────────────────────────────────
+    const handlePlay = (item: MicrolearningData) => {
         if (playingId === item.id) {
             AudioService.stop();
             setPlayingId(null);
             return;
         }
         AudioService.stop();
-        setPlayingId(item.id);
-        AudioService.speak(item.summaryText, {
+        setPlayingId(item.id!);
+        const text = [
+            item.title,
+            item.content,
+            item.reflectionQuestion ? `Pregunta de reflexión: ${item.reflectionQuestion}` : '',
+        ].filter(Boolean).join('. ');
+        AudioService.speak(text, {
             rate: settings.rate,
             language: settings.language,
             onDone: () => setPlayingId(null),
@@ -68,77 +120,107 @@ export default function SummariesScreen() {
         });
     };
 
-    const renderItem = ({ item }: { item: Summary }) => {
+    // ── Render card ───────────────────────────────────────────────────────────
+    const renderItem = ({ item }: { item: MicrolearningData }) => {
         const isPlaying = playingId === item.id;
-        const preview = item.summaryText.length > 120
-            ? item.summaryText.slice(0, 120) + '...'
-            : item.summaryText;
+        const isSaved = savedBookIds.has(item.bookId);
+        const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
+        const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
 
         return (
-            <View style={[styles.slide, { width, height, backgroundColor: colors.background }]}>
-                {/* Cover — 55% of slide */}
-                <View style={styles.coverContainer}>
-                    {item.coverUrl ? (
+            <View style={[styles.card, { backgroundColor: cardBg }]}>
+                {/* Banner imagen */}
+                {item.microlearningImageUrl ? (
+                    <View style={styles.mlBannerWrap}>
                         <Image
-                            source={{ uri: item.coverUrl }}
-                            style={styles.cover}
-                            resizeMode="contain"
+                            source={{ uri: item.microlearningImageUrl }}
+                            style={styles.mlBanner}
+                            resizeMode="cover"
                         />
-                    ) : (
-                        <View style={[styles.cover, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA', justifyContent: 'center', alignItems: 'center' }]}>
-                            <Text style={[styles.coverInitial, { color: colors.secondaryText }]}>
-                                {item.title.charAt(0).toUpperCase()}
-                            </Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Info — bottom half */}
-                <View style={[styles.infoContainer, { backgroundColor: colors.background }]}>
-                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-                        {item.title}
-                    </Text>
-                    {item.author ? (
-                        <Text style={[styles.author, { color: colors.secondaryText }]}>
-                            {item.author}
-                        </Text>
-                    ) : null}
-
-                    <Text style={[styles.preview, { color: colors.text }]} numberOfLines={3}>
-                        {preview}
-                    </Text>
-
-                    {/* Actions */}
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            onPress={() => handlePlay(item)}
-                            style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
-                        >
-                            {isPlaying
-                                ? <Square size={18} color="#FFF" fill="#FFF" />
-                                : <Play size={18} color={colors.tint} fill={colors.tint} />
-                            }
-                            <Text style={[styles.btnLabel, { color: isPlaying ? '#FFF' : colors.tint }]}>
-                                {isPlaying ? 'Detener' : 'Escuchar'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => router.push({ pathname: '/summary-detail', params: { id: item.id } })}
-                            style={[styles.buyBtn, { borderColor: colors.tint }]}
-                        >
-                            <Eye size={16} color={colors.tint} />
-                            <Text style={[styles.btnLabel, { color: colors.tint }]}>Ver</Text>
-                        </TouchableOpacity>
                     </View>
+                ) : null}
+                {/* Título */}
+                <Text style={[styles.mlTitle, { color: colors.text }]}>{item.title}</Text>
+
+                {/* Contenido */}
+                <Text style={[styles.mlContent, { color: colors.text }]}>{item.content}</Text>
+
+                {/* Divider */}
+                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+
+                {/* Fila: libro */}
+                <TouchableOpacity
+                    style={styles.bookRow}
+                    onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.bookId } })}
+                >
+                    <BookOpen size={13} color={colors.secondaryText} />
+                    <Text style={[styles.footerBook, { color: colors.tint }]} numberOfLines={1}>
+                        {item.bookTitle}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Fila: capítulo + acciones */}
+                <View style={styles.footerRow}>
+                    <TouchableOpacity
+                        style={styles.chapterLink}
+                        onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
+                    >
+                        <ChevronRight size={12} color={colors.secondaryText} />
+                        <Text style={[styles.footerChapter, { color: colors.secondaryText }]} numberOfLines={1}>
+                            Cap. {item.chapterNumber} — {item.chapterTitle}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Bookmark */}
+                    <TouchableOpacity onPress={() => toggleSave(item.bookId)} style={styles.iconBtn}>
+                        <Bookmark
+                            size={16}
+                            color={isSaved ? colors.tint : colors.secondaryText}
+                            fill={isSaved ? colors.tint : 'transparent'}
+                        />
+                    </TouchableOpacity>
+
+                    {/* Botón audio */}
+                    <TouchableOpacity
+                        onPress={() => handlePlay(item)}
+                        style={[
+                            styles.playBtn,
+                            { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') },
+                        ]}
+                    >
+                        {isPlaying
+                            ? <Square size={14} color="#FFF" fill="#FFF" />
+                            : <Play size={14} color={colors.tint} fill={colors.tint} />
+                        }
+                    </TouchableOpacity>
                 </View>
+            </View>
+        );
+    };
+
+    const renderFooter = () => {
+        if (!loadingMore) return null;
+        return (
+            <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={colors.tint} />
+            </View>
+        );
+    };
+
+    const renderEmpty = () => {
+        if (loading) return null;
+        return (
+            <View style={styles.center}>
+                <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
+                    No hay microlearnings disponibles todavía.
+                </Text>
             </View>
         );
     };
 
     if (loading) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
+            <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />
                 </View>
@@ -146,96 +228,74 @@ export default function SummariesScreen() {
         );
     }
 
-    if (summaries.length === 0) {
-        return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-                <View style={styles.center}>
-                    <Text style={[styles.empty, { color: colors.secondaryText }]}>
-                        No hay resúmenes disponibles todavía.
-                    </Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
-
     return (
-        <FlatList
-            data={summaries}
-            keyExtractor={item => item.id}
-            renderItem={renderItem}
-            pagingEnabled
-            showsVerticalScrollIndicator={false}
-            snapToInterval={height || undefined}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            onLayout={e => setContainerSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
-            style={[{ backgroundColor: colors.background, flex: 1 }, { scrollSnapType: 'y mandatory' } as any]}
-        />
+        <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+            <FlatList
+                data={items}
+                keyExtractor={item => item.id ?? `${item.bookId}-${item.order}`}
+                renderItem={renderItem}
+                contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+                onEndReached={loadMore}
+                onEndReachedThreshold={0.4}
+                refreshing={refreshing}
+                onRefresh={() => loadFeed(true)}
+                ListFooterComponent={renderFooter}
+                ListEmptyComponent={renderEmpty}
+                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            />
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    root: { flex: 1 },
+    list: { padding: 16, paddingBottom: 32 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-    empty: { fontSize: 15, textAlign: 'center' },
-    slide: {
-        flexDirection: 'column',
-        overflow: 'hidden',
-        scrollSnapAlign: 'start',
-    } as any,
-    coverContainer: {
-        flex: 45,
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 40,
-        paddingTop: 12,
-        paddingBottom: 8,
-    },
-    cover: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 14,
+    emptyText: { fontSize: 15, textAlign: 'center' },
+
+    // Card
+    card: {
+        borderRadius: 16,
+        padding: 16,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-        elevation: 12,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+        gap: 8,
     },
-    coverInitial: { fontSize: 64, fontWeight: '700' },
-    infoContainer: {
-        flex: 55,
-        width: '100%',
-        paddingHorizontal: 24,
-        paddingTop: 14,
-        paddingBottom: 16,
-        gap: 6,
-        overflow: 'hidden',
-    },
-    title: { fontSize: 22, fontWeight: '800', lineHeight: 28 },
-    author: { fontSize: 15, fontWeight: '500' },
-    preview: { fontSize: 14, lineHeight: 22, marginTop: 4 },
-    actions: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 16,
+
+    // Content
+    mlTitle: { fontSize: 17, fontWeight: '800', lineHeight: 24 },
+    mlContent: { fontSize: 14, lineHeight: 22 },
+
+    // Divider
+    divider: { height: 1, marginVertical: 2 },
+
+    // Footer rows
+    bookRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    footerBook: { fontSize: 13, fontWeight: '600', flex: 1 },
+    footerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    chapterLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2 },
+    footerChapter: { fontSize: 12, flexShrink: 1 },
+
+    iconBtn: {
+        width: 32, height: 32, borderRadius: 16,
+        justifyContent: 'center', alignItems: 'center',
+        flexShrink: 0,
     },
     playBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 24,
+        width: 32, height: 32, borderRadius: 16,
+        justifyContent: 'center', alignItems: 'center',
+        flexShrink: 0,
     },
-    buyBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 24,
-        borderWidth: 1.5,
+
+    footerLoader: { paddingVertical: 20, alignItems: 'center' },
+    mlBannerWrap: {
+        marginHorizontal: -16, marginTop: -16,
+        borderTopLeftRadius: 16, borderTopRightRadius: 16,
+        overflow: 'hidden',
     },
-    btnLabel: { fontSize: 14, fontWeight: '600' },
+    mlBanner: { width: '100%', height: 150 },
 });

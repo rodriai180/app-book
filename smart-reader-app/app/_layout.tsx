@@ -41,6 +41,8 @@ function RootNavigator() {
         <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="reader" options={{ headerShown: false }} />
+            <Stack.Screen name="admin-books" options={{ headerShown: false }} />
+            <Stack.Screen name="edit-book" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
         </Stack>
