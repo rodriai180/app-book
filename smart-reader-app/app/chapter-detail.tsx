@@ -17,6 +17,8 @@ import { AudioService } from '../src/services/AudioService';
 import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
+import GeneratedCover from '../src/components/GeneratedCover';
+import { isValidImageUrl } from '../src/utils/imageUtils';
 
 // ─── Colores de categoría (mismo helper que summaries.tsx) ───────────────────
 const CATEGORY_COLORS = [
@@ -184,6 +186,23 @@ export default function ChapterDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
+                {/* ── Hero image / GeneratedCover del capítulo ── */}
+                {isValidImageUrl(chapter.chapterImageUrl) ? (
+                    <Image
+                        source={{ uri: chapter.chapterImageUrl }}
+                        style={styles.chapterHero}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <GeneratedCover
+                        type="chapter"
+                        title={chapter.title}
+                        category={book?.category}
+                        chapterNumber={chapter.chapterNumber}
+                        height={200}
+                    />
+                )}
+
                 {/* ── Resumen del capítulo ── */}
                 {chapter.summary ? (
                     <View style={[styles.card, { backgroundColor: cardBg }]}>
@@ -235,13 +254,23 @@ export default function ChapterDetailScreen() {
                                     ) : null}
 
                                     <View style={styles.mlTitleRow}>
-                                        {ml.microlearningImageUrl ? (
+                                        {isValidImageUrl(ml.microlearningImageUrl) ? (
                                             <Image
                                                 source={{ uri: ml.microlearningImageUrl }}
                                                 style={styles.mlThumb}
                                                 resizeMode="cover"
                                             />
-                                        ) : null}
+                                        ) : (
+                                            <View style={styles.mlThumb}>
+                                                <GeneratedCover
+                                                    type="microlearning"
+                                                    title={ml.title}
+                                                    category={ml.category}
+                                                    tags={ml.tags}
+                                                    height={60}
+                                                />
+                                            </View>
+                                        )}
                                         <Text style={[styles.mlTitle, { color: colors.text }]}>{ml.title}</Text>
                                         <TouchableOpacity
                                             onPress={() => {
@@ -345,6 +374,7 @@ const styles = StyleSheet.create({
 
     // Scroll
     scroll: { padding: 16, gap: 12 },
+    chapterHero: { width: '100%', height: 200, borderRadius: 16, overflow: 'hidden' },
 
     // Section
     section: { gap: 8 },

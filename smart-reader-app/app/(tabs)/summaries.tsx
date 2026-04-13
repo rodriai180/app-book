@@ -4,7 +4,7 @@ import {
     ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, BookOpen, ChevronRight, Bookmark } from 'lucide-react-native';
+import { Play, Square, ChevronRight, Bookmark } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 import {
@@ -15,6 +15,8 @@ import { AudioService } from '../../src/services/AudioService';
 import { useTheme } from '../../src/services/themeContext';
 import { useSettings } from '../../src/services/settingsContext';
 import { useAuth } from '../../src/services/authContext';
+import GeneratedCover from '../../src/components/GeneratedCover';
+import { isValidImageUrl } from '../../src/utils/imageUtils';
 
 const PAGE_SIZE = 10;
 
@@ -23,6 +25,9 @@ export default function SummariesScreen() {
     const { settings } = useSettings();
     const { user } = useAuth();
     const router = useRouter();
+
+    // Altura real del contenedor medida con onLayout
+    const [cardHeight, setCardHeight] = useState(0);
 
     const [items, setItems] = useState<MicrolearningData[]>([]);
     const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
@@ -126,73 +131,77 @@ export default function SummariesScreen() {
         const isSaved = savedBookIds.has(item.bookId);
         const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
         const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
-
+        const hasRealImage = isValidImageUrl(item.microlearningImageUrl);
         return (
-            <View style={[styles.card, { backgroundColor: cardBg }]}>
-                {/* Banner imagen */}
-                {item.microlearningImageUrl ? (
-                    <View style={styles.mlBannerWrap}>
-                        <Image
-                            source={{ uri: item.microlearningImageUrl }}
-                            style={styles.mlBanner}
-                            resizeMode="cover"
-                        />
-                    </View>
-                ) : null}
-                {/* Título */}
-                <Text style={[styles.mlTitle, { color: colors.text }]}>{item.title}</Text>
+            <View style={[styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }]}>
+
+                {/* Imagen — ocupa todo el espacio que sobra sobre el contenido */}
+                {hasRealImage ? (
+                    <Image
+                        source={{ uri: item.microlearningImageUrl }}
+                        style={styles.mlBanner}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    <GeneratedCover
+                        type="microlearning"
+                        title={item.title}
+                        category={item.category}
+                        tags={item.tags}
+                        style={styles.mlBanner}
+                    />
+                )}
 
                 {/* Contenido */}
-                <Text style={[styles.mlContent, { color: colors.text }]}>{item.content}</Text>
+                <View style={[styles.contentBox, { backgroundColor: cardBg }]}>
 
-                {/* Divider */}
-                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                {/* Fila: libro */}
-                <TouchableOpacity
-                    style={styles.bookRow}
-                    onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.bookId } })}
-                >
-                    <BookOpen size={13} color={colors.secondaryText} />
-                    <Text style={[styles.footerBook, { color: colors.tint }]} numberOfLines={1}>
-                        {item.bookTitle}
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Fila: capítulo + acciones */}
-                <View style={styles.footerRow}>
-                    <TouchableOpacity
-                        style={styles.chapterLink}
-                        onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
-                    >
-                        <ChevronRight size={12} color={colors.secondaryText} />
-                        <Text style={[styles.footerChapter, { color: colors.secondaryText }]} numberOfLines={1}>
-                            Cap. {item.chapterNumber} — {item.chapterTitle}
+                    {/* Título solo si hay imagen real (el cover generado ya lo muestra) */}
+                    {hasRealImage && (
+                        <Text style={[styles.mlTitle, { color: colors.text }]} numberOfLines={2}>
+                            {item.title}
                         </Text>
-                    </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1, overflow: 'hidden' }}>
+                        <Text style={[styles.mlContent, { color: colors.text }]}>
+                            {item.content}
+                        </Text>
+                    </View>
 
-                    {/* Bookmark */}
-                    <TouchableOpacity onPress={() => toggleSave(item.bookId)} style={styles.iconBtn}>
-                        <Bookmark
-                            size={16}
-                            color={isSaved ? colors.tint : colors.secondaryText}
-                            fill={isSaved ? colors.tint : 'transparent'}
-                        />
-                    </TouchableOpacity>
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-                    {/* Botón audio */}
-                    <TouchableOpacity
-                        onPress={() => handlePlay(item)}
-                        style={[
-                            styles.playBtn,
-                            { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') },
-                        ]}
-                    >
-                        {isPlaying
-                            ? <Square size={14} color="#FFF" fill="#FFF" />
-                            : <Play size={14} color={colors.tint} fill={colors.tint} />
-                        }
-                    </TouchableOpacity>
+                    <View style={styles.footerRow}>
+                        <TouchableOpacity
+                            style={[styles.chapterLink, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+                            onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
+                            activeOpacity={0.65}
+                        >
+                            <ChevronRight size={12} color={colors.tint} />
+                            <Text style={[styles.footerChapter, { color: colors.tint }]} numberOfLines={1}>
+                                Cap. {item.chapterNumber} — {item.chapterTitle}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <View style={styles.actionBtns}>
+                            <TouchableOpacity onPress={() => toggleSave(item.bookId)} style={styles.iconBtn}>
+                                <Bookmark
+                                    size={19}
+                                    color={isSaved ? colors.tint : colors.secondaryText}
+                                    fill={isSaved ? colors.tint : 'transparent'}
+                                />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => handlePlay(item)}
+                                style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
+                            >
+                                {isPlaying
+                                    ? <Square size={16} color="#FFF" fill="#FFF" />
+                                    : <Play size={16} color={colors.tint} fill={colors.tint} />
+                                }
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                 </View>
             </View>
         );
@@ -218,84 +227,87 @@ export default function SummariesScreen() {
         );
     };
 
-    if (loading) {
-        return (
-            <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+    return (
+        <SafeAreaView
+            style={[styles.root, { backgroundColor: colors.backgroundSecondary }]}
+            edges={['bottom']}
+            onLayout={e => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0) setCardHeight(h);
+            }}
+        >
+            {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />
                 </View>
-            </SafeAreaView>
-        );
-    }
-
-    return (
-        <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
-            <FlatList
-                data={items}
-                keyExtractor={item => item.id ?? `${item.bookId}-${item.order}`}
-                renderItem={renderItem}
-                contentContainerStyle={styles.list}
-                showsVerticalScrollIndicator={false}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.4}
-                refreshing={refreshing}
-                onRefresh={() => loadFeed(true)}
-                ListFooterComponent={renderFooter}
-                ListEmptyComponent={renderEmpty}
-                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            />
+            ) : cardHeight > 0 ? (
+                <FlatList
+                    data={items}
+                    keyExtractor={item => item.id ?? `${item.bookId}-${item.order}`}
+                    renderItem={renderItem}
+                    showsVerticalScrollIndicator={false}
+                    pagingEnabled
+                    snapToInterval={cardHeight}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    onEndReached={loadMore}
+                    onEndReachedThreshold={0.4}
+                    refreshing={refreshing}
+                    onRefresh={() => loadFeed(true)}
+                    ListFooterComponent={renderFooter}
+                    ListEmptyComponent={renderEmpty}
+                />
+            ) : null}
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     root: { flex: 1 },
-    list: { padding: 16, paddingBottom: 32 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
     emptyText: { fontSize: 15, textAlign: 'center' },
 
-    // Card
-    card: {
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
-        gap: 8,
+    card: { overflow: 'hidden' },
+
+    // imagen: 55% — texto: 45%
+    mlBanner: { width: '100%', flex: 11 },
+
+    contentBox: {
+        flex: 9,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 16,
+        gap: 10,
     },
 
-    // Content
-    mlTitle: { fontSize: 17, fontWeight: '800', lineHeight: 24 },
+    mlTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
     mlContent: { fontSize: 14, lineHeight: 22 },
 
-    // Divider
-    divider: { height: 1, marginVertical: 2 },
+    divider: { height: 1 },
 
-    // Footer rows
     bookRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     footerBook: { fontSize: 13, fontWeight: '600', flex: 1 },
-    footerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    chapterLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2 },
-    footerChapter: { fontSize: 12, flexShrink: 1 },
+    footerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
+    chapterLink: {
+        flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: 10, paddingVertical: 5,
+        borderRadius: 20, alignSelf: 'center',
+    },
+    footerChapter: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
 
+    actionBtns: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+    },
     iconBtn: {
-        width: 32, height: 32, borderRadius: 16,
+        width: 38, height: 38, borderRadius: 19,
         justifyContent: 'center', alignItems: 'center',
         flexShrink: 0,
     },
     playBtn: {
-        width: 32, height: 32, borderRadius: 16,
+        width: 38, height: 38, borderRadius: 19,
         justifyContent: 'center', alignItems: 'center',
         flexShrink: 0,
     },
 
     footerLoader: { paddingVertical: 20, alignItems: 'center' },
-    mlBannerWrap: {
-        marginHorizontal: -16, marginTop: -16,
-        borderTopLeftRadius: 16, borderTopRightRadius: 16,
-        overflow: 'hidden',
-    },
-    mlBanner: { width: '100%', height: 150 },
 });

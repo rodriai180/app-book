@@ -17,6 +17,7 @@ import {
     uploadCoverImage,
 } from '../src/services/bookContentService';
 import { useTheme } from '../src/services/themeContext';
+import { isValidImageUrl } from '../src/utils/imageUtils';
 
 // ─── Tipos internos del formulario ────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ interface MicrolearningForm {
     quickExercise: string;
     tags: string; // comma-separated
     microlearningImageUrl: string;
+    localImageUri: string | null; // imagen nueva aún no guardada
     expanded: boolean;
 }
 
@@ -67,7 +69,7 @@ const EMPTY_BOOK: BookForm = {
 };
 
 const EMPTY_ML = (): MicrolearningForm => ({
-    title: '', content: '', reflectionQuestion: '', quickExercise: '', tags: '', microlearningImageUrl: '', expanded: true,
+    title: '', content: '', reflectionQuestion: '', quickExercise: '', tags: '', microlearningImageUrl: '', localImageUri: null, expanded: true,
 });
 
 const EMPTY_EXERCISE = (): ExerciseForm => ({
@@ -100,6 +102,7 @@ function rawToForm(rawChapters: any[]): ChapterForm[] {
             quickExercise: ml.quickExercise ?? '',
             tags: (ml.tags ?? []).join(', '),
             microlearningImageUrl: ml.microlearningImageUrl ?? '',
+            localImageUri: null,
             expanded: false,
         })),
         chapterImageUrl: ch.chapterImageUrl ?? '',
@@ -229,12 +232,24 @@ export default function EditBookScreen() {
                 setUploadingImage(false);
             }
 
-            // Convertir imágenes de capítulos a base64 (se guardan en Firestore, sin CORS)
+            // Convertir imágenes de capítulos y microlearnings a base64
             const resolvedChapters = await Promise.all(
                 chapters.map(async (ch) => {
-                    if (!ch.localImageUri) return ch;
-                    const base64 = await uriToBase64(ch.localImageUri);
-                    return { ...ch, chapterImageUrl: base64, localImageUri: null };
+                    // Imagen del capítulo
+                    let resolved = ch;
+                    if (ch.localImageUri) {
+                        const base64 = await uriToBase64(ch.localImageUri);
+                        resolved = { ...resolved, chapterImageUrl: base64, localImageUri: null };
+                    }
+                    // Imágenes de microlearnings
+                    const resolvedMLs = await Promise.all(
+                        resolved.microlearnings.map(async (ml) => {
+                            if (!ml.localImageUri) return ml;
+                            const base64 = await uriToBase64(ml.localImageUri);
+                            return { ...ml, microlearningImageUrl: base64, localImageUri: null };
+                        })
+                    );
+                    return { ...resolved, microlearnings: resolvedMLs };
                 })
             );
 
@@ -464,14 +479,31 @@ function ChapterImagePicker({ imageUrl, localUri, colors, inputBg, inputBorder, 
     onPick: () => void;
     onRemove: () => void;
 }) {
-    const display = localUri ?? (imageUrl || null);
+    const [imgError, setImgError] = useState(false);
+
+    // Si cambia la imagen volvemos a intentar cargarla
+    React.useEffect(() => { setImgError(false); }, [imageUrl, localUri]);
+
+    const isPollinationsUrl = imageUrl.includes('image.pollinations.ai');
+    const isExternalUrl = !isPollinationsUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'));
+    const isBase64 = imageUrl.startsWith('data:');
+    // Las URLs de Pollinations se tratan como "sin imagen": sólo mostramos localUri o imágenes válidas
+    const validStoredUrl = isValidImageUrl(imageUrl) ? imageUrl : null;
+    const display = localUri ?? validStoredUrl;
+    const showImage = !!display && !imgError;
+
     return (
         <View style={styles.chImgWrapper}>
             <Text style={[styles.label, { color: labelColor }]}>Imagen del capítulo</Text>
             <View style={styles.chImgRow}>
-                {display ? (
+                {showImage ? (
                     <TouchableOpacity onPress={onPick} activeOpacity={0.8}>
-                        <Image source={{ uri: display }} style={styles.chImgPreview} resizeMode="cover" />
+                        <Image
+                            source={{ uri: display! }}
+                            style={styles.chImgPreview}
+                            resizeMode="cover"
+                            onError={() => setImgError(true)}
+                        />
                         <View style={[styles.coverOverlay, { backgroundColor: colors.tint }]}>
                             <Camera size={12} color="#FFF" />
                             <Text style={styles.coverOverlayText}>Cambiar</Text>
@@ -484,9 +516,12 @@ function ChapterImagePicker({ imageUrl, localUri, colors, inputBg, inputBorder, 
                         activeOpacity={0.7}
                     >
                         <Camera size={20} color={labelColor} />
-                        <Text style={[{ color: labelColor, fontSize: 12 }]}>Agregar imagen</Text>
+                        <Text style={{ color: labelColor, fontSize: 12 }}>
+                            {imgError ? 'No se pudo cargar\nSubir imagen' : 'Agregar imagen'}
+                        </Text>
                     </TouchableOpacity>
                 )}
+
                 {display && (
                     <TouchableOpacity style={styles.chImgRemove} onPress={onRemove}>
                         <Trash2 size={14} color="#FF3B30" />
@@ -494,11 +529,36 @@ function ChapterImagePicker({ imageUrl, localUri, colors, inputBg, inputBorder, 
                     </TouchableOpacity>
                 )}
             </View>
-            {localUri && (
-                <Text style={[styles.imageHint, { color: colors.tint }]}>
-                    Nueva imagen — se subirá al guardar
+
+            {/* URL actual visible cuando es externa */}
+            {isExternalUrl && !localUri && (
+                <Text
+                    style={[styles.imageHint, { color: labelColor }]}
+                    numberOfLines={2}
+                    selectable
+                >
+                    {imageUrl}
                 </Text>
             )}
+
+            {/* Hint según estado */}
+            {localUri ? (
+                <Text style={[styles.imageHint, { color: colors.tint }]}>
+                    Nueva imagen — se convertirá a base64 al guardar
+                </Text>
+            ) : isPollinationsUrl ? (
+                <Text style={[styles.imageHint, { color: '#FF3B30' }]}>
+                    URL de Pollinations (placeholder) — sube una imagen real
+                </Text>
+            ) : isExternalUrl && !imgError ? (
+                <Text style={[styles.imageHint, { color: '#FF9500' }]}>
+                    URL externa — sube una nueva imagen para guardarla en base64
+                </Text>
+            ) : isBase64 ? (
+                <Text style={[styles.imageHint, { color: labelColor }]}>
+                    Imagen guardada en base64
+                </Text>
+            ) : null}
         </View>
     );
 }
@@ -747,17 +807,22 @@ function MLCard({ ml, mi, colors, inputBg, inputBorder, labelColor, onToggle, on
                         onChangeText={v => onUpdate({ tags: v })}
                         placeholder="ej: liderazgo, focus"
                         colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
-                    <Field label="URL de imagen (opcional)" value={ml.microlearningImageUrl}
-                        onChangeText={v => onUpdate({ microlearningImageUrl: v })}
-                        placeholder="https://..."
-                        colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
-                    {ml.microlearningImageUrl ? (
-                        <Image
-                            source={{ uri: ml.microlearningImageUrl }}
-                            style={styles.mlImgPreview}
-                            resizeMode="cover"
-                        />
-                    ) : null}
+                    <ChapterImagePicker
+                        imageUrl={ml.microlearningImageUrl}
+                        localUri={ml.localImageUri}
+                        colors={colors}
+                        inputBg={inputBg}
+                        inputBorder={inputBorder}
+                        labelColor={labelColor}
+                        onPick={async () => {
+                            const result = await DocumentPicker.getDocumentAsync({
+                                type: 'image/*', copyToCacheDirectory: true,
+                            });
+                            if (!result.canceled)
+                                onUpdate({ localImageUri: result.assets[0].uri });
+                        }}
+                        onRemove={() => onUpdate({ localImageUri: null, microlearningImageUrl: '' })}
+                    />
                 </View>
             )}
         </View>
