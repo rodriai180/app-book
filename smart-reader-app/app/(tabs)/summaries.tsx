@@ -8,7 +8,8 @@ import { Play, Square, ChevronRight, Bookmark } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 import {
-    getMicrolearningsFeed, saveBook, unsaveBook, getSavedBooks,
+    getMicrolearningsFeed,
+    saveMicrolearning, unsaveMicrolearning, getSavedMicrolearnings,
 } from '../../src/services/bookContentService';
 import { MicrolearningData } from '../../src/models/BookModels';
 import { AudioService } from '../../src/services/AudioService';
@@ -30,7 +31,7 @@ export default function SummariesScreen() {
     const [cardHeight, setCardHeight] = useState(0);
 
     const [items, setItems] = useState<MicrolearningData[]>([]);
-    const [savedBookIds, setSavedBookIds] = useState<Set<string>>(new Set());
+    const [savedMlIds, setSavedMlIds] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -48,11 +49,11 @@ export default function SummariesScreen() {
         try {
             const [{ items: fetched, lastDoc }, saved] = await Promise.all([
                 getMicrolearningsFeed(undefined, undefined, PAGE_SIZE),
-                user ? getSavedBooks(user.uid) : Promise.resolve([]),
+                user ? getSavedMicrolearnings(user.uid) : Promise.resolve([]),
             ]);
             lastDocRef.current = lastDoc;
             setItems(fetched);
-            setSavedBookIds(new Set(saved.map(b => b.id!)));
+            setSavedMlIds(new Set(saved.map(ml => ml.id!)));
             setHasMore(fetched.length === PAGE_SIZE);
         } finally {
             setLoading(false);
@@ -84,20 +85,22 @@ export default function SummariesScreen() {
     };
 
     // ── Bookmark ──────────────────────────────────────────────────────────────
-    const toggleSave = async (bookId: string) => {
+    const toggleSave = async (mlId: string) => {
         if (!user) return;
-        const isSaved = savedBookIds.has(bookId);
-        setSavedBookIds(prev => {
+        const isSaved = savedMlIds.has(mlId);
+        setSavedMlIds(prev => {
             const next = new Set(prev);
-            isSaved ? next.delete(bookId) : next.add(bookId);
+            isSaved ? next.delete(mlId) : next.add(mlId);
             return next;
         });
         try {
-            isSaved ? await unsaveBook(user.uid, bookId) : await saveBook(user.uid, bookId);
+            isSaved
+                ? await unsaveMicrolearning(user.uid, mlId)
+                : await saveMicrolearning(user.uid, mlId);
         } catch {
-            setSavedBookIds(prev => {
+            setSavedMlIds(prev => {
                 const next = new Set(prev);
-                isSaved ? next.add(bookId) : next.delete(bookId);
+                isSaved ? next.add(mlId) : next.delete(mlId);
                 return next;
             });
         }
@@ -128,7 +131,7 @@ export default function SummariesScreen() {
     // ── Render card ───────────────────────────────────────────────────────────
     const renderItem = ({ item }: { item: MicrolearningData }) => {
         const isPlaying = playingId === item.id;
-        const isSaved = savedBookIds.has(item.bookId);
+        const isSaved = savedMlIds.has(item.id!);
         const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
         const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
         const hasRealImage = isValidImageUrl(item.microlearningImageUrl);
@@ -182,7 +185,7 @@ export default function SummariesScreen() {
                         </TouchableOpacity>
 
                         <View style={styles.actionBtns}>
-                            <TouchableOpacity onPress={() => toggleSave(item.bookId)} style={styles.iconBtn}>
+                            <TouchableOpacity onPress={() => toggleSave(item.id!)} style={styles.iconBtn}>
                                 <Bookmark
                                     size={19}
                                     color={isSaved ? colors.tint : colors.secondaryText}

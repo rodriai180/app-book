@@ -4,16 +4,18 @@ import {
     ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Trash2, BookMarked } from 'lucide-react-native';
+import { Plus, Trash2, BookMarked, Zap } from 'lucide-react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
-import { getSavedBooks } from '../../src/services/bookContentService';
-import { BookData } from '../../src/models/BookModels';
+import { getSavedBooks, getSavedMicrolearnings } from '../../src/services/bookContentService';
+import { BookData, MicrolearningData } from '../../src/models/BookModels';
 import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
 import BookCardSkeleton from '../../components/BookCardSkeleton';
+import GeneratedCover from '../../src/components/GeneratedCover';
+import { isValidImageUrl } from '../../src/utils/imageUtils';
 
 export default function LibraryScreen() {
     const { colors, isDark } = useTheme();
@@ -23,6 +25,7 @@ export default function LibraryScreen() {
 
     const [books, setBooks] = useState<BookMetadata[]>([]);
     const [savedBooks, setSavedBooks] = useState<BookData[]>([]);
+    const [savedMicrolearnings, setSavedMicrolearnings] = useState<MicrolearningData[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
@@ -53,12 +56,14 @@ export default function LibraryScreen() {
         if (!user) return;
         setLoading(true);
         try {
-            const [userBooks, saved] = await Promise.all([
+            const [userBooks, saved, savedMls] = await Promise.all([
                 BookService.getUserBooks(user.uid),
                 getSavedBooks(user.uid),
+                getSavedMicrolearnings(user.uid),
             ]);
             setBooks(userBooks);
             setSavedBooks(saved);
+            setSavedMicrolearnings(savedMls);
         } catch (error) {
             console.error('Error loading books:', error);
         } finally {
@@ -134,6 +139,34 @@ export default function LibraryScreen() {
         </TouchableOpacity>
     );
 
+    // ── Render saved microlearning card (horizontal) ──────────────────────────
+    const renderSavedMicrolearning = ({ item }: { item: MicrolearningData }) => {
+        const hasImage = isValidImageUrl(item.microlearningImageUrl);
+        return (
+            <TouchableOpacity
+                style={[styles.savedCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+                onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
+                activeOpacity={0.75}
+            >
+                {hasImage ? (
+                    <Image source={{ uri: item.microlearningImageUrl }} style={styles.savedCover} resizeMode="cover" />
+                ) : (
+                    <GeneratedCover
+                        type="microlearning"
+                        title={item.title}
+                        category={item.category}
+                        tags={item.tags}
+                        style={styles.savedCover}
+                    />
+                )}
+                <Text style={[styles.savedTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+                <Text style={[styles.savedAuthor, { color: colors.secondaryText }]} numberOfLines={1}>
+                    Cap. {item.chapterNumber} — {item.chapterTitle}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
     // ── Render uploaded book card (grid) ──────────────────────────────────────
     const renderBook = ({ item }: { item: BookMetadata }) => (
         <TouchableOpacity
@@ -202,8 +235,32 @@ export default function LibraryScreen() {
                     </View>
                 )}
 
+                {/* ── Microlearnings guardados ── */}
+                {savedMicrolearnings.length > 0 && (
+                    <>
+                        {savedBooks.length > 0 && (
+                            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                        )}
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <Zap size={16} color={colors.tint} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Microlearnings guardados</Text>
+                            </View>
+                            <FlatList
+                                data={savedMicrolearnings}
+                                keyExtractor={item => item.id!}
+                                renderItem={renderSavedMicrolearning}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.savedList}
+                                scrollEnabled
+                            />
+                        </View>
+                    </>
+                )}
+
                 {/* Divider entre secciones */}
-                {savedBooks.length > 0 && books.length > 0 && (
+                {(savedBooks.length > 0 || savedMicrolearnings.length > 0) && books.length > 0 && (
                     <View style={[styles.divider, { backgroundColor: dividerColor }]} />
                 )}
 
@@ -226,7 +283,7 @@ export default function LibraryScreen() {
                 )}
 
                 {/* ── Empty state ── */}
-                {savedBooks.length === 0 && books.length === 0 && (
+                {savedBooks.length === 0 && savedMicrolearnings.length === 0 && books.length === 0 && (
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyIcon}>📚</Text>
                         <Text style={[styles.emptyTitle, { color: colors.text }]}>Tu biblioteca está vacía</Text>

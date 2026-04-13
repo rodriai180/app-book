@@ -123,7 +123,7 @@ async function commitInBatches(
 async function uploadBookChapters(
   bookRef: DocumentReference,
   data: BookJSON,
-  coverImageUrl: string,
+  _coverImageUrl: string,
 ): Promise<void> {
   const chapters = data.chapters ?? [];
   const ops: BatchSetOp[] = [];
@@ -375,7 +375,46 @@ export async function getSavedBooks(userId: string): Promise<BookData[]> {
   return books.filter((b): b is BookData => b !== null);
 }
 
-// ─── 8. getBookFullJSON ───────────────────────────────────────────────────────
+// ─── 8. Saved microlearnings (users/{userId}/savedMicrolearnings) ─────────────
+
+export async function saveMicrolearning(
+  userId: string,
+  mlId: string,
+): Promise<void> {
+  await setDoc(doc(db, "users", userId, "savedMicrolearnings", mlId), {
+    mlId,
+    savedAt: serverTimestamp(),
+  });
+}
+
+export async function unsaveMicrolearning(
+  userId: string,
+  mlId: string,
+): Promise<void> {
+  await deleteDoc(doc(db, "users", userId, "savedMicrolearnings", mlId));
+}
+
+export async function getSavedMicrolearnings(
+  userId: string,
+): Promise<MicrolearningData[]> {
+  const q = query(
+    collection(db, "users", userId, "savedMicrolearnings"),
+    orderBy("savedAt", "desc"),
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return [];
+
+  const results = await Promise.all(
+    snap.docs.map(async (d) => {
+      const mlSnap = await getDoc(doc(db, "microlearnings", d.data().mlId as string));
+      if (!mlSnap.exists()) return null;
+      return { id: mlSnap.id, ...mlSnap.data() } as MicrolearningData;
+    }),
+  );
+  return results.filter((ml): ml is MicrolearningData => ml !== null);
+}
+
+// ─── 9. getBookFullJSON ───────────────────────────────────────────────────────
 
 /**
  * Reconstruye el JSON completo de un libro (igual al formato de entrada)

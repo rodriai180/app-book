@@ -56,6 +56,11 @@ export default function ChapterDetailScreen() {
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
 
+    // Ocultar el header nativo — usamos solo el header custom
+    React.useLayoutEffect(() => {
+        navigation.setOptions({ headerShown: false });
+    }, [navigation]);
+
     // ── Carga de datos ────────────────────────────────────────────────────────
     useEffect(() => {
         if (!bookId || !chapterId) return;
@@ -70,10 +75,6 @@ export default function ChapterDetailScreen() {
                 setBook(bookData);
                 setChapter(ch);
                 setMicrolearnings(mls);
-                if (ch) {
-                    const truncated = ch.title.length > 28 ? ch.title.slice(0, 28) + '…' : ch.title;
-                    navigation.setOptions({ title: truncated });
-                }
                 if (user && bookId) {
                     isBookSaved(user.uid, bookId).then(setSaved);
                 }
