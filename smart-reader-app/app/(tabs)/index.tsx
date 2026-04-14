@@ -28,6 +28,7 @@ export default function LibraryScreen() {
     const [savedMicrolearnings, setSavedMicrolearnings] = useState<MicrolearningData[]>([]);
     const [savedMlIndex, setSavedMlIndex] = useState(0);
     const [savedMlViewportWidth, setSavedMlViewportWidth] = useState(0);
+    const [savedMlContentWidth, setSavedMlContentWidth] = useState(0);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
@@ -40,9 +41,7 @@ export default function LibraryScreen() {
     }, [savedMlViewportWidth]);
 
     const savedMlPageWidth = useMemo(() => {
-        const itemCount = savedMlItemsPerPage;
-        const spacingCount = Math.max(0, itemCount - 1);
-        return itemCount * ITEM_WIDTH + spacingCount * ITEM_SPACING;
+        return savedMlItemsPerPage * (ITEM_WIDTH + ITEM_SPACING);
     }, [savedMlItemsPerPage]);
 
     const savedMlPageCount = useMemo(() => {
@@ -50,12 +49,18 @@ export default function LibraryScreen() {
         return Math.max(1, Math.ceil(savedMicrolearnings.length / savedMlItemsPerPage));
     }, [savedMicrolearnings.length, savedMlItemsPerPage]);
 
-    const handleSavedMlMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (!savedMlPageWidth || savedMlPageCount <= 1) return;
+    const handleSavedMlScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        if (!savedMlPageWidth || savedMlPageCount < 1) return;
         const offsetX = event.nativeEvent.contentOffset.x;
+        const atEnd = savedMlContentWidth > 0 && savedMlViewportWidth > 0
+            && offsetX + savedMlViewportWidth >= savedMlContentWidth - 4;
+        if (atEnd) {
+            setSavedMlIndex(savedMlPageCount - 1);
+            return;
+        }
         const nextPage = Math.min(savedMlPageCount - 1, Math.max(0, Math.round(offsetX / savedMlPageWidth)));
-        setSavedMlIndex(prev => (prev === nextPage ? prev : nextPage));
-    }, [savedMlPageCount, savedMlPageWidth]);
+        setSavedMlIndex(nextPage);
+    }, [savedMlPageCount, savedMlPageWidth, savedMlContentWidth, savedMlViewportWidth]);
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -288,7 +293,9 @@ export default function LibraryScreen() {
                                 snapToInterval={savedMlPageWidth}
                                 snapToAlignment="start"
                                 onLayout={(event) => setSavedMlViewportWidth(event.nativeEvent.layout.width)}
-                                onMomentumScrollEnd={handleSavedMlMomentumScrollEnd}
+                                onContentSizeChange={(w) => setSavedMlContentWidth(w)}
+                                onScroll={handleSavedMlScroll}
+                                scrollEventThrottle={50}
                             />
                             {savedMlPageCount > 1 && (
                                 <View style={styles.paginationDots}>
