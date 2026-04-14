@@ -147,6 +147,8 @@ interface GeneratedCoverProps {
     category?: string;
     chapterNumber?: number;
     tags?: string[];
+    hideTags?: boolean;
+    hideText?: boolean;
     width?: number | string;
     height?: number;
     style?: ViewStyle;
@@ -201,6 +203,8 @@ export default function GeneratedCover({
     category,
     chapterNumber,
     tags = [],
+    hideTags = false,
+    hideText = false,
     width = '100%',
     height,
     style,
@@ -220,7 +224,8 @@ export default function GeneratedCover({
         : [styles.container, { width: width as any, height: resolvedHeight }];
 
     const bgLetter   = (tags[0] ?? title).charAt(0).toUpperCase();
-    const visibleTags = tags.slice(0, 3);
+    const visibleTags = hideTags ? [] : tags.slice(0, 3);
+    const showText    = !hideText;
 
     // ── Microlearning ──────────────────────────────────────────────────────────
     if (type === 'microlearning') {
@@ -237,43 +242,36 @@ export default function GeneratedCover({
                 {/* 2. Letra gigante de fondo */}
                 <Text style={styles.bgLetter} numberOfLines={1}>{bgLetter}</Text>
 
-                {/* 3. Glow spotlight detrás del ícono */}
-                <View style={styles.iconGlow} />
-
-                {/* 4. Gradiente oscuro en la base para legibilidad de tags */}
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.28)']}
-                    style={styles.bottomFade}
-                    pointerEvents="none"
-                />
-
-                {/* 5. Contenido centrado */}
+                {/* 3. Icono + glow centrados */}
                 <View style={styles.mlContent}>
-
-                    {/* Ícono con forma variable: 0=círculo, 1=cuadrado, 2=diamante */}
-                    <View style={[
-                        styles.iconOuterRing,
-                        iconShape === 1 && styles.iconOuterSquare,
-                        iconShape === 2 && styles.iconOuterDiamond,
-                    ]}>
+                    <View style={styles.iconWrapper}>
+                        <View style={styles.iconGlow} />
                         <View style={[
-                            styles.iconInnerCircle,
-                            iconShape === 1 && styles.iconInnerSquare,
-                            iconShape === 2 && styles.iconInnerDiamond,
+                            styles.iconOuterRing,
+                            iconShape === 1 && styles.iconOuterSquare,
+                            iconShape === 2 && styles.iconOuterDiamond,
                         ]}>
-                            <Icon
-                                size={32}
-                                color="#FFFFFF"
-                                strokeWidth={1.5}
-                            />
+                            <View style={[
+                                styles.iconInnerCircle,
+                                iconShape === 1 && styles.iconInnerSquare,
+                                iconShape === 2 && styles.iconInnerDiamond,
+                            ]}>
+                                <Icon
+                                    size={32}
+                                    color="#FFFFFF"
+                                    strokeWidth={1.5}
+                                />
+                            </View>
                         </View>
                     </View>
 
                     {/* Título */}
-                    <Text style={styles.mlTitle} numberOfLines={2}>{title}</Text>
+                    {showText && (
+                        <Text style={styles.mlTitle} numberOfLines={2}>{title}</Text>
+                    )}
 
                     {/* Tags */}
-                    {visibleTags.length > 0 && (
+                    {showText && visibleTags.length > 0 && (
                         <>
                             {/* 6. Separador sutil */}
                             <View style={styles.separator} />
@@ -306,17 +304,17 @@ export default function GeneratedCover({
             <View style={[deco.circle, { width: 100, height: 100, top: -20,   left: -20  }]} />
             <View style={[deco.circle, { width: 60,  height: 60,  top: '40%', right: 20  }]} />
 
-            {/* Glow detrás del ícono del capítulo */}
-            <View style={styles.iconGlow} />
-
             <View style={styles.chapterContent}>
                 {chapterNumber != null && (
                     <Text style={styles.chapterLabel}>Capítulo {chapterNumber}</Text>
                 )}
 
-                <View style={styles.iconOuterRing}>
-                    <View style={styles.iconInnerCircle}>
-                        <Icon size={32} color="#FFFFFF" strokeWidth={1.5} />
+                <View style={styles.iconWrapper}>
+                    <View style={styles.iconGlow} />
+                    <View style={styles.iconOuterRing}>
+                        <View style={styles.iconInnerCircle}>
+                            <Icon size={32} color="#FFFFFF" strokeWidth={1.5} />
+                        </View>
                     </View>
                 </View>
 
@@ -391,11 +389,16 @@ const styles = StyleSheet.create({
         height: 130,
         borderRadius: 65,
         backgroundColor: 'rgba(255,255,255,0.1)',
-        // centrado — top/left se calculan con alignSelf no funciona en absolute,
-        // así que lo desplazamos con top/left negativos proporcionales
-        alignSelf: 'center',
-        top: '50%',
-        marginTop: -75, // (130/2 + algo de offset hacia arriba)
+        top: 0,
+        left: 0,
+    },
+
+    iconWrapper: {
+        width: 130,
+        height: 130,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
     },
 
     // Gradiente transparente→oscuro en la parte baja

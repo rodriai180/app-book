@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
-    ActivityIndicator, ScrollView,
+    ActivityIndicator, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Trash2, BookMarked, Zap } from 'lucide-react-native';
@@ -26,8 +26,36 @@ export default function LibraryScreen() {
     const [books, setBooks] = useState<BookMetadata[]>([]);
     const [savedBooks, setSavedBooks] = useState<BookData[]>([]);
     const [savedMicrolearnings, setSavedMicrolearnings] = useState<MicrolearningData[]>([]);
+    const [savedMlIndex, setSavedMlIndex] = useState(0);
+    const [savedMlViewportWidth, setSavedMlViewportWidth] = useState(0);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+
+    const ITEM_WIDTH = 110;
+    const ITEM_SPACING = 12;
+
+    const savedMlItemsPerPage = useMemo(() => {
+        if (!savedMlViewportWidth) return 1;
+        return Math.max(1, Math.floor((savedMlViewportWidth + ITEM_SPACING) / (ITEM_WIDTH + ITEM_SPACING)));
+    }, [savedMlViewportWidth]);
+
+    const savedMlPageWidth = useMemo(() => {
+        const itemCount = savedMlItemsPerPage;
+        const spacingCount = Math.max(0, itemCount - 1);
+        return itemCount * ITEM_WIDTH + spacingCount * ITEM_SPACING;
+    }, [savedMlItemsPerPage]);
+
+    const savedMlPageCount = useMemo(() => {
+        if (savedMicrolearnings.length === 0) return 0;
+        return Math.max(1, Math.ceil(savedMicrolearnings.length / savedMlItemsPerPage));
+    }, [savedMicrolearnings.length, savedMlItemsPerPage]);
+
+    const handleSavedMlMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        if (!savedMlPageWidth || savedMlPageCount <= 1) return;
+        const offsetX = event.nativeEvent.contentOffset.x;
+        const nextPage = Math.min(savedMlPageCount - 1, Math.max(0, Math.round(offsetX / savedMlPageWidth)));
+        setSavedMlIndex(prev => (prev === nextPage ? prev : nextPage));
+    }, [savedMlPageCount, savedMlPageWidth]);
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -156,6 +184,8 @@ export default function LibraryScreen() {
                         title={item.title}
                         category={item.category}
                         tags={item.tags}
+                        hideTags
+                        hideText
                         style={styles.savedCover}
                     />
                 )}
@@ -254,7 +284,35 @@ export default function LibraryScreen() {
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.savedList}
                                 scrollEnabled
+                                decelerationRate="fast"
+                                snapToInterval={savedMlPageWidth}
+                                snapToAlignment="start"
+                                onLayout={(event) => setSavedMlViewportWidth(event.nativeEvent.layout.width)}
+                                onMomentumScrollEnd={handleSavedMlMomentumScrollEnd}
                             />
+                            {savedMlPageCount > 1 && (
+                                <View style={styles.paginationDots}>
+                                    {Array.from({ length: savedMlPageCount }, (_, index) => (
+                                        <View
+                                            key={index}
+                                            style={[
+                                                styles.paginationDot,
+                                                {
+                                                    backgroundColor: 'transparent',
+                                                    borderColor: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.16)',
+                                                },
+                                                index === savedMlIndex && {
+                                                    backgroundColor: colors.tint,
+                                                    borderColor: colors.tint,
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: 6,
+                                                },
+                                            ]}
+                                        />
+                                    ))}
+                                </View>
+                            )}
                         </View>
                     </>
                 )}
@@ -311,6 +369,25 @@ const styles = StyleSheet.create({
 
     // Saved books (horizontal)
     savedList: { paddingHorizontal: 16, gap: 12 },
+    paginationDots: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 10,
+        marginBottom: 4,
+    },
+    paginationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        borderWidth: 1,
+    },
+    paginationDotActive: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
     savedCard: {
         width: 110, borderRadius: 12, overflow: 'hidden',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
