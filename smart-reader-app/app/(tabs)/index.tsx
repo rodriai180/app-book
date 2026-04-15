@@ -15,7 +15,6 @@ import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
 import BookCardSkeleton from '../../components/BookCardSkeleton';
 import GeneratedCover from '../../src/components/GeneratedCover';
-import { isValidImageUrl } from '../../src/utils/imageUtils';
 
 export default function LibraryScreen() {
     const { colors, isDark } = useTheme();
@@ -174,26 +173,21 @@ export default function LibraryScreen() {
 
     // ── Render saved microlearning card (horizontal) ──────────────────────────
     const renderSavedMicrolearning = ({ item }: { item: MicrolearningData }) => {
-        const hasImage = isValidImageUrl(item.microlearningImageUrl);
         return (
             <TouchableOpacity
                 style={[styles.savedCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
                 onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
                 activeOpacity={0.75}
             >
-                {hasImage ? (
-                    <Image source={{ uri: item.microlearningImageUrl }} style={styles.savedCover} resizeMode="cover" />
-                ) : (
-                    <GeneratedCover
-                        type="microlearning"
-                        title={item.title}
-                        category={item.category}
-                        tags={item.tags}
-                        hideTags
-                        hideText
-                        style={styles.savedCover}
-                    />
-                )}
+                <GeneratedCover
+                    type="microlearning"
+                    title={item.title}
+                    category={item.category}
+                    tags={item.tags}
+                    hideTags
+                    hideText
+                    style={styles.savedCover}
+                />
                 <Text style={[styles.savedTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
                 <Text style={[styles.savedAuthor, { color: colors.secondaryText }]} numberOfLines={1}>
                     Cap. {item.chapterNumber} — {item.chapterTitle}

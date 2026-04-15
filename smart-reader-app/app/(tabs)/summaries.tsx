@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, Image,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Square, ChevronRight, Bookmark } from 'lucide-react-native';
@@ -17,7 +17,6 @@ import { useTheme } from '../../src/services/themeContext';
 import { useSettings } from '../../src/services/settingsContext';
 import { useAuth } from '../../src/services/authContext';
 import GeneratedCover from '../../src/components/GeneratedCover';
-import { isValidImageUrl } from '../../src/utils/imageUtils';
 
 const PAGE_SIZE = 10;
 
@@ -134,36 +133,21 @@ export default function SummariesScreen() {
         const isSaved = savedMlIds.has(item.id!);
         const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
         const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
-        const hasRealImage = isValidImageUrl(item.microlearningImageUrl);
         return (
             <View style={[styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }]}>
 
                 {/* Imagen — ocupa todo el espacio que sobra sobre el contenido */}
-                {hasRealImage ? (
-                    <Image
-                        source={{ uri: item.microlearningImageUrl }}
-                        style={styles.mlBanner}
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <GeneratedCover
-                        type="microlearning"
-                        title={item.title}
-                        category={item.category}
-                        tags={item.tags}
-                        style={styles.mlBanner}
-                    />
-                )}
+                <GeneratedCover
+                    type="microlearning"
+                    title={item.title}
+                    category={item.category}
+                    tags={item.tags}
+                    style={styles.mlBanner}
+                />
 
                 {/* Contenido */}
                 <View style={[styles.contentBox, { backgroundColor: cardBg }]}>
 
-                    {/* Título solo si hay imagen real (el cover generado ya lo muestra) */}
-                    {hasRealImage && (
-                        <Text style={[styles.mlTitle, { color: colors.text }]} numberOfLines={2}>
-                            {item.title}
-                        </Text>
-                    )}
                     <View style={{ flex: 1, overflow: 'hidden' }}>
                         <Text style={[styles.mlContent, { color: colors.text }]}>
                             {item.content}

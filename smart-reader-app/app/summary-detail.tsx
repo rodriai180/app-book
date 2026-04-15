@@ -38,7 +38,13 @@ export default function SummaryDetailScreen() {
 
     const [playing, setPlaying] = useState<PlayTarget | null>(null);
     const [prefaceOpen, setPrefaceOpen] = useState(false);
+    const [shortOpen, setShortOpen] = useState(false);
     const [longOpen, setLongOpen] = useState(false);
+
+    // ── Ocultar header de navegación ─────────────────────────────────────────
+    React.useLayoutEffect(() => {
+        navigation.setOptions({ headerShown: false });
+    }, [navigation]);
 
     // ── Carga ─────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -52,12 +58,6 @@ export default function SummaryDetailScreen() {
                 setBook(bookData);
                 setChapters(chapterList);
 
-                if (bookData) {
-                    const truncated = bookData.title.length > 28
-                        ? bookData.title.slice(0, 28) + '…'
-                        : bookData.title;
-                    navigation.setOptions({ title: truncated });
-                }
 
                 if (user && bookId) {
                     isBookSaved(user.uid, bookId).then(setSaved);
@@ -214,17 +214,6 @@ export default function SummaryDetailScreen() {
                     </ScrollView>
                 )}
 
-                {/* ── Resumen corto ── */}
-                {book.shortSummary ? (
-                    <View style={[styles.card, { backgroundColor: cardBg }]}>
-                        <View style={styles.cardHeader}>
-                            <Text style={[styles.sectionLabel, { color: sectionLabelColor }]}>RESUMEN</Text>
-                            <AudioBtn target="short" text={book.shortSummary} />
-                        </View>
-                        <Text style={[styles.bodyText, { color: colors.text }]}>{book.shortSummary}</Text>
-                    </View>
-                ) : null}
-
                 {/* ── Prefacio (colapsable) ── */}
                 {book.preface ? (
                     <View style={[styles.card, { backgroundColor: cardBg }]}>
@@ -248,6 +237,29 @@ export default function SummaryDetailScreen() {
                     </View>
                 ) : null}
 
+                {/* ── Resumen corto (colapsable) ── */}
+                {book.shortSummary ? (
+                    <View style={[styles.card, { backgroundColor: cardBg }]}>
+                        <TouchableOpacity
+                            onPress={() => setShortOpen(v => !v)}
+                            style={styles.cardHeader}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.sectionLabel, { color: sectionLabelColor }]}>RESUMEN</Text>
+                            <View style={styles.cardHeaderRight}>
+                                {shortOpen && <AudioBtn target="short" text={book.shortSummary} />}
+                                {shortOpen
+                                    ? <ChevronUp size={18} color={colors.secondaryText} />
+                                    : <ChevronDown size={18} color={colors.secondaryText} />
+                                }
+                            </View>
+                        </TouchableOpacity>
+                        {shortOpen && (
+                            <Text style={[styles.bodyText, { color: colors.text }]}>{book.shortSummary}</Text>
+                        )}
+                    </View>
+                ) : null}
+
                 {/* ── Resumen largo (colapsable) ── */}
                 {book.longSummary ? (
                     <View style={[styles.card, { backgroundColor: cardBg }]}>
@@ -267,11 +279,6 @@ export default function SummaryDetailScreen() {
                         </TouchableOpacity>
                         {longOpen && (
                             <Text style={[styles.bodyText, { color: colors.text }]}>{book.longSummary}</Text>
-                        )}
-                        {!longOpen && (
-                            <TouchableOpacity onPress={() => setLongOpen(true)}>
-                                <Text style={[styles.readMore, { color: colors.tint }]}>Leer más…</Text>
-                            </TouchableOpacity>
                         )}
                     </View>
                 ) : null}

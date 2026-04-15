@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Linking, Image,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import {
-    ArrowLeft, BookOpen, Play, Square, Mic, ShoppingCart, Bookmark,
+    ArrowLeft, BookOpen, Play, Square, Mic, Bookmark, ChevronDown, ChevronUp,
 } from 'lucide-react-native';
 import {
     getBookById, getChaptersByBook, getMicrolearningsByChapter,
@@ -18,7 +18,6 @@ import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
 import GeneratedCover from '../src/components/GeneratedCover';
-import { isValidImageUrl } from '../src/utils/imageUtils';
 
 // ─── Colores de categoría (mismo helper que summaries.tsx) ───────────────────
 const CATEGORY_COLORS = [
@@ -55,6 +54,7 @@ export default function ChapterDetailScreen() {
     const [playing, setPlaying] = useState<PlayTarget | null>(null);
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
+    const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
     // Ocultar el header nativo — usamos solo el header custom
     React.useLayoutEffect(() => {
@@ -164,17 +164,6 @@ export default function ChapterDetailScreen() {
                     <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
                         Cap. {chapter.chapterNumber} — {chapter.title}
                     </Text>
-                    {book && (
-                        <TouchableOpacity
-                            onPress={() => router.push({ pathname: '/summary-detail', params: { bookId } })}
-                            style={styles.bookLink}
-                        >
-                            <BookOpen size={12} color={colors.tint} />
-                            <Text style={[styles.bookLinkText, { color: colors.tint }]} numberOfLines={1}>
-                                {book.title}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
                 <TouchableOpacity onPress={toggleSave} disabled={savingToggle} style={styles.backBtn} hitSlop={8}>
                     <Bookmark
@@ -188,41 +177,72 @@ export default function ChapterDetailScreen() {
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
                 {/* ── Hero image / GeneratedCover del capítulo ── */}
-                {isValidImageUrl(chapter.chapterImageUrl) ? (
-                    <Image
-                        source={{ uri: chapter.chapterImageUrl }}
-                        style={styles.chapterHero}
-                        resizeMode="cover"
-                    />
-                ) : (
+                <View style={styles.chapterHeroWrapper}>
                     <GeneratedCover
-                        type="chapter"
+                        type="microlearning"
                         title={chapter.title}
                         category={book?.category}
-                        chapterNumber={chapter.chapterNumber}
-                        height={200}
+                        height={260}
+                        style={styles.chapterHero}
                     />
+                </View>
+
+                {book && (
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/summary-detail', params: { bookId } })}
+                        style={[styles.bookLink, { marginVertical: 12, paddingHorizontal: 6, alignSelf: 'stretch', justifyContent: 'flex-start' }]}
+                        activeOpacity={0.8}
+                    >
+                        <BookOpen size={14} color={colors.tint} />
+                        <Text style={[styles.bottomBookLinkText, { color: colors.tint, textAlign: 'left' }]} numberOfLines={1} ellipsizeMode="tail">
+                            {book.title}
+                        </Text>
+                    </TouchableOpacity>
                 )}
 
                 {/* ── Resumen del capítulo ── */}
                 {chapter.summary ? (
                     <View style={[styles.card, { backgroundColor: cardBg }]}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: sectionTitleColor }]}>RESUMEN</Text>
+                        <View style={styles.summaryHeader}>
                             <TouchableOpacity
-                                onPress={() => speak(chapter.summary, { kind: 'summary' })}
-                                style={[
-                                    styles.audioBtn,
-                                    { backgroundColor: isPlaying({ kind: 'summary' }) ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') },
-                                ]}
+                                onPress={() => setSummaryCollapsed(prev => !prev)}
+                                activeOpacity={0.8}
+                                style={{ flex: 1 }}
                             >
-                                {isPlaying({ kind: 'summary' })
-                                    ? <Square size={14} color="#FFF" fill="#FFF" />
-                                    : <Play size={14} color={colors.tint} fill={colors.tint} />
-                                }
+                                <Text style={[styles.sectionTitle, { color: sectionTitleColor }]}>RESUMEN</Text>
                             </TouchableOpacity>
+                            <View style={styles.summaryActions}>
+                                {!summaryCollapsed && (
+                                    <TouchableOpacity
+                                        onPress={() => speak(chapter.summary, { kind: 'summary' })}
+                                        style={[
+                                            styles.audioBtn,
+                                            { backgroundColor: isPlaying({ kind: 'summary' }) ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') },
+                                        ]}
+                                    >
+                                        {isPlaying({ kind: 'summary' })
+                                            ? <Square size={14} color="#FFF" fill="#FFF" />
+                                            : <Play size={14} color={colors.tint} fill={colors.tint} />
+                                        }
+                                    </TouchableOpacity>
+                                )}
+                                <TouchableOpacity
+                                    onPress={() => setSummaryCollapsed(prev => !prev)}
+                                    activeOpacity={0.8}
+                                >
+                                    {summaryCollapsed ? (
+                                        <ChevronDown size={18} color={colors.tint} />
+                                    ) : (
+                                        <ChevronUp size={18} color={colors.tint} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <Text style={[styles.bodyText, { color: colors.text }]}>{chapter.summary}</Text>
+                        {!summaryCollapsed && (
+                            <View>
+                                <Text style={[styles.bodyText, { color: colors.text }]}>{chapter.summary}</Text>
+                            </View>
+                        )}
                     </View>
                 ) : null}
 
@@ -255,23 +275,6 @@ export default function ChapterDetailScreen() {
                                     ) : null}
 
                                     <View style={styles.mlTitleRow}>
-                                        {isValidImageUrl(ml.microlearningImageUrl) ? (
-                                            <Image
-                                                source={{ uri: ml.microlearningImageUrl }}
-                                                style={styles.mlThumb}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={styles.mlThumb}>
-                                                <GeneratedCover
-                                                    type="microlearning"
-                                                    title={ml.title}
-                                                    category={ml.category}
-                                                    tags={ml.tags}
-                                                    height={60}
-                                                />
-                                            </View>
-                                        )}
                                         <Text style={[styles.mlTitle, { color: colors.text }]}>{ml.title}</Text>
                                         <TouchableOpacity
                                             onPress={() => {
@@ -341,18 +344,6 @@ export default function ChapterDetailScreen() {
                 <View style={{ height: 88 }} />
             </ScrollView>
 
-            {/* ── FAB comprar ── */}
-            {book?.purchaseLink ? (
-                <View style={[styles.fabContainer, { backgroundColor: colors.background, borderTopColor: dividerColor }]}>
-                    <TouchableOpacity
-                        style={[styles.buyBtn, { backgroundColor: colors.tint }]}
-                        onPress={() => Linking.openURL(book.purchaseLink)}
-                    >
-                        <ShoppingCart size={18} color="#FFF" />
-                        <Text style={styles.buyLabel}>Comprar libro</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
         </SafeAreaView>
     );
 }
@@ -372,14 +363,21 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
     bookLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     bookLinkText: { fontSize: 12, fontWeight: '600' },
+    bottomBookLinkText: { flex: 1, fontSize: 13, fontWeight: '700' },
 
     // Scroll
-    scroll: { padding: 16, gap: 12 },
-    chapterHero: { width: '100%', height: 200, borderRadius: 16, overflow: 'hidden' },
+    scroll: { paddingTop: 0, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+    chapterHeroWrapper: {
+        marginHorizontal: -16,
+        overflow: 'hidden',
+    },
+    chapterHero: { width: '100%', height: 260 },
 
     // Section
     section: { gap: 8 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    summaryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    summaryActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
 
     // Card base
