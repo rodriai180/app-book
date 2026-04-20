@@ -158,17 +158,14 @@ export default function LibraryScreen() {
             onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
             activeOpacity={0.75}
         >
-            {item.coverImageUrl ? (
-                <SmartImage uri={item.coverImageUrl} style={styles.savedCover} resizeMode="cover" />
-            ) : (
-                <View style={[styles.savedCover, styles.savedCoverFallback, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
-                    <Text style={[styles.savedCoverInitial, { color: colors.tint }]}>
-                        {item.title.charAt(0).toUpperCase()}
-                    </Text>
-                </View>
-            )}
-            <Text style={[styles.savedTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-            <Text style={[styles.savedAuthor, { color: colors.secondaryText }]} numberOfLines={1}>{item.author}</Text>
+            <GeneratedCover
+                title={item.title}
+                author={item.author}
+                type="book"
+                category={item.category}
+                tags={item.tags}
+                style={styles.savedCover}
+            />
         </TouchableOpacity>
     );
 
@@ -395,7 +392,7 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
     },
-    savedCover: { width: 110, height: 150 },
+    savedCover: { width: 80, height: 120, borderRadius: 12 },
     savedCoverFallback: { justifyContent: 'center', alignItems: 'center' },
     savedCoverInitial: { fontSize: 36, fontWeight: '700' },
     savedTitle: { fontSize: 12, fontWeight: '600', padding: 8, paddingBottom: 2, lineHeight: 16 },

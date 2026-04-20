@@ -5,10 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, Pencil, Trash2, BookOpen, Plus } from 'lucide-react-native';
+import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react-native';
 import { getAllBooks, deleteBook } from '../src/services/bookContentService';
 import { BookData } from '../src/models/BookModels';
 import { useTheme } from '../src/services/themeContext';
+import GeneratedCover from '../src/components/GeneratedCover';
 
 export default function AdminBooksScreen() {
     const { colors, isDark } = useTheme();
@@ -58,9 +59,16 @@ export default function AdminBooksScreen() {
     const renderItem = ({ item }: { item: BookData }) => (
         <View style={[styles.card, { backgroundColor: cardBg }]}>
             <View style={styles.cardMain}>
-                <View style={[styles.iconBox, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                    <BookOpen size={20} color={colors.secondaryText} />
-                </View>
+                <GeneratedCover
+                    title={item.title}
+                    author={item.author}
+                    type="book"
+                    category={item.category}
+                    tags={item.tags}
+                    width={130}
+                    height={195}
+                    style={styles.cover}
+                />
                 <View style={styles.cardInfo}>
                     <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
                         {item.title}
@@ -104,7 +112,6 @@ export default function AdminBooksScreen() {
 
     return (
         <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['top', 'bottom']}>
-            {/* Header */}
             <View style={[styles.header, { borderBottomColor: dividerColor }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <ArrowLeft size={22} color={colors.text} />
@@ -167,14 +174,11 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     cardMain: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-    iconBox: {
-        width: 48, height: 48, borderRadius: 10,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    cardInfo: { flex: 1, gap: 2 },
+    cover: { borderRadius: 12, overflow: 'hidden' },
+    cardInfo: { flex: 1, gap: 4 },
     cardTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
     cardAuthor: { fontSize: 13 },
-    cardCategory: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+    cardCategory: { fontSize: 12, fontWeight: '600' },
 
     divider: { height: 1 },
 

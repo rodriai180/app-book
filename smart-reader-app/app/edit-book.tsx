@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
-    Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,6 +14,7 @@ import {
     getBookFullJSON,
     updateBookFromJSON,
 } from '../src/services/bookContentService';
+import GeneratedCover from '../src/components/GeneratedCover';
 import { useTheme } from '../src/services/themeContext';
 import { isValidImageUrl } from '../src/utils/imageUtils';
 
@@ -58,13 +58,11 @@ interface BookForm {
     preface: string;
     shortSummary: string;
     longSummary: string;
-    coverImageUrl: string;
 }
 
 const EMPTY_BOOK: BookForm = {
     title: '', author: '', category: '', tags: '',
     purchaseLink: '', preface: '', shortSummary: '', longSummary: '',
-    coverImageUrl: '',
 };
 
 const EMPTY_ML = (): MicrolearningForm => ({
@@ -176,9 +174,6 @@ export default function EditBookScreen() {
     const [form, setForm] = useState<BookForm>(EMPTY_BOOK);
     const [chapters, setChapters] = useState<ChapterForm[]>([]);
 
-    const [localImageUri, setLocalImageUri] = useState<string | null>(null);
-    const [uploadingImage, setUploadingImage] = useState(false);
-
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
     const [loadError, setLoadError] = useState('');
@@ -199,7 +194,6 @@ export default function EditBookScreen() {
                     preface: data.preface ?? '',
                     shortSummary: data.shortSummary ?? '',
                     longSummary: data.longSummary ?? '',
-                    coverImageUrl: data.coverImageUrl ?? '',
                 });
                 setChapters(rawToForm(data.chapters ?? []));
             } catch (e: any) {
@@ -210,13 +204,6 @@ export default function EditBookScreen() {
         })();
     }, [bookId]);
 
-    // ── Imagen ────────────────────────────────────────────────────────────────
-    const pickImage = async () => {
-        const result = await DocumentPicker.getDocumentAsync({ type: 'image/*', copyToCacheDirectory: true });
-        if (result.canceled) return;
-        setLocalImageUri(result.assets[0].uri);
-    };
-
     // ── Guardar ───────────────────────────────────────────────────────────────
     const handleSave = async () => {
         setSaveError('');
@@ -226,14 +213,6 @@ export default function EditBookScreen() {
         }
         setSaving(true);
         try {
-            // Convertir portada a base64 si hay una nueva
-            let coverUrl = form.coverImageUrl;
-            if (localImageUri) {
-                setUploadingImage(true);
-                coverUrl = await uriToBase64(localImageUri);
-                setUploadingImage(false);
-            }
-
             // Convertir imágenes de capítulos y microlearnings a base64
             const resolvedChapters = await Promise.all(
                 chapters.map(async (ch) => {
@@ -266,11 +245,10 @@ export default function EditBookScreen() {
                 longSummary: form.longSummary.trim(),
                 chapters: formToRaw(resolvedChapters),
             };
-            await updateBookFromJSON(bookId, bookJson, coverUrl);
+            await updateBookFromJSON(bookId, bookJson);
             router.back();
         } catch (e: any) {
             setSaveError('Error al guardar: ' + (e?.message || String(e)));
-            setUploadingImage(false);
         } finally {
             setSaving(false);
         }
@@ -317,8 +295,6 @@ export default function EditBookScreen() {
     const cardBg = isDark ? '#2C2C2E' : '#FFFFFF';
     const cardBorder = isDark ? '#3A3A3C' : '#E5E5EA';
     const labelColor = colors.secondaryText;
-    const displayImage = localImageUri ?? (form.coverImageUrl || null);
-
     const set = (key: keyof BookForm) => (val: string) =>
         setForm(prev => ({ ...prev, [key]: val }));
 
@@ -339,7 +315,7 @@ export default function EditBookScreen() {
                         ? <ActivityIndicator size="small" color="#FFF" />
                         : <Save size={16} color="#FFF" />}
                     <Text style={styles.saveBtnText}>
-                        {uploadingImage ? 'Subiendo...' : saving ? 'Guardando...' : 'Guardar'}
+                        {saving ? 'Guardando...' : 'Guardar'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -368,29 +344,17 @@ export default function EditBookScreen() {
 
                         {/* ── Portada ── */}
                         <View style={styles.coverSection}>
-                            <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
-                                {displayImage ? (
-                                    <Image source={{ uri: displayImage }} style={styles.coverImage} resizeMode="cover" />
-                                ) : (
-                                    <View style={[styles.coverPlaceholder, { backgroundColor: inputBg, borderColor: inputBorder }]}>
-                                        <Camera size={32} color={labelColor} />
-                                        <Text style={[{ color: labelColor, fontSize: 13 }]}>Sin portada</Text>
-                                    </View>
-                                )}
-                                <View style={[styles.coverOverlay, { backgroundColor: colors.tint }]}>
-                                    <Camera size={14} color="#FFF" />
-                                    <Text style={styles.coverOverlayText}>Cambiar imagen</Text>
-                                </View>
-                            </TouchableOpacity>
-                            {localImageUri && (
-                                <Text style={[styles.imageHint, { color: colors.tint }]}>
-                                    Nueva imagen — se subirá al guardar
-                                </Text>
-                            )}
+                            <GeneratedCover
+                                title={form.title || 'Título del libro'}
+                                author={form.author || 'Autor'}
+                                type="book"
+                                category={form.category}
+                                tags={form.tags.split(',').map(tag => tag.trim()).filter(Boolean)}
+                                width={130}
+                                height={195}
+                                style={styles.coverImage}
+                            />
                         </View>
-
-                        {/* ── Datos del libro ── */}
-                        <SectionTitle title="Datos del libro" colors={colors} />
 
                         <Field label="Título *" value={form.title} onChangeText={set('title')}
                             colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
@@ -929,6 +893,8 @@ const styles = StyleSheet.create({
     },
     coverOverlayText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
     imageHint: { fontSize: 12 },
+    previewSection: { alignItems: 'center', gap: 6, marginTop: 8 },
+    previewLabel: { fontSize: 12, fontWeight: '700' },
 
     // Section
     sectionTitle: { fontSize: 16, fontWeight: '700' },

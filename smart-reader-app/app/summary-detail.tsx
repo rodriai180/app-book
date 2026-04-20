@@ -15,7 +15,7 @@ import {
 } from '../src/services/bookContentService';
 import { BookData, ChapterData } from '../src/models/BookModels';
 import { AudioService } from '../src/services/AudioService';
-import SmartImage from '../src/components/SmartImage';
+import GeneratedCover from '../src/components/GeneratedCover';
 import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
@@ -181,15 +181,16 @@ export default function SummaryDetailScreen() {
 
                 {/* ── Portada + título + autor ── */}
                 <View style={[styles.heroCard, { backgroundColor: cardBg }]}>
-                    {book.coverImageUrl ? (
-                        <SmartImage uri={book.coverImageUrl} style={styles.cover} resizeMode="cover" />
-                    ) : (
-                        <View style={[styles.cover, styles.coverFallback, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
-                            <Text style={[styles.coverInitial, { color: colors.secondaryText }]}>
-                                {book.title.charAt(0).toUpperCase()}
-                            </Text>
-                        </View>
-                    )}
+                    <GeneratedCover
+                        title={book.title}
+                        author={book.author}
+                        type="book"
+                        category={book.category}
+                        tags={book.tags}
+                        width={100}
+                        height={150}
+                        style={styles.cover}
+                    />
                     <View style={styles.heroInfo}>
                         <Text style={[styles.bookTitle, { color: colors.text }]}>{book.title}</Text>
                         <Text style={[styles.bookAuthor, { color: colors.secondaryText }]}>{book.author}</Text>
@@ -365,7 +366,7 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
     },
-    cover: { width: 88, height: 120, borderRadius: 10 },
+    cover: { borderRadius: 10 },
     coverFallback: { justifyContent: 'center', alignItems: 'center' },
     coverInitial: { fontSize: 36, fontWeight: '700' },
     heroInfo: { flex: 1, justifyContent: 'center', gap: 6 },

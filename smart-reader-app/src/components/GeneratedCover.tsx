@@ -143,8 +143,9 @@ function getVisualSeed(tags: string[]): number {
 
 interface GeneratedCoverProps {
     title: string;
-    type: 'chapter' | 'microlearning';
+    type: 'chapter' | 'microlearning' | 'book';
     category?: string;
+    author?: string;
     chapterNumber?: number;
     tags?: string[];
     hideTags?: boolean;
@@ -201,6 +202,7 @@ export default function GeneratedCover({
     title,
     type,
     category,
+    author,
     chapterNumber,
     tags = [],
     hideTags = false,
@@ -209,7 +211,7 @@ export default function GeneratedCover({
     height,
     style,
 }: GeneratedCoverProps) {
-    const resolvedHeight = height ?? (type === 'chapter' ? 200 : 150);
+    const resolvedHeight = height ?? (type === 'chapter' ? 200 : type === 'book' ? 280 : 150);
     const gradient      = getGradient(category);
     const Icon          = type === 'microlearning'
                             ? getIconFromTags(tags, category)
@@ -219,9 +221,11 @@ export default function GeneratedCover({
     // 3 formas posibles del contenedor del ícono: 0=círculo, 1=cuadrado redondeado, 2=diamante
     const iconShape     = seed % 3;
 
-    const containerStyle = style
-        ? [styles.container, style]
-        : [styles.container, { width: width as any, height: resolvedHeight }];
+    const containerStyle = [
+        styles.container,
+        { width: width as any, height: resolvedHeight },
+        style ?? {},
+    ];
 
     const bgLetter   = (tags[0] ?? title).charAt(0).toUpperCase();
     const visibleTags = hideTags ? [] : tags.slice(0, 3);
@@ -291,7 +295,33 @@ export default function GeneratedCover({
             </LinearGradient>
         );
     }
+    // ── Book ───────────────────────────────────────────────────────────────────
+    if (type === 'book') {
+        return (
+            <LinearGradient
+                colors={gradient as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={containerStyle}
+            >
+                {/* Círculos decorativos sutiles */}
+                <View style={[deco.circle, { width: '120%', height: '50%', bottom: '-20%', right: '-20%', borderRadius: 999 }]} />
+                <View style={[deco.ring,   { width: '70%',  height: '35%', top: '-10%',   left: '-15%',  borderRadius: 999 }]} />
 
+                <View style={styles.bookContent}>
+                    {showText && (
+                        <View style={styles.bookTextContainer}>
+                            <Text style={styles.bookTitle} numberOfLines={3} ellipsizeMode="tail">{title}</Text>
+                            <View style={styles.bookDivider} />
+                            {author && (
+                                <Text style={styles.bookAuthor} numberOfLines={1} ellipsizeMode="tail">{author}</Text>
+                            )}
+                        </View>
+                    )}
+                </View>
+            </LinearGradient>
+        );
+    }
     // ── Chapter ────────────────────────────────────────────────────────────────
     return (
         <LinearGradient
@@ -528,6 +558,51 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 22,
         textShadowColor: 'rgba(0,0,0,0.35)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+    },
+
+    // ── Book ───────────────────────────────────────────────────────────────────
+
+    bookContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+    },
+
+    bookTextContainer: {
+        alignItems: 'center',
+        gap: 8,
+    },
+
+    bookTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        lineHeight: 21,
+        letterSpacing: 0.2,
+        textShadowColor: 'rgba(0,0,0,0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+
+    bookDivider: {
+        width: 32,
+        height: 1.5,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255,255,255,0.45)',
+    },
+
+    bookAuthor: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.85)',
+        textAlign: 'center',
+        letterSpacing: 0.5,
+        textShadowColor: 'rgba(0,0,0,0.3)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
