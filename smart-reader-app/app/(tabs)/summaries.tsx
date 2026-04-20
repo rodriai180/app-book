@@ -4,7 +4,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, ChevronRight, Bookmark } from 'lucide-react-native';
+import { Play, Square, Bookmark } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 import {
@@ -132,7 +132,7 @@ export default function SummariesScreen() {
         const isPlaying = playingId === item.id;
         const isSaved = savedMlIds.has(item.id!);
         const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
-        const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
+
         return (
             <View style={[styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }]}>
 
@@ -148,21 +148,13 @@ export default function SummariesScreen() {
                 {/* Contenido */}
                 <View style={[styles.contentBox, { backgroundColor: cardBg }]}>
 
-                    <View style={{ flex: 1, overflow: 'hidden' }}>
-                        <Text style={[styles.mlContent, { color: colors.text }]}>
-                            {item.content}
-                        </Text>
-                    </View>
-
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                    <View style={styles.footerRow}>
+                    {/* Título del capítulo + botones */}
+                    <View style={styles.headerRow}>
                         <TouchableOpacity
-                            style={[styles.chapterLink, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+                            style={styles.chapterLink}
                             onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
                             activeOpacity={0.65}
                         >
-                            <ChevronRight size={12} color={colors.tint} />
                             <Text style={[styles.footerChapter, { color: colors.tint }]} numberOfLines={1}>
                                 Cap. {item.chapterNumber} — {item.chapterTitle}
                             </Text>
@@ -171,23 +163,31 @@ export default function SummariesScreen() {
                         <View style={styles.actionBtns}>
                             <TouchableOpacity onPress={() => toggleSave(item.id!)} style={styles.iconBtn}>
                                 <Bookmark
-                                    size={19}
+                                    size={15}
                                     color={isSaved ? colors.tint : colors.secondaryText}
                                     fill={isSaved ? colors.tint : 'transparent'}
                                 />
                             </TouchableOpacity>
-
                             <TouchableOpacity
                                 onPress={() => handlePlay(item)}
                                 style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
                             >
                                 {isPlaying
-                                    ? <Square size={16} color="#FFF" fill="#FFF" />
-                                    : <Play size={16} color={colors.tint} fill={colors.tint} />
+                                    ? <Square size={12} color="#FFF" fill="#FFF" />
+                                    : <Play size={12} color={colors.tint} fill={colors.tint} />
                                 }
                             </TouchableOpacity>
                         </View>
                     </View>
+
+                    <Text style={[styles.mlContent, { color: colors.text }]} numberOfLines={5}>
+                        {item.content}
+                    </Text>
+                    {item.reflectionQuestion ? (
+                        <Text style={[styles.mlQuestion, { color: colors.secondaryText }]}>
+                            {item.reflectionQuestion}
+                        </Text>
+                    ) : null}
 
                 </View>
             </View>
@@ -269,16 +269,16 @@ const styles = StyleSheet.create({
 
     mlTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
     mlContent: { fontSize: 14, lineHeight: 22 },
+    mlQuestion: { fontSize: 13, lineHeight: 20, fontStyle: 'italic', marginTop: 6 },
 
     divider: { height: 1 },
 
     bookRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     footerBook: { fontSize: 13, fontWeight: '600', flex: 1 },
     footerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'space-between' },
     chapterLink: {
         flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
-        paddingHorizontal: 10, paddingVertical: 5,
-        borderRadius: 20, alignSelf: 'center',
     },
     footerChapter: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
 
@@ -286,12 +286,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', gap: 8,
     },
     iconBtn: {
-        width: 38, height: 38, borderRadius: 19,
+        width: 28, height: 28, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
         flexShrink: 0,
     },
     playBtn: {
-        width: 38, height: 38, borderRadius: 19,
+        width: 28, height: 28, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
         flexShrink: 0,
     },

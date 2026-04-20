@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    Image, ActivityIndicator,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Square, Plus } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { useRouter, useNavigation, useFocusEffect } from 'expo-router';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../../constants/firebaseConfig';
 import { AudioService } from '../../src/services/AudioService';
+import SmartImage from '../../src/components/SmartImage';
 import { useTheme } from '../../src/services/themeContext';
 import { useSettings } from '../../src/services/settingsContext';
 
@@ -85,7 +86,7 @@ export default function ResumenesScreen() {
                 style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
             >
                 {item.coverUrl ? (
-                    <Image source={{ uri: item.coverUrl }} style={styles.cover} resizeMode="cover" />
+                    <SmartImage uri={item.coverUrl} style={styles.cover} resizeMode="cover" />
                 ) : (
                     <View style={[styles.coverPlaceholder, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
                         <Text style={[styles.coverInitial, { color: colors.secondaryText }]}>

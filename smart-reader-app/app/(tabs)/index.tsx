@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-    View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
+    View, Text, StyleSheet, FlatList, TouchableOpacity,
     ActivityIndicator, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Trash2, BookMarked, Zap } from 'lucide-react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
+import SmartImage from '../../src/components/SmartImage';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
 import { getSavedBooks, getSavedMicrolearnings } from '../../src/services/bookContentService';
@@ -158,7 +159,7 @@ export default function LibraryScreen() {
             activeOpacity={0.75}
         >
             {item.coverImageUrl ? (
-                <Image source={{ uri: item.coverImageUrl }} style={styles.savedCover} resizeMode="cover" />
+                <SmartImage uri={item.coverImageUrl} style={styles.savedCover} resizeMode="cover" />
             ) : (
                 <View style={[styles.savedCover, styles.savedCoverFallback, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
                     <Text style={[styles.savedCoverInitial, { color: colors.tint }]}>
@@ -204,7 +205,7 @@ export default function LibraryScreen() {
         >
             <View style={[styles.coverPlaceholder, { backgroundColor: colors.card }]}>
                 {item.cover ? (
-                    <Image source={{ uri: item.cover }} style={styles.coverImage} />
+                    <SmartImage uri={item.cover} style={styles.coverImage} />
                 ) : (
                     <View style={[styles.emptyCover, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
                         <Text style={[styles.emptyCoverText, { color: colors.tint }]}>{item.title.charAt(0)}</Text>

@@ -14,7 +14,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import {
     getBookFullJSON,
     updateBookFromJSON,
-    uploadCoverImage,
 } from '../src/services/bookContentService';
 import { useTheme } from '../src/services/themeContext';
 import { isValidImageUrl } from '../src/utils/imageUtils';
@@ -156,6 +155,9 @@ async function uriToBase64(uri: string): Promise<string> {
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d')!;
+            // Fondo blanco explícito para evitar transparencia negra en JPEG
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
             resolve(canvas.toDataURL('image/jpeg', QUALITY));
         };
@@ -224,11 +226,11 @@ export default function EditBookScreen() {
         }
         setSaving(true);
         try {
-            // Subir portada del libro si hay una nueva
+            // Convertir portada a base64 si hay una nueva
             let coverUrl = form.coverImageUrl;
             if (localImageUri) {
                 setUploadingImage(true);
-                coverUrl = await uploadCoverImage(localImageUri, bookId);
+                coverUrl = await uriToBase64(localImageUri);
                 setUploadingImage(false);
             }
 

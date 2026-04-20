@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Linking, Image,
+    ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -15,6 +15,7 @@ import {
 } from '../src/services/bookContentService';
 import { BookData, ChapterData } from '../src/models/BookModels';
 import { AudioService } from '../src/services/AudioService';
+import SmartImage from '../src/components/SmartImage';
 import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
@@ -45,6 +46,7 @@ export default function SummaryDetailScreen() {
     React.useLayoutEffect(() => {
         navigation.setOptions({ headerShown: false });
     }, [navigation]);
+    
 
     // ── Carga ─────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -180,11 +182,7 @@ export default function SummaryDetailScreen() {
                 {/* ── Portada + título + autor ── */}
                 <View style={[styles.heroCard, { backgroundColor: cardBg }]}>
                     {book.coverImageUrl ? (
-                        <Image
-                            source={{ uri: book.coverImageUrl }}
-                            style={styles.cover}
-                            resizeMode="cover"
-                        />
+                        <SmartImage uri={book.coverImageUrl} style={styles.cover} resizeMode="cover" />
                     ) : (
                         <View style={[styles.cover, styles.coverFallback, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
                             <Text style={[styles.coverInitial, { color: colors.secondaryText }]}>
