@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
-    View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator,
+    View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity,
+    ActivityIndicator, Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Square, Bookmark } from 'lucide-react-native';
@@ -18,6 +18,9 @@ import { useSettings } from '../../src/services/settingsContext';
 import { useAuth } from '../../src/services/authContext';
 import GeneratedCover from '../../src/components/GeneratedCover';
 
+const DESKTOP_CARD_WIDTH = 300;
+const DESKTOP_CARD_HEIGHT = 460;
+
 const PAGE_SIZE = 10;
 
 export default function SummariesScreen() {
@@ -25,8 +28,11 @@ export default function SummariesScreen() {
     const { settings } = useSettings();
     const { user } = useAuth();
     const router = useRouter();
+    const { width } = useWindowDimensions();
 
-    // Altura real del contenedor medida con onLayout
+    const isDesktop = Platform.OS === 'web' && width >= 768;
+
+    // Altura real del contenedor medida con onLayout (solo mobile)
     const [cardHeight, setCardHeight] = useState(0);
 
     const [items, setItems] = useState<MicrolearningData[]>([]);
@@ -133,10 +139,14 @@ export default function SummariesScreen() {
         const isSaved = savedMlIds.has(item.id!);
         const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
 
-        return (
-            <View style={[styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }]}>
+        const cardStyle = isDesktop
+            ? [styles.card, styles.cardDesktop, { backgroundColor: colors.backgroundSecondary }]
+            : [styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }];
 
-                {/* Imagen — ocupa todo el espacio que sobra sobre el contenido */}
+        return (
+            <View style={cardStyle}>
+
+                {/* Imagen */}
                 <GeneratedCover
                     type="microlearning"
                     title={item.title}
@@ -146,7 +156,11 @@ export default function SummariesScreen() {
                 />
 
                 {/* Contenido */}
-                <View style={[styles.contentBox, { backgroundColor: cardBg }]}>
+                <View style={[
+                    styles.contentBox,
+                    isDesktop && styles.contentBoxDesktop,
+                    { backgroundColor: cardBg },
+                ]}>
 
                     {/* Título del capítulo + botones */}
                     <View style={styles.headerRow}>
@@ -180,11 +194,11 @@ export default function SummariesScreen() {
                         </View>
                     </View>
 
-                    <Text style={[styles.mlContent, { color: colors.text }]} numberOfLines={5}>
+                    <Text style={[styles.mlContent, { color: colors.text }]} numberOfLines={isDesktop ? 4 : 5}>
                         {item.content}
                     </Text>
                     {item.reflectionQuestion ? (
-                        <Text style={[styles.mlQuestion, { color: colors.secondaryText }]}>
+                        <Text style={[styles.mlQuestion, { color: colors.secondaryText }]} numberOfLines={2}>
                             {item.reflectionQuestion}
                         </Text>
                     ) : null}
@@ -214,6 +228,39 @@ export default function SummariesScreen() {
         );
     };
 
+    // ── Desktop: grid con scroll ──────────────────────────────────────────────
+    if (isDesktop) {
+        return (
+            <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+                {loading ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator size="large" color={colors.tint} />
+                    </View>
+                ) : (
+                    <ScrollView
+                        contentContainerStyle={styles.desktopGrid}
+                        showsVerticalScrollIndicator={false}
+                        onScroll={({ nativeEvent }) => {
+                            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+                            const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 300;
+                            if (nearBottom && hasMore && !loadingMore) loadMore();
+                        }}
+                        scrollEventThrottle={200}
+                    >
+                        {items.map(item => (
+                            <View key={item.id ?? `${item.bookId}-${item.order}`}>
+                                {renderItem({ item })}
+                            </View>
+                        ))}
+                        {renderFooter()}
+                        {items.length === 0 && renderEmpty()}
+                    </ScrollView>
+                )}
+            </SafeAreaView>
+        );
+    }
+
+    // ── Mobile: paging vertical ───────────────────────────────────────────────
     return (
         <SafeAreaView
             style={[styles.root, { backgroundColor: colors.backgroundSecondary }]}
@@ -255,6 +302,20 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 15, textAlign: 'center' },
 
     card: { overflow: 'hidden' },
+    cardDesktop: {
+        width: DESKTOP_CARD_WIDTH,
+        height: DESKTOP_CARD_HEIGHT,
+        borderRadius: 14,
+    },
+
+    desktopGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+        padding: 20,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+    },
 
     // imagen: 55% — texto: 45%
     mlBanner: { width: '100%', flex: 11 },
@@ -265,6 +326,12 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         paddingBottom: 16,
         gap: 10,
+    },
+    contentBoxDesktop: {
+        paddingHorizontal: 12,
+        paddingTop: 10,
+        paddingBottom: 10,
+        gap: 6,
     },
 
     mlTitle: { fontSize: 18, fontWeight: '800', lineHeight: 26 },
