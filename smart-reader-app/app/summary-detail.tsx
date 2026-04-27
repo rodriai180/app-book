@@ -16,6 +16,7 @@ import {
 import { BookData, ChapterData } from '../src/models/BookModels';
 import { AudioService } from '../src/services/AudioService';
 import GeneratedCover from '../src/components/GeneratedCover';
+import HighlightedText from '../src/components/HighlightedText';
 import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
@@ -38,6 +39,7 @@ export default function SummaryDetailScreen() {
     const [savingToggle, setSavingToggle] = useState(false);
 
     const [playing, setPlaying] = useState<PlayTarget | null>(null);
+    const [boundary, setBoundary] = useState<{ charIndex: number; charLength: number } | null>(null);
     const [prefaceOpen, setPrefaceOpen] = useState(false);
     const [shortOpen, setShortOpen] = useState(false);
     const [longOpen, setLongOpen] = useState(false);
@@ -103,15 +105,18 @@ export default function SummaryDetailScreen() {
         if (playing === target) {
             AudioService.stop();
             setPlaying(null);
+            setBoundary(null);
             return;
         }
         AudioService.stop();
+        setBoundary(null);
         setPlaying(target);
         AudioService.speak(text, {
             rate: settings.rate,
             language: settings.language,
-            onDone: () => setPlaying(null),
-            onError: () => setPlaying(null),
+            onBoundary: setBoundary,
+            onDone: () => { setPlaying(null); setBoundary(null); },
+            onError: () => { setPlaying(null); setBoundary(null); },
         });
     };
 
@@ -231,7 +236,13 @@ export default function SummaryDetailScreen() {
                             </View>
                         </TouchableOpacity>
                         {prefaceOpen && (
-                            <Text style={[styles.bodyText, { color: colors.text }]}>{book.preface}</Text>
+                            <HighlightedText
+                                text={book.preface}
+                                start={playing === 'preface' && boundary ? boundary.charIndex : -1}
+                                length={playing === 'preface' && boundary ? boundary.charLength : 0}
+                                baseStyle={[styles.bodyText, { color: colors.text }]}
+                                highlightBg={colors.tint + '33'}
+                            />
                         )}
                     </View>
                 ) : null}
@@ -254,7 +265,13 @@ export default function SummaryDetailScreen() {
                             </View>
                         </TouchableOpacity>
                         {shortOpen && (
-                            <Text style={[styles.bodyText, { color: colors.text }]}>{book.shortSummary}</Text>
+                            <HighlightedText
+                                text={book.shortSummary}
+                                start={playing === 'short' && boundary ? boundary.charIndex : -1}
+                                length={playing === 'short' && boundary ? boundary.charLength : 0}
+                                baseStyle={[styles.bodyText, { color: colors.text }]}
+                                highlightBg={colors.tint + '33'}
+                            />
                         )}
                     </View>
                 ) : null}
@@ -277,7 +294,13 @@ export default function SummaryDetailScreen() {
                             </View>
                         </TouchableOpacity>
                         {longOpen && (
-                            <Text style={[styles.bodyText, { color: colors.text }]}>{book.longSummary}</Text>
+                            <HighlightedText
+                                text={book.longSummary}
+                                start={playing === 'long' && boundary ? boundary.charIndex : -1}
+                                length={playing === 'long' && boundary ? boundary.charLength : 0}
+                                baseStyle={[styles.bodyText, { color: colors.text }]}
+                                highlightBg={colors.tint + '33'}
+                            />
                         )}
                     </View>
                 ) : null}

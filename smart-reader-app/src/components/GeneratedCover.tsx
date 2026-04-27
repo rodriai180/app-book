@@ -153,6 +153,7 @@ interface GeneratedCoverProps {
     width?: number | string;
     height?: number;
     style?: ViewStyle;
+    large?: boolean;
 }
 
 // ─── Decoraciones geométricas de fondo ───────────────────────────────────────
@@ -210,6 +211,7 @@ export default function GeneratedCover({
     width = '100%',
     height,
     style,
+    large = false,
 }: GeneratedCoverProps) {
     const resolvedHeight = height ?? (type === 'chapter' ? 200 : type === 'book' ? 280 : 150);
     const gradient      = getGradient(category);
@@ -221,9 +223,10 @@ export default function GeneratedCover({
     // 3 formas posibles del contenedor del ícono: 0=círculo, 1=cuadrado redondeado, 2=diamante
     const iconShape     = seed % 3;
 
+    const hasAspectRatio = style && 'aspectRatio' in style;
     const containerStyle = [
         styles.container,
-        { width: width as any, height: resolvedHeight },
+        { width: width as any, ...(hasAspectRatio ? {} : { height: resolvedHeight }) },
         style ?? {},
     ];
 
@@ -311,10 +314,26 @@ export default function GeneratedCover({
                 <View style={styles.bookContent}>
                     {showText && (
                         <View style={styles.bookTextContainer}>
-                            <Text style={styles.bookTitle} numberOfLines={3} ellipsizeMode="tail">{title}</Text>
+                            <Text
+                                style={[styles.bookTitle, large && styles.bookTitleLarge]}
+                                numberOfLines={4}
+                                ellipsizeMode="tail"
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.6}
+                            >
+                                {title}
+                            </Text>
                             <View style={styles.bookDivider} />
                             {author && (
-                                <Text style={styles.bookAuthor} numberOfLines={1} ellipsizeMode="tail">{author}</Text>
+                                <Text
+                                    style={[styles.bookAuthor, large && styles.bookAuthorLarge]}
+                                    numberOfLines={2}
+                                    ellipsizeMode="tail"
+                                    adjustsFontSizeToFit
+                                    minimumFontScale={0.7}
+                                >
+                                    {author}
+                                </Text>
                             )}
                         </View>
                     )}
@@ -568,42 +587,54 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 10,
     },
 
     bookTextContainer: {
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
+        width: '100%',
     },
 
     bookTitle: {
-        fontSize: 16,
+        fontSize: 13,
         fontWeight: '800',
         color: '#FFFFFF',
         textAlign: 'center',
-        lineHeight: 21,
-        letterSpacing: 0.2,
+        lineHeight: 17,
+        letterSpacing: 0.1,
         textShadowColor: 'rgba(0,0,0,0.4)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 6,
     },
 
     bookDivider: {
-        width: 32,
+        width: 28,
         height: 1.5,
         borderRadius: 2,
         backgroundColor: 'rgba(255,255,255,0.45)',
     },
 
     bookAuthor: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
         color: 'rgba(255,255,255,0.85)',
         textAlign: 'center',
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
+        lineHeight: 14,
         textShadowColor: 'rgba(0,0,0,0.3)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
+    },
+    bookTitleLarge: {
+        fontSize: 20,
+        lineHeight: 26,
+        letterSpacing: 0.3,
+    },
+    bookAuthorLarge: {
+        fontSize: 14,
+        lineHeight: 19,
+        letterSpacing: 0.5,
     },
 });

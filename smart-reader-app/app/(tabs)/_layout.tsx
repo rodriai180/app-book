@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Tabs } from 'expo-router';
 import { TouchableOpacity, View, Platform, useWindowDimensions } from 'react-native';
-import { Book, Menu, Compass, BookOpen } from 'lucide-react-native';
+import { Book, Menu, Compass, Library, LayoutDashboard } from 'lucide-react-native';
 import SideMenu from '../../components/SideMenu';
 import { useTheme } from '../../src/services/themeContext';
+import { useAuth } from '../../src/services/authContext';
 
 const DESKTOP_BREAKPOINT = 768;
 
 export default function TabLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { colors } = useTheme();
+    const { isAdmin } = useAuth();
     const { width } = useWindowDimensions();
 
     const isDesktop = Platform.OS === 'web' && width >= DESKTOP_BREAKPOINT;
@@ -18,11 +20,13 @@ export default function TabLayout() {
     if (isDesktop) {
         return (
             <Tabs
+                initialRouteName="summaries"
                 tabBar={() => null}
                 screenOptions={{ headerShown: false }}
             >
                 <Tabs.Screen name="index" />
                 <Tabs.Screen name="summaries" />
+                <Tabs.Screen name="books" />
                 <Tabs.Screen name="resumenes" />
             </Tabs>
         );
@@ -39,7 +43,7 @@ export default function TabLayout() {
             alignItems: 'center',
             justifyContent: 'center',
         }}>
-            {state.routes.map((route: any, index: number) => {
+            {state.routes.filter((route: any) => route.name !== 'resumenes' || isAdmin).map((route: any, index: number) => {
                 const { options } = descriptors[route.key];
                 const isFocused = state.index === index;
 
@@ -88,6 +92,7 @@ export default function TabLayout() {
                 } : {})}
             >
                 <Tabs
+                    initialRouteName="summaries"
                     tabBar={(props) => <CustomTabBar {...props} />}
                     screenOptions={{
                         headerStyle: {
@@ -120,10 +125,17 @@ export default function TabLayout() {
                         }}
                     />
                     <Tabs.Screen
+                        name="books"
+                        options={{
+                            title: 'Libros',
+                            tabBarIcon: ({ color }) => <Library size={32} color={color} />,
+                        }}
+                    />
+                    <Tabs.Screen
                         name="resumenes"
                         options={{
-                            title: 'Resúmenes',
-                            tabBarIcon: ({ color }) => <BookOpen size={32} color={color} />,
+                            title: 'Admin',
+                            tabBarIcon: ({ color }) => <LayoutDashboard size={32} color={color} />,
                         }}
                     />
                 </Tabs>

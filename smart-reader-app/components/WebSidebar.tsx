@@ -1,19 +1,21 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Book, Compass, BookOpen, Settings, LogOut } from 'lucide-react-native';
+import { Book, Compass, Library, LayoutDashboard, Settings, LogOut } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useTheme } from '../src/services/themeContext';
 import { useAuth } from '../src/services/authContext';
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
     { name: 'index', path: '/(tabs)', label: 'Mi Biblioteca', Icon: Book },
     { name: 'summaries', path: '/(tabs)/summaries', label: 'Descubrir', Icon: Compass },
-    { name: 'resumenes', path: '/(tabs)/resumenes', label: 'Resúmenes', Icon: BookOpen },
-] as const;
+    { name: 'books', path: '/(tabs)/books', label: 'Libros', Icon: Library },
+];
+
+const ADMIN_NAV_ITEM = { name: 'resumenes', path: '/(tabs)/resumenes', label: 'Admin', Icon: LayoutDashboard };
 
 export default function WebSidebar() {
     const { colors, isDark } = useTheme();
-    const { user, logout } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
 
@@ -73,7 +75,7 @@ export default function WebSidebar() {
                     </Text>
                 </View>
 
-                {NAV_ITEMS.map(({ name, path, label, Icon }) => {
+                {[...BASE_NAV_ITEMS, ...(isAdmin ? [ADMIN_NAV_ITEM] : [])].map(({ name, path, label, Icon }) => {
                     const active = isActive(name);
                     return (
                         <TouchableOpacity

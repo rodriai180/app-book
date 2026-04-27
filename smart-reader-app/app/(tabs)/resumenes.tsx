@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator,
+    ActivityIndicator, Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Square, Plus } from 'lucide-react-native';
@@ -26,6 +26,8 @@ export default function ResumenesScreen() {
     const { settings } = useSettings();
     const router = useRouter();
     const navigation = useNavigation();
+    const { width } = useWindowDimensions();
+    const isDesktop = Platform.OS === 'web' && width >= 768;
     const [summaries, setSummaries] = useState<Summary[]>([]);
     const [loading, setLoading] = useState(true);
     const [playingId, setPlayingId] = useState<string | null>(null);
@@ -117,6 +119,15 @@ export default function ResumenesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+            {isDesktop && (
+                <View style={[styles.desktopHeader, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.desktopTitle, { color: colors.text }]}>Resúmenes</Text>
+                    <TouchableOpacity onPress={() => router.push('/add-summary')} style={[styles.desktopAddBtn, { backgroundColor: colors.tint }]}>
+                        <Plus size={18} color="#FFF" />
+                        <Text style={styles.desktopAddText}>Agregar</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />
@@ -141,6 +152,24 @@ export default function ResumenesScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    desktopHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+    },
+    desktopTitle: { fontSize: 22, fontWeight: '700' },
+    desktopAddBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+    },
+    desktopAddText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
     empty: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
     list: { paddingVertical: 8 },

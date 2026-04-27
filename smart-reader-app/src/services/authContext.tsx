@@ -8,11 +8,13 @@ import {
     sendPasswordResetEmail,
     User,
 } from 'firebase/auth';
-import { auth } from '../../constants/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../constants/firebaseConfig';
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    isAdmin: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, name: string, surname: string) => Promise<void>;
     logout: () => Promise<void>;
@@ -26,10 +28,21 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setUser(firebaseUser);
+            if (firebaseUser) {
+                try {
+                    const snap = await getDoc(doc(db, 'admins', firebaseUser.uid));
+                    setIsAdmin(snap.exists());
+                } catch {
+                    setIsAdmin(false);
+                }
+            } else {
+                setIsAdmin(false);
+            }
             setLoading(false);
         });
         return unsubscribe;
@@ -57,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, resetPassword }}>
+        <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout, resetPassword }}>
             {children}
         </AuthContext.Provider>
     );

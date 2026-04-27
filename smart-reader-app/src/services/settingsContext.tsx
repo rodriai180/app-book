@@ -8,6 +8,18 @@ type ReadingSettings = {
     language: string;
 };
 
+export const ALL_CATEGORIES = [
+    { key: 'psicologia',          label: 'Psicología' },
+    { key: 'comunicacion',        label: 'Comunicación' },
+    { key: 'negocios',            label: 'Negocios' },
+    { key: 'desarrollo-personal', label: 'Desarrollo Personal' },
+    { key: 'finanzas',            label: 'Finanzas' },
+    { key: 'liderazgo',           label: 'Liderazgo' },
+    { key: 'habitos',             label: 'Hábitos' },
+    { key: 'productividad',       label: 'Productividad' },
+    { key: 'filosofia',           label: 'Filosofía' },
+] as const;
+
 interface SettingsContextType {
     settings: ReadingSettings;
     updateSettings: (newSettings: Partial<ReadingSettings>) => void;
@@ -15,6 +27,8 @@ interface SettingsContextType {
     cycleRate: () => void;
     cyclePitch: () => void;
     cycleLanguage: () => void;
+    preferredCategories: string[];
+    toggleCategory: (key: string) => void;
 }
 
 const DEFAULT_SETTINGS: ReadingSettings = {
@@ -23,6 +37,26 @@ const DEFAULT_SETTINGS: ReadingSettings = {
     pitch: 0.5,
     language: 'es-ES',
 };
+
+const PREFS_KEY = 'smartreader_preferred_categories';
+
+function loadPrefs(): string[] {
+    try {
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(PREFS_KEY);
+            return raw ? JSON.parse(raw) : [];
+        }
+    } catch {}
+    return [];
+}
+
+function savePrefs(cats: string[]) {
+    try {
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            localStorage.setItem(PREFS_KEY, JSON.stringify(cats));
+        }
+    } catch {}
+}
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
@@ -33,6 +67,15 @@ const VOICES = ['Pablo', 'Sergio'];
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const [settings, setSettings] = useState<ReadingSettings>(DEFAULT_SETTINGS);
+    const [preferredCategories, setPreferredCategories] = useState<string[]>(loadPrefs);
+
+    const toggleCategory = (key: string) => {
+        setPreferredCategories(prev => {
+            const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+            savePrefs(next);
+            return next;
+        });
+    };
 
     const updateSettings = (newSettings: Partial<ReadingSettings>) => {
         setSettings(prev => ({ ...prev, ...newSettings }));
@@ -69,7 +112,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             cycleVoice,
             cycleRate,
             cyclePitch,
-            cycleLanguage
+            cycleLanguage,
+            preferredCategories,
+            toggleCategory,
         }}>
             {children}
         </SettingsContext.Provider>

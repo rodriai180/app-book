@@ -18,6 +18,7 @@ import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
 import GeneratedCover from '../src/components/GeneratedCover';
+import HighlightedText from '../src/components/HighlightedText';
 
 // ─── Colores de categoría (mismo helper que summaries.tsx) ───────────────────
 const CATEGORY_COLORS = [
@@ -52,6 +53,7 @@ export default function ChapterDetailScreen() {
     const [microlearnings, setMicrolearnings] = useState<MicrolearningData[]>([]);
     const [loading, setLoading] = useState(true);
     const [playing, setPlaying] = useState<PlayTarget | null>(null);
+    const [boundary, setBoundary] = useState<{ charIndex: number; charLength: number } | null>(null);
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
     const [summaryCollapsed, setSummaryCollapsed] = useState(true);
@@ -114,15 +116,18 @@ export default function ChapterDetailScreen() {
         if (isPlaying(target)) {
             AudioService.stop();
             setPlaying(null);
+            setBoundary(null);
             return;
         }
         AudioService.stop();
+        setBoundary(null);
         setPlaying(target);
         AudioService.speak(text, {
             rate: settings.rate,
             language: settings.language,
-            onDone: () => setPlaying(null),
-            onError: () => setPlaying(null),
+            onBoundary: setBoundary,
+            onDone: () => { setPlaying(null); setBoundary(null); },
+            onError: () => { setPlaying(null); setBoundary(null); },
         });
     };
 
@@ -240,7 +245,13 @@ export default function ChapterDetailScreen() {
                         </View>
                         {!summaryCollapsed && (
                             <View>
-                                <Text style={[styles.bodyText, { color: colors.text }]}>{chapter.summary}</Text>
+                                <HighlightedText
+                                    text={chapter.summary}
+                                    start={isPlaying({ kind: 'summary' }) && boundary ? boundary.charIndex : -1}
+                                    length={isPlaying({ kind: 'summary' }) && boundary ? boundary.charLength : 0}
+                                    baseStyle={[styles.bodyText, { color: colors.text }]}
+                                    highlightBg={colors.tint + '33'}
+                                />
                             </View>
                         )}
                     </View>
@@ -295,19 +306,38 @@ export default function ChapterDetailScreen() {
                                         </TouchableOpacity>
                                     </View>
 
-                                    <Text style={[styles.bodyText, { color: colors.text }]}>{ml.content}</Text>
-
-                                    {ml.reflectionQuestion ? (
-                                        <>
-                                            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-                                            <View style={styles.reflectionRow}>
-                                                <Mic size={13} color={colors.secondaryText} />
-                                                <Text style={[styles.reflectionText, { color: colors.secondaryText }]}>
-                                                    {ml.reflectionQuestion}
-                                                </Text>
-                                            </View>
-                                        </>
-                                    ) : null}
+                                    {(() => {
+                                        const mlActive = mlPlaying && boundary;
+                                        const contentOffset = ml.title.length + 2;
+                                        const questionOffset = contentOffset + ml.content.length + 2 + 'Pregunta de reflexión: '.length;
+                                        const highlightBg = colors.tint + '33';
+                                        return (
+                                            <>
+                                                <HighlightedText
+                                                    text={ml.content}
+                                                    start={mlActive && boundary!.charIndex >= contentOffset ? boundary!.charIndex - contentOffset : -1}
+                                                    length={mlActive ? boundary!.charLength : 0}
+                                                    baseStyle={[styles.bodyText, { color: colors.text }]}
+                                                    highlightBg={highlightBg}
+                                                />
+                                                {ml.reflectionQuestion ? (
+                                                    <>
+                                                        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                                                        <View style={styles.reflectionRow}>
+                                                            <Mic size={13} color={colors.secondaryText} />
+                                                            <HighlightedText
+                                                                text={ml.reflectionQuestion}
+                                                                start={mlActive && boundary!.charIndex >= questionOffset ? boundary!.charIndex - questionOffset : -1}
+                                                                length={mlActive ? boundary!.charLength : 0}
+                                                                baseStyle={[styles.reflectionText, { color: colors.secondaryText }]}
+                                                                highlightBg={highlightBg}
+                                                            />
+                                                        </View>
+                                                    </>
+                                                ) : null}
+                                            </>
+                                        );
+                                    })()}
                                 </View>
                             );
                         })}

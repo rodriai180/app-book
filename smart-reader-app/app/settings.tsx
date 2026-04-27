@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Pressable, Platform } from 'react-native';
 import { ChevronRight, Volume2, Mic2, Languages, Moon, Sun, Play, Check, X } from 'lucide-react-native';
 import { useTheme } from '../src/services/themeContext';
-import { useSettings } from '../src/services/settingsContext';
+import { useSettings, ALL_CATEGORIES } from '../src/services/settingsContext';
 import { AudioService } from '../src/services/AudioService';
 
 const RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -16,7 +16,7 @@ const VOICES = ['Pablo', 'Sergio'];
 
 export default function SettingsScreen() {
     const { themeMode, setThemeMode, colors, isDark } = useTheme();
-    const { settings, updateSettings } = useSettings();
+    const { settings, updateSettings, preferredCategories, toggleCategory } = useSettings();
 
     const [activeModal, setActiveModal] = useState<string | null>(null);
     
@@ -172,6 +172,39 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
+                {/* ── Preferencias de contenido ── */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>Preferencias de contenido</Text>
+                    <Text style={[styles.prefsHint, { color: colors.secondaryText }]}>
+                        Seleccioná los temas que te interesan. Si no elegís ninguno se muestran todos.
+                    </Text>
+                    <View style={styles.chipsContainer}>
+                        {ALL_CATEGORIES.map(({ key, label }) => {
+                            const selected = preferredCategories.includes(key);
+                            return (
+                                <TouchableOpacity
+                                    key={key}
+                                    onPress={() => toggleCategory(key)}
+                                    activeOpacity={0.7}
+                                    style={[
+                                        styles.chip,
+                                        selected
+                                            ? { backgroundColor: colors.tint, borderColor: colors.tint }
+                                            : { backgroundColor: 'transparent', borderColor: colors.border },
+                                    ]}
+                                >
+                                    <Text style={[
+                                        styles.chipText,
+                                        { color: selected ? '#FFFFFF' : colors.text },
+                                    ]}>
+                                        {label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </View>
+
                 <Text style={[styles.footerText, { color: colors.secondaryText }]}>
                     Toca el icono de cualquier ajuste de voz para escuchar una prueba.
                 </Text>
@@ -324,5 +357,27 @@ const styles = StyleSheet.create({
     },
     optionLabel: {
         fontSize: 17,
+    },
+    prefsHint: {
+        fontSize: 13,
+        marginBottom: 12,
+        marginLeft: 5,
+        lineHeight: 18,
+    },
+    chipsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        paddingHorizontal: 4,
+    },
+    chip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1.5,
+    },
+    chipText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

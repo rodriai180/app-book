@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     ActivityIndicator, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
+    Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Trash2, BookMarked, Zap } from 'lucide-react-native';
@@ -22,6 +23,13 @@ export default function LibraryScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const navigation = useNavigation();
+    const { width } = useWindowDimensions();
+    const isDesktop = Platform.OS === 'web' && width >= 768;
+
+    const cardWidth = isDesktop ? 220 : 110;
+    const coverWidth = isDesktop ? 160 : 80;
+    const coverHeight = isDesktop ? 240 : 120;
+    const fs = (size: number) => isDesktop ? Math.round(size * 1.25) : size;
 
     const [books, setBooks] = useState<BookMetadata[]>([]);
     const [savedBooks, setSavedBooks] = useState<BookData[]>([]);
@@ -32,7 +40,7 @@ export default function LibraryScreen() {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
-    const ITEM_WIDTH = 110;
+    const ITEM_WIDTH = cardWidth;
     const ITEM_SPACING = 12;
 
     const savedMlItemsPerPage = useMemo(() => {
@@ -154,7 +162,7 @@ export default function LibraryScreen() {
     // ── Render saved book card (horizontal) ───────────────────────────────────
     const renderSavedBook = ({ item }: { item: BookData }) => (
         <TouchableOpacity
-            style={[styles.savedCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+            style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
             onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
             activeOpacity={0.75}
         >
@@ -164,7 +172,7 @@ export default function LibraryScreen() {
                 type="book"
                 category={item.category}
                 tags={item.tags}
-                style={styles.savedCover}
+                style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
             />
         </TouchableOpacity>
     );
@@ -173,7 +181,7 @@ export default function LibraryScreen() {
     const renderSavedMicrolearning = ({ item }: { item: MicrolearningData }) => {
         return (
             <TouchableOpacity
-                style={[styles.savedCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+                style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
                 onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
                 activeOpacity={0.75}
             >
@@ -184,10 +192,10 @@ export default function LibraryScreen() {
                     tags={item.tags}
                     hideTags
                     hideText
-                    style={styles.savedCover}
+                    style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
                 />
-                <Text style={[styles.savedTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-                <Text style={[styles.savedAuthor, { color: colors.secondaryText }]} numberOfLines={1}>
+                <Text style={[styles.savedTitle, { color: colors.text, fontSize: fs(12) }]} numberOfLines={2}>{item.title}</Text>
+                <Text style={[styles.savedAuthor, { color: colors.secondaryText, fontSize: fs(11) }]} numberOfLines={1}>
                     Cap. {item.chapterNumber} — {item.chapterTitle}
                 </Text>
             </TouchableOpacity>
@@ -215,11 +223,11 @@ export default function LibraryScreen() {
                     <Trash2 size={14} color="#FF3B30" />
                 </TouchableOpacity>
             </View>
-            <Text style={[styles.bookTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-            <Text style={[styles.bookAuthor, { color: colors.secondaryText }]} numberOfLines={1}>{item.author}</Text>
+            <Text style={[styles.bookTitle, { color: colors.text, fontSize: fs(16) }]} numberOfLines={1}>{item.title}</Text>
+            <Text style={[styles.bookAuthor, { color: colors.secondaryText, fontSize: fs(14) }]} numberOfLines={1}>{item.author}</Text>
             {item.currentParagraph > 0 && (
                 <View style={[styles.progressBadge, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
-                    <Text style={[styles.progressText, { color: colors.tint }]}>
+                    <Text style={[styles.progressText, { color: colors.tint, fontSize: fs(12) }]}>
                         {Math.round((item.currentParagraph / item.totalParagraphs) * 100)}%
                     </Text>
                 </View>
@@ -248,69 +256,84 @@ export default function LibraryScreen() {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <BookMarked size={16} color={colors.tint} />
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Guardados</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.text, fontSize: fs(17) }]}>Guardados</Text>
                         </View>
-                        <FlatList
-                            data={savedBooks}
-                            keyExtractor={item => item.id!}
-                            renderItem={renderSavedBook}
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.savedList}
-                            scrollEnabled
-                        />
+                        {isDesktop ? (
+                            <View style={styles.desktopWrapList}>
+                                {savedBooks.map(item => (
+                                    <View key={item.id!}>{renderSavedBook({ item })}</View>
+                                ))}
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={savedBooks}
+                                keyExtractor={item => item.id!}
+                                renderItem={renderSavedBook}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.savedList}
+                                scrollEnabled
+                            />
+                        )}
                     </View>
                 )}
 
                 {/* ── Microlearnings guardados ── */}
                 {savedMicrolearnings.length > 0 && (
                     <>
-                        {savedBooks.length > 0 && (
-                            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-                        )}
-                        <View style={styles.section}>
+                        <View style={[styles.section, { marginTop: 12 }]}>
                             <View style={styles.sectionHeader}>
                                 <Zap size={16} color={colors.tint} />
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Microlearnings guardados</Text>
+                                <Text style={[styles.sectionTitle, { color: colors.text, fontSize: fs(17) }]}>Microlearnings guardados</Text>
                             </View>
-                            <FlatList
-                                data={savedMicrolearnings}
-                                keyExtractor={item => item.id!}
-                                renderItem={renderSavedMicrolearning}
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.savedList}
-                                scrollEnabled
-                                decelerationRate="fast"
-                                snapToInterval={savedMlPageWidth}
-                                snapToAlignment="start"
-                                onLayout={(event) => setSavedMlViewportWidth(event.nativeEvent.layout.width)}
-                                onContentSizeChange={(w) => setSavedMlContentWidth(w)}
-                                onScroll={handleSavedMlScroll}
-                                scrollEventThrottle={50}
-                            />
-                            {savedMlPageCount > 1 && (
-                                <View style={styles.paginationDots}>
-                                    {Array.from({ length: savedMlPageCount }, (_, index) => (
-                                        <View
-                                            key={index}
-                                            style={[
-                                                styles.paginationDot,
-                                                {
-                                                    backgroundColor: 'transparent',
-                                                    borderColor: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.16)',
-                                                },
-                                                index === savedMlIndex && {
-                                                    backgroundColor: colors.tint,
-                                                    borderColor: colors.tint,
-                                                    width: 12,
-                                                    height: 12,
-                                                    borderRadius: 6,
-                                                },
-                                            ]}
-                                        />
+                            {isDesktop ? (
+                                <View style={styles.desktopWrapList}>
+                                    {savedMicrolearnings.map(item => (
+                                        <View key={item.id!}>{renderSavedMicrolearning({ item })}</View>
                                     ))}
                                 </View>
+                            ) : (
+                                <>
+                                    <FlatList
+                                        data={savedMicrolearnings}
+                                        keyExtractor={item => item.id!}
+                                        renderItem={renderSavedMicrolearning}
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.savedList}
+                                        scrollEnabled
+                                        decelerationRate="fast"
+                                        snapToInterval={savedMlPageWidth}
+                                        snapToAlignment="start"
+                                        onLayout={(event) => setSavedMlViewportWidth(event.nativeEvent.layout.width)}
+                                        onContentSizeChange={(w) => setSavedMlContentWidth(w)}
+                                        onScroll={handleSavedMlScroll}
+                                        scrollEventThrottle={50}
+                                    />
+                                    {savedMlPageCount > 1 && (
+                                        <View style={styles.paginationDots}>
+                                            {Array.from({ length: savedMlPageCount }, (_, index) => (
+                                                <View
+                                                    key={index}
+                                                    style={[
+                                                        styles.paginationDot,
+                                                        {
+                                                            backgroundColor: 'transparent',
+                                                            borderColor: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.16)',
+                                                        },
+                                                        index === savedMlIndex && {
+                                                            backgroundColor: colors.tint,
+                                                            borderColor: colors.tint,
+                                                            width: 12,
+                                                            height: 12,
+                                                            borderRadius: 6,
+                                                        },
+                                                    ]}
+                                                />
+                                            ))}
+                                        </View>
+                                    )}
+                                </>
                             )}
                         </View>
                     </>
@@ -325,13 +348,14 @@ export default function LibraryScreen() {
                 {books.length > 0 && (
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Mis libros</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.text, fontSize: fs(17) }]}>Mis libros</Text>
                         </View>
                         <FlatList
                             data={books}
                             renderItem={renderBook}
                             keyExtractor={item => item.id}
-                            numColumns={2}
+                            key={isDesktop ? 'desktop' : 'mobile'}
+                            numColumns={isDesktop ? 4 : 2}
                             contentContainerStyle={styles.listContainer}
                             showsVerticalScrollIndicator={false}
                             scrollEnabled={false}
@@ -343,8 +367,8 @@ export default function LibraryScreen() {
                 {savedBooks.length === 0 && savedMicrolearnings.length === 0 && books.length === 0 && (
                     <View style={styles.emptyState}>
                         <Text style={styles.emptyIcon}>📚</Text>
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>Tu biblioteca está vacía</Text>
-                        <Text style={[styles.emptySubtitle, { color: colors.secondaryText }]}>
+                        <Text style={[styles.emptyTitle, { color: colors.text, fontSize: fs(20) }]}>Tu biblioteca está vacía</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.secondaryText, fontSize: fs(16) }]}>
                             Guardá libros desde Descubrir o subí tu propio archivo con +
                         </Text>
                     </View>
@@ -368,6 +392,12 @@ const styles = StyleSheet.create({
 
     // Saved books (horizontal)
     savedList: { paddingHorizontal: 16, gap: 12 },
+    desktopWrapList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        paddingHorizontal: 16,
+    },
     paginationDots: {
         flexDirection: 'row',
         justifyContent: 'center',
