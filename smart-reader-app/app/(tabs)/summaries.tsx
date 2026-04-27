@@ -4,7 +4,7 @@ import {
     ActivityIndicator, Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, Bookmark } from 'lucide-react-native';
+import { Bookmark } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
 import {
@@ -203,7 +203,7 @@ export default function SummariesScreen() {
                     { backgroundColor: cardBg },
                 ]}>
 
-                    {/* Título del capítulo + botones */}
+                    {/* Título del capítulo + bookmark */}
                     <View style={styles.headerRow}>
                         <TouchableOpacity
                             style={styles.chapterLink}
@@ -215,44 +215,35 @@ export default function SummariesScreen() {
                             </Text>
                         </TouchableOpacity>
 
-                        <View style={styles.actionBtns}>
-                            <TouchableOpacity onPress={() => toggleSave(item.id!)} style={styles.iconBtn}>
-                                <Bookmark
-                                    size={15}
-                                    color={isSaved ? colors.tint : colors.secondaryText}
-                                    fill={isSaved ? colors.tint : 'transparent'}
-                                />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => handlePlay(item)}
-                                style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
-                            >
-                                {isPlaying
-                                    ? <Square size={12} color="#FFF" fill="#FFF" />
-                                    : <Play size={12} color={colors.tint} fill={colors.tint} />
-                                }
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity onPress={() => toggleSave(item.id!)} style={styles.iconBtn}>
+                            <Bookmark
+                                size={15}
+                                color={isSaved ? colors.tint : colors.secondaryText}
+                                fill={isSaved ? colors.tint : 'transparent'}
+                            />
+                        </TouchableOpacity>
                     </View>
 
-                    <HighlightedText
-                        text={item.content}
-                        start={contentHL.start}
-                        length={contentHL.length}
-                        baseStyle={[styles.mlContent, { color: colors.text }]}
-                        highlightBg={highlightBg}
-                        numberOfLines={isDesktop ? 4 : 5}
-                    />
-                    {item.reflectionQuestion ? (
+                    <TouchableOpacity onPress={() => handlePlay(item)} activeOpacity={0.75}>
                         <HighlightedText
-                            text={item.reflectionQuestion}
-                            start={questionHL.start}
-                            length={questionHL.length}
-                            baseStyle={[styles.mlQuestion, { color: colors.secondaryText }]}
+                            text={item.content}
+                            start={contentHL.start}
+                            length={contentHL.length}
+                            baseStyle={[styles.mlContent, { color: colors.text }]}
                             highlightBg={highlightBg}
-                            numberOfLines={2}
+                            numberOfLines={isDesktop ? 4 : 5}
                         />
-                    ) : null}
+                        {item.reflectionQuestion ? (
+                            <HighlightedText
+                                text={item.reflectionQuestion}
+                                start={questionHL.start}
+                                length={questionHL.length}
+                                baseStyle={[styles.mlQuestion, { color: colors.secondaryText }]}
+                                highlightBg={highlightBg}
+                                numberOfLines={2}
+                            />
+                        ) : null}
+                    </TouchableOpacity>
 
                 </View>
             </View>
@@ -412,15 +403,7 @@ const styles = StyleSheet.create({
     },
     footerChapter: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
 
-    actionBtns: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-    },
     iconBtn: {
-        width: 28, height: 28, borderRadius: 14,
-        justifyContent: 'center', alignItems: 'center',
-        flexShrink: 0,
-    },
-    playBtn: {
         width: 28, height: 28, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
         flexShrink: 0,

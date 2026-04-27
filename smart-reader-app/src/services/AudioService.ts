@@ -17,9 +17,10 @@ export class AudioService {
   private static isSpeaking = false;
   private static voicesCache: Speech.Voice[] = [];
   private static wordTimer: any = null;
+  private static boundaryTimers: any[] = [];
   // Factor de calibración adaptativa: ajusta el timer según velocidad real de la voz
   // < 1.0 = acelerar timer (voz más rápida que estimado), > 1.0 = frenar timer
-  private static calibrationFactor = 0.95;
+  private static calibrationFactor = 1.0;
 
   private static async getVoices(_lang: string): Promise<Speech.Voice[]> {
     try {
@@ -99,156 +100,153 @@ export class AudioService {
         try {
           const synth = (typeof window !== 'undefined' && (window as any).speechSynthesis) as SpeechSynthesis | undefined;
           if (synth) {
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = lang;
-            // En web, pitch=1 (neutro) suena más natural que cualquier otro valor
-            utterance.rate = options.rate ?? 1.0;
-            utterance.pitch = 1.0;
+            const rate = options.rate ?? 1.0;
 
-            // Seleccionar la mejor voz web disponible con scoring
             const pickBestWebVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined => {
               const prefix = lang.split('-')[0].toLowerCase();
               const candidates = voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
               if (!candidates.length) return undefined;
-
               const scored = candidates.map(v => {
                 const name = v.name.toLowerCase();
                 let score = 0;
-                // Voces neurales/online de Google suenan mucho mejor
                 if (name.includes('google')) score += 40;
-                if (!v.localService) score += 20; // online = neural
+                if (!v.localService) score += 20;
                 if (name.includes('natural') || name.includes('neural') || name.includes('enhanced')) score += 25;
                 if (name.includes('microsoft') && (name.includes('online') || name.includes('natural'))) score += 30;
-                // Preferir el dialecto exacto
                 if (v.lang.toLowerCase() === lang.toLowerCase()) score += 10;
-                // Penalizar voces compactas o antiguas
-                if (name.includes('compact') || name.includes('premium') === false && name.includes('ivona')) score -= 10;
+                if (name.includes('compact')) score -= 10;
                 return { v, score };
               });
-
               scored.sort((a, b) => b.score - a.score);
               return scored[0].v;
             };
 
-            const applyVoice = () => {
-              const voices = synth.getVoices();
-              const best = pickBestWebVoice(voices);
-              if (best) {
-                utterance.voice = best;
-
+            // Split text into sentences keeping their exact start offset in cleanText
+            type Sentence = { text: string; offset: number };
+            const splitSentences = (text: string): Sentence[] => {
+              const result: Sentence[] = [];
+              const re = /[^.!?]*[.!?]+\s*/g;
+              let m: RegExpExecArray | null;
+              while ((m = re.exec(text)) !== null) {
+                const trimmed = m[0].trimEnd();
+                if (trimmed.length > 0) result.push({ text: trimmed, offset: m.index });
               }
+              const tail = text.slice(re.lastIndex).trim();
+              if (tail.length > 0) result.push({ text: tail, offset: re.lastIndex });
+              return result;
             };
-            applyVoice();
-            if (synth.getVoices().length === 0) {
-              synth.addEventListener('voiceschanged', applyVoice, { once: true } as any);
+
+            const sentences = splitSentences(cleanText);
+            if (sentences.length === 0) { options.onDone?.(); return; }
+
+            let bestVoice = pickBestWebVoice(synth.getVoices());
+            if (!bestVoice) {
+              synth.addEventListener('voiceschanged', () => {
+                bestVoice = pickBestWebVoice(synth.getVoices());
+              }, { once: true } as any);
             }
 
-            // Precalcular offsets de cada palabra para el timer-fallback
-            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
-            const charOffsets: number[] = [];
-            let scanPos = 0;
-            for (const word of words) {
-              const idx = cleanText.indexOf(word, scanPos);
-              charOffsets.push(idx >= 0 ? idx : scanPos);
-              scanPos = (idx >= 0 ? idx : scanPos) + word.length;
-            }
-            const rate = options.rate ?? 1.0;
-            // ms base por carácter — se multiplica por calibrationFactor cada vez
             const msPerChar = (72 / rate) * AudioService.calibrationFactor;
-            let usedRealEvents = false;
-            let estimatedTotalMs = 0;
-            let timerStartTime = 0;
+            const boundaryDelay = Math.round(110 / Math.max(0.5, rate));
+            // Explicit pause injected between sentences (ms) — this is what guarantees
+            // punctuation pauses regardless of voice behaviour
+            const sentencePauseMs = Math.round(420 / rate);
 
-            const startWordTimer = () => {
-              // Pre-calcular tiempo absoluto (desde inicio) de cada palabra
-              // Esto permite corregir drift: cada palabra se dispara en su tiempo exacto
-              // sin acumular el error de los setTimeout anteriores
-              const wordAbsMs: number[] = [];
-              let cumMs = 0;
-              for (let i = 0; i < words.length; i++) {
-                wordAbsMs.push(cumMs);
-                let ms = Math.max(60, words[i].length * msPerChar);
-                const tail = cleanText[charOffsets[i] + words[i].length];
-                if (/[.!?]/.test(tail))    ms += 600 / rate;
-                else if (/[;]/.test(tail))  ms += 420 / rate;
-                else if (/[,:]/.test(tail)) ms += 320 / rate;
-                cumMs += ms;
-              }
-              estimatedTotalMs = cumMs;
+            let sentIdx = 0;
 
-              let wordIdx = 0;
-              const startTime = Date.now();
-              timerStartTime = startTime;
-
-              const scheduleNext = () => {
-                if (usedRealEvents || wordIdx >= words.length) return;
-
-                // Disparar la palabra actual
-                options.onBoundary?.({ charIndex: charOffsets[wordIdx], charLength: words[wordIdx].length });
-                wordIdx++;
-                if (wordIdx >= words.length) return;
-
-                // Delay hasta la próxima palabra = tiempo absoluto esperado - tiempo ya transcurrido
-                // Esto corrige cualquier drift acumulado de setTimeout anteriores
-                const elapsed = Date.now() - startTime;
-                const delay = Math.max(10, wordAbsMs[wordIdx] - elapsed);
-                AudioService.wordTimer = setTimeout(scheduleNext, delay);
-              };
-
-              scheduleNext();
-            };
-
-            utterance.onstart = () => {
-              options.onStart?.();
-              if (options.onBoundary) startWordTimer();
-            };
-            utterance.onboundary = (event: SpeechSynthesisEvent) => {
-              if (event.name === 'word') {
-                if (!usedRealEvents) {
-                  usedRealEvents = true;
-                  clearTimeout(AudioService.wordTimer);
-                  AudioService.wordTimer = null;
-                }
-                options.onBoundary?.({
-                  charIndex: event.charIndex,
-                  charLength: (event as any).charLength ?? 0,
-                });
-              }
-            };
-            utterance.onend = () => {
-              clearTimeout(AudioService.wordTimer);
-              AudioService.wordTimer = null;
-              // Calibración adaptativa: ajustar factor para próxima vez
-              if (!usedRealEvents && estimatedTotalMs > 300 && timerStartTime > 0) {
-                const actualMs = Date.now() - timerStartTime;
-                // estimatedTotalMs / calibrationFactor = lo que hubiera sido con factor=1.0
-                const baseEstimate = estimatedTotalMs / AudioService.calibrationFactor;
-                if (baseEstimate > 0) {
-                  const newFactor = actualMs / baseEstimate;
-                  // Media móvil exponencial: 20% nuevo, 80% anterior (convergencia suave)
-                  AudioService.calibrationFactor = 0.80 * AudioService.calibrationFactor + 0.20 * newFactor;
-                  AudioService.calibrationFactor = Math.max(0.5, Math.min(1.6, AudioService.calibrationFactor));
-
-                }
-              }
-              this.isSpeaking = false;
-              options.onDone?.();
-            };
-            utterance.onerror = (e: any) => {
-              clearInterval(AudioService.wordTimer);
-              AudioService.wordTimer = null;
-              if (e.error === 'interrupted' || e.error === 'canceled') {
+            const speakSentence = () => {
+              if (sentIdx >= sentences.length) {
                 this.isSpeaking = false;
-  
+                options.onDone?.();
                 return;
               }
-              this.isSpeaking = false;
 
-              options.onError?.(e);
+              const { text: sentText, offset: sentOffset } = sentences[sentIdx];
+              const utt = new SpeechSynthesisUtterance(sentText);
+              utt.lang = lang;
+              utt.rate = rate;
+              utt.pitch = 1.0;
+              if (bestVoice) utt.voice = bestVoice;
+
+              // Word-timer fallback (for voices that don't fire onboundary)
+              const sentWords = sentText.split(/\s+/).filter(w => w.length > 0);
+              const sentOffsets: number[] = [];
+              let sp = 0;
+              for (const w of sentWords) {
+                const idx = sentText.indexOf(w, sp);
+                sentOffsets.push(idx >= 0 ? idx : sp);
+                sp = (idx >= 0 ? idx : sp) + w.length;
+              }
+              let usedRealEvents = false;
+
+              const startSentenceTimer = () => {
+                const wordAbsMs: number[] = [];
+                let cumMs = 0;
+                for (let i = 0; i < sentWords.length; i++) {
+                  wordAbsMs.push(cumMs);
+                  let ms = Math.max(60, sentWords[i].length * msPerChar);
+                  const tail = sentWords[i][sentWords[i].length - 1];
+                  if (/[.!?]/.test(tail))    ms += 650 / rate;
+                  else if (/[;]/.test(tail))  ms += 450 / rate;
+                  else if (/[,:]/.test(tail)) ms += 300 / rate;
+                  cumMs += ms;
+                }
+                let wIdx = 0;
+                const startTime = Date.now();
+                const scheduleNext = () => {
+                  if (usedRealEvents || wIdx >= sentWords.length) return;
+                  options.onBoundary?.({ charIndex: sentOffset + sentOffsets[wIdx], charLength: sentWords[wIdx].length });
+                  wIdx++;
+                  if (wIdx >= sentWords.length) return;
+                  const elapsed = Date.now() - startTime;
+                  AudioService.wordTimer = setTimeout(scheduleNext, Math.max(10, wordAbsMs[wIdx] - elapsed));
+                };
+                scheduleNext();
+              };
+
+              utt.onstart = () => {
+                if (sentIdx === 0) options.onStart?.();
+                if (options.onBoundary) startSentenceTimer();
+              };
+
+              utt.onboundary = (event: SpeechSynthesisEvent) => {
+                if (event.name === 'word') {
+                  if (!usedRealEvents) {
+                    usedRealEvents = true;
+                    clearTimeout(AudioService.wordTimer);
+                    AudioService.wordTimer = null;
+                  }
+                  const ci = sentOffset + event.charIndex;
+                  const cl = (event as any).charLength ?? 0;
+                  const t = setTimeout(() => options.onBoundary?.({ charIndex: ci, charLength: cl }), boundaryDelay);
+                  AudioService.boundaryTimers.push(t);
+                }
+              };
+
+              utt.onend = () => {
+                clearTimeout(AudioService.wordTimer);
+                AudioService.wordTimer = null;
+                sentIdx++;
+                // Explicit pause before next sentence
+                AudioService.wordTimer = setTimeout(speakSentence, sentencePauseMs);
+              };
+
+              utt.onerror = (e: any) => {
+                clearTimeout(AudioService.wordTimer);
+                AudioService.wordTimer = null;
+                if (e.error === 'interrupted' || e.error === 'canceled') {
+                  this.isSpeaking = false;
+                  return;
+                }
+                this.isSpeaking = false;
+                options.onError?.(e);
+              };
+
+              synth.speak(utt);
             };
 
             synth.cancel();
-            synth.speak(utterance);
+            speakSentence();
             return;
           }
         } catch (webErr) {
@@ -287,6 +285,8 @@ export class AudioService {
   static stop() {
     this.isSpeaking = false;
     if (this.wordTimer) { clearTimeout(this.wordTimer); this.wordTimer = null; }
+    this.boundaryTimers.forEach(t => clearTimeout(t));
+    this.boundaryTimers = [];
     try {
       if (typeof window !== 'undefined' && (window as any).speechSynthesis) {
         (window as any).speechSynthesis.cancel();
