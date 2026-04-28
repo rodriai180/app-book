@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import HighlightedText from './HighlightedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     MessageSquare, Brain, Briefcase, Star, Building2,
@@ -148,12 +149,18 @@ interface GeneratedCoverProps {
     author?: string;
     chapterNumber?: number;
     tags?: string[];
+    content?: string;
+    reflectionQuestion?: string;
+    titleHighlight?: { start: number; length: number };
+    contentHighlight?: { start: number; length: number };
+    questionHighlight?: { start: number; length: number };
     hideTags?: boolean;
     hideText?: boolean;
     width?: number | string;
     height?: number;
     style?: ViewStyle;
     large?: boolean;
+    grow?: boolean;
 }
 
 // ─── Decoraciones geométricas de fondo ───────────────────────────────────────
@@ -206,12 +213,18 @@ export default function GeneratedCover({
     author,
     chapterNumber,
     tags = [],
+    content,
+    reflectionQuestion,
+    titleHighlight,
+    contentHighlight,
+    questionHighlight,
     hideTags = false,
     hideText = false,
     width = '100%',
     height,
     style,
     large = false,
+    grow = false,
 }: GeneratedCoverProps) {
     const resolvedHeight = height ?? (type === 'chapter' ? 200 : type === 'book' ? 280 : 150);
     const gradient      = getGradient(category);
@@ -224,9 +237,11 @@ export default function GeneratedCover({
     const iconShape     = seed % 3;
 
     const hasAspectRatio = style && 'aspectRatio' in style;
+    const hasFlex = style && ('flex' in style || 'flexGrow' in style);
+    const needsFixedHeight = !grow && !hasAspectRatio && !hasFlex;
     const containerStyle = [
         styles.container,
-        { width: width as any, ...(hasAspectRatio ? {} : { height: resolvedHeight }) },
+        { width: width as any, ...(needsFixedHeight ? { height: resolvedHeight } : {}) },
         style ?? {},
     ];
 
@@ -250,7 +265,11 @@ export default function GeneratedCover({
                 <Text style={styles.bgLetter} numberOfLines={1}>{bgLetter}</Text>
 
                 {/* 3. Icono + glow centrados */}
-                <View style={styles.mlContent}>
+                <View style={[
+                    styles.mlContent,
+                    content ? { justifyContent: 'flex-start' } : null,
+                    grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
+                ]}>
                     <View style={styles.iconWrapper}>
                         <View style={styles.iconGlow} />
                         <View style={[
@@ -274,26 +293,36 @@ export default function GeneratedCover({
 
                     {/* Título */}
                     {showText && (
-                        <Text style={styles.mlTitle} numberOfLines={2}>{title}</Text>
+                        <HighlightedText
+                            text={title}
+                            start={titleHighlight?.start ?? -1}
+                            length={titleHighlight?.length ?? 0}
+                            baseStyle={styles.mlTitle}
+                            highlightBg="rgba(255,255,255,0.35)"
+                            numberOfLines={2}
+                        />
                     )}
 
-                    {/* Tags */}
-                    {showText && visibleTags.length > 0 && (
-                        <>
-                            {/* 6. Separador sutil */}
-                            <View style={styles.separator} />
-
-                            <View style={styles.tagsRow}>
-                                {visibleTags.map((tag, i) => (
-                                    <View key={i} style={styles.tagChip}>
-                                        {/* 7. Punto de color antes del texto */}
-                                        <View style={styles.tagDot} />
-                                        <Text style={styles.tagText} numberOfLines={1}>{tag}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        </>
+                    {/* Contenido y pregunta de reflexión */}
+                    {showText && content && (
+                        <HighlightedText
+                            text={content}
+                            start={contentHighlight?.start ?? -1}
+                            length={contentHighlight?.length ?? 0}
+                            baseStyle={styles.mlBodyText}
+                            highlightBg="rgba(255,255,255,0.35)"
+                        />
                     )}
+                    {showText && reflectionQuestion && (
+                        <HighlightedText
+                            text={reflectionQuestion}
+                            start={questionHighlight?.start ?? -1}
+                            length={questionHighlight?.length ?? 0}
+                            baseStyle={styles.mlReflectionText}
+                            highlightBg="rgba(255,255,255,0.35)"
+                        />
+                    )}
+
                 </View>
             </LinearGradient>
         );
@@ -514,13 +543,34 @@ const styles = StyleSheet.create({
         textShadowRadius: 5,
     },
 
-    // Línea separadora entre título y tags
+    mlBodyText: {
+        fontSize: 12,
+        fontWeight: '400',
+        color: 'rgba(255,255,255,0.88)',
+        lineHeight: 18,
+        textAlign: 'center',
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+
+    mlReflectionText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.65)',
+        lineHeight: 16,
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+
+    // Línea separadora entre contenido y tags
     separator: {
         width: 40,
         height: 1,
         backgroundColor: 'rgba(255,255,255,0.25)',
         borderRadius: 1,
-        marginVertical: -2,
+        marginTop: 10,
+        marginBottom: -2,
     },
 
     tagsRow: {

@@ -55,6 +55,7 @@ function RootNavigator() {
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="microlearning-detail" options={{ headerShown: false }} />
         </Stack>
     );
 
