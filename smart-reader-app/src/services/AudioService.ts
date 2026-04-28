@@ -11,6 +11,7 @@ export interface SpeechOptions {
   onStopped?: () => void;
   onError?: (error: any) => void;
   onBoundary?: (event: { charIndex: number; charLength: number }) => void;
+  sentencePause?: number;
 }
 
 export class AudioService {
@@ -150,14 +151,20 @@ export class AudioService {
             const boundaryDelay = Math.round(110 / Math.max(0.5, rate));
             // Explicit pause injected between sentences (ms) — this is what guarantees
             // punctuation pauses regardless of voice behaviour
-            const sentencePauseMs = Math.round(420 / rate);
+            const sentencePauseMs = options.sentencePause !== undefined
+              ? options.sentencePause
+              : Math.round(420 / rate);
 
             let sentIdx = 0;
+            let doneFired = false;  // guard against Chrome firing onend twice
 
             const speakSentence = () => {
               if (sentIdx >= sentences.length) {
-                this.isSpeaking = false;
-                options.onDone?.();
+                if (!doneFired) {
+                  doneFired = true;
+                  this.isSpeaking = false;
+                  options.onDone?.();
+                }
                 return;
               }
 
@@ -223,7 +230,10 @@ export class AudioService {
                 }
               };
 
+              let endFired = false;  // guard: Chrome sometimes fires onend twice per utterance
               utt.onend = () => {
+                if (endFired) return;
+                endFired = true;
                 clearTimeout(AudioService.wordTimer);
                 AudioService.wordTimer = null;
                 sentIdx++;
@@ -245,8 +255,14 @@ export class AudioService {
               synth.speak(utt);
             };
 
-            synth.cancel();
-            speakSentence();
+            // Only cancel if something is actually playing — calling cancel() on an
+            // idle synth triggers a Chrome bug that speaks the next utterance twice.
+            if (synth.speaking || synth.pending) {
+              synth.cancel();
+              setTimeout(() => speakSentence(), 50);
+            } else {
+              speakSentence();
+            }
             return;
           }
         } catch (webErr) {

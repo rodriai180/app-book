@@ -156,6 +156,8 @@ interface GeneratedCoverProps {
     questionHighlight?: { start: number; length: number };
     hideTags?: boolean;
     hideText?: boolean;
+    topAligned?: boolean;
+    topAlignedPadding?: number;
     width?: number | string;
     height?: number;
     style?: ViewStyle;
@@ -220,6 +222,8 @@ export default function GeneratedCover({
     questionHighlight,
     hideTags = false,
     hideText = false,
+    topAligned = false,
+    topAlignedPadding,
     width = '100%',
     height,
     style,
@@ -267,7 +271,8 @@ export default function GeneratedCover({
                 {/* 3. Icono + glow centrados */}
                 <View style={[
                     styles.mlContent,
-                    content ? { justifyContent: 'flex-start' } : null,
+                    (topAligned || content) ? { justifyContent: 'flex-start' } : null,
+                    topAligned ? { paddingTop: topAlignedPadding ?? 48 } : null,
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
                     <View style={styles.iconWrapper}>
