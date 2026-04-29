@@ -36,9 +36,10 @@ export default function SummariesScreen() {
     const { preferredCategories } = useSettings();
     const { user } = useAuth();
     const router = useRouter();
-    const { width } = useWindowDimensions();
+    const { width: winWidth } = useWindowDimensions();
+    const [containerWidth, setContainerWidth] = useState(winWidth);
 
-    const cellSize = (width - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+    const cellSize = (containerWidth - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
     const [items, setItems] = useState<MicrolearningData[]>([]);
     const [savedMlIds, setSavedMlIds] = useState<Set<string>>(new Set());
@@ -181,7 +182,11 @@ export default function SummariesScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['bottom']}>
+        <SafeAreaView
+            style={[styles.root, { backgroundColor: colors.background }]}
+            edges={['bottom']}
+            onLayout={e => setContainerWidth(e.nativeEvent.layout.width)}
+        >
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />

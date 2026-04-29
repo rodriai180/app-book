@@ -405,14 +405,14 @@ const styles = StyleSheet.create({
 
     // Cards
     card: {
-        borderRadius: 16, padding: 16, gap: 8,
+        borderRadius: 16, padding: 12, gap: 4,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
-    bodyText: { fontSize: 14, lineHeight: 22 },
+    bodyText: { fontSize: 12, lineHeight: 20 },
     readMore: { fontSize: 13, fontWeight: '600', marginTop: 2 },
 
     // Audio btn

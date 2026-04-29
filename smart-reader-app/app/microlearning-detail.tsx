@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, FlatList,
-    useWindowDimensions, Animated, Platform,
+    useWindowDimensions, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,31 +16,6 @@ import GeneratedCover from '../src/components/GeneratedCover';
 import { getFeed } from '../src/services/microlearningStore';
 import { MicrolearningData } from '../src/models/BookModels';
 
-function chunkText(text: string, maxChars: number, out: string[]) {
-    if (text.length <= maxChars) { out.push(text); return; }
-    let start = 0;
-    while (start < text.length) {
-        const end = start + maxChars;
-        if (end >= text.length) { out.push(text.slice(start).trim()); break; }
-        const breakAt = text.lastIndexOf(' ', end);
-        const cut = breakAt > start ? breakAt : end;
-        out.push(text.slice(start, cut).trim());
-        start = cut + 1;
-    }
-}
-
-function splitPhrases(text: string, maxChars: number): string[] {
-    const re = /[^.!?\n]+[.!?\n]+/g;
-    const result: string[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
-        const s = m[0].trim();
-        if (s) chunkText(s, maxChars, result);
-    }
-    const tail = text.slice(re.lastIndex).trim();
-    if (tail) chunkText(tail, maxChars, result);
-    return result;
-}
 
 function speakOne(
     text: string,
@@ -90,7 +65,8 @@ function speakOne(
                 offsets.push(idx >= 0 ? idx : sp);
                 sp = (idx >= 0 ? idx : sp) + w.length;
             }
-            const msPerChar = 72 / rate;
+            const msPerChar = 58 / rate;
+            const LEAD_MS = 100;
 
             utt.onstart = () => {
                 const wordMs: number[] = [];
@@ -111,7 +87,7 @@ function speakOne(
                     wIdx++;
                     if (wIdx >= words.length) return;
                     const elapsed = Date.now() - startTime;
-                    wordTimer = setTimeout(schedule, Math.max(10, wordMs[wIdx] - elapsed));
+                    wordTimer = setTimeout(schedule, Math.max(10, wordMs[wIdx] - elapsed - LEAD_MS));
                 };
                 schedule();
             };
@@ -149,19 +125,19 @@ export default function MicrolearningDetailScreen() {
     const router = useRouter();
     const { settings } = useSettings();
     const { user } = useAuth();
-    const { width, height } = useWindowDimensions();
+    const { width: winWidth, height: winHeight } = useWindowDimensions();
+    const [containerSize, setContainerSize] = useState({ width: winWidth, height: winHeight });
+    const { width, height } = containerSize;
 
     const { items, startIndex } = getFeed();
 
     const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
     const [playingId, setPlayingId] = useState<string | null>(null);
-    const [currentPhrase, setCurrentPhrase] = useState<string | null>(null);
     const [highlightRange, setHighlightRange] = useState<{ start: number; length: number } | null>(null);
 
     const playingIdRef = useRef<string | null>(null);
     const tokenRef = useRef<{ active: boolean }>({ active: false });
     const cancelSpeakRef = useRef<(() => void) | null>(null);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
     const listRef = useRef<FlatList>(null);
 
     // Layout dinámico
@@ -175,20 +151,13 @@ export default function MicrolearningDetailScreen() {
 
     const topAlignedPadding = HEADER_CLEARANCE;
     const phraseTop = HEADER_CLEARANCE + ICON_H + TITLE_H + GAP;
-    const reflectionBottom = FOOTER_CLEARANCE + GAP;
-    const phraseBottom = reflectionBottom + REFLECTION_H + GAP;
-    const phraseMaxHeight = height - phraseTop - phraseBottom;
-    const phraseMaxLines = Math.max(3, Math.floor(phraseMaxHeight / PHRASE_LINE_H));
-    const dynamicMaxChars = Math.max(80, phraseMaxLines * Math.floor((width - 56) / 10));
 
     const stopTTS = () => {
         tokenRef.current.active = false;
         if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
         playingIdRef.current = null;
         setPlayingId(null);
-        setCurrentPhrase(null);
         setHighlightRange(null);
-        fadeAnim.setValue(0);
     };
 
     useEffect(() => {
@@ -200,44 +169,6 @@ export default function MicrolearningDetailScreen() {
         return () => stopTTS();
     }, []);
 
-    const speakPhrase = (
-        item: MicrolearningData,
-        phrases: string[],
-        index: number,
-        token: { active: boolean },
-        rate: number,
-        lang: string,
-    ) => {
-        if (!token.active) return;
-
-        const isContent = index < phrases.length;
-        const isQuestion = index === phrases.length && !!item.reflectionQuestion;
-
-        if (!isContent && !isQuestion) {
-            Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
-                if (!token.active) return;
-                playingIdRef.current = null;
-                setPlayingId(null);
-                setCurrentPhrase(null);
-            });
-            return;
-        }
-
-        const text = isContent ? phrases[index] : item.reflectionQuestion!;
-
-        Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
-            if (!token.active) return;
-            setCurrentPhrase(text);
-            setHighlightRange(null);
-            Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-            cancelSpeakRef.current = speakOne(text, rate, lang, () => {
-                speakPhrase(item, phrases, index + 1, token, rate, lang);
-            }, (charIndex, charLength) => {
-                setHighlightRange({ start: charIndex, length: charLength });
-            });
-        });
-    };
-
     const handlePlay = (item: MicrolearningData) => {
         if (playingIdRef.current === item.id) { stopTTS(); return; }
         stopTTS();
@@ -245,8 +176,34 @@ export default function MicrolearningDetailScreen() {
         tokenRef.current = token;
         playingIdRef.current = item.id!;
         setPlayingId(item.id!);
-        const phrases = splitPhrases(item.content ?? '', dynamicMaxChars);
-        speakPhrase(item, phrases, 0, token, settings.rate, settings.language);
+        setHighlightRange(null);
+
+        const speakContent = () => {
+            cancelSpeakRef.current = speakOne(
+                item.content ?? '',
+                settings.rate,
+                settings.language,
+                () => {
+                    if (!token.active) return;
+                    setHighlightRange(null);
+                    if (item.reflectionQuestion) {
+                        cancelSpeakRef.current = speakOne(
+                            item.reflectionQuestion,
+                            settings.rate,
+                            settings.language,
+                            () => { if (token.active) { playingIdRef.current = null; setPlayingId(null); } },
+                        );
+                    } else {
+                        playingIdRef.current = null;
+                        setPlayingId(null);
+                    }
+                },
+                (charIndex, charLength) => {
+                    if (token.active) setHighlightRange({ start: charIndex, length: charLength });
+                },
+            );
+        };
+        speakContent();
     };
 
     const toggleSave = async (mlId: string) => {
@@ -274,9 +231,18 @@ export default function MicrolearningDetailScreen() {
         const isPlaying = playingId === item.id;
         const isSaved = savedIds.has(item.id!);
 
+        const content = item.content ?? '';
         const charsPerLine = Math.floor((width - 56) / 10);
-        const contentLines = Math.ceil((item.content ?? '').length / charsPerLine);
-        const phraseAreaH = Math.min(phraseMaxHeight, Math.max(PHRASE_LINE_H * 3, contentLines * PHRASE_LINE_H));
+        const contentLines = Math.ceil(content.length / charsPerLine);
+        const neededH = Math.max(PHRASE_LINE_H * 3, contentLines * PHRASE_LINE_H);
+
+        const reflectionReserve = item.reflectionQuestion ? REFLECTION_H + GAP : 0;
+        const itemPhraseBottom = FOOTER_CLEARANCE + GAP + reflectionReserve;
+        const availableH = height - phraseTop - itemPhraseBottom;
+
+        const fits = neededH <= availableH;
+        const phraseAreaH = fits ? neededH : availableH;
+        const displayLines = fits ? 0 : Math.max(3, Math.floor(availableH / PHRASE_LINE_H));
         const reflectionTop = phraseTop + phraseAreaH + GAP;
 
         return (
@@ -292,22 +258,20 @@ export default function MicrolearningDetailScreen() {
                         style={{ flex: 1 }}
                     />
 
-                    <Animated.View style={[styles.phraseOverlay, { top: phraseTop, height: phraseAreaH, opacity: isPlaying ? fadeAnim : 0 }]}>
-                        {currentPhrase !== null && (
-                            <Text style={styles.phraseText} numberOfLines={phraseMaxLines}>
-                                {isPlaying && highlightRange && highlightRange.start >= 0
-                                    ? <>
-                                        {currentPhrase.slice(0, highlightRange.start)}
-                                        <Text style={styles.highlightWord}>
-                                            {currentPhrase.slice(highlightRange.start, highlightRange.start + highlightRange.length)}
-                                        </Text>
-                                        {currentPhrase.slice(highlightRange.start + highlightRange.length)}
-                                    </>
-                                    : currentPhrase
-                                }
-                            </Text>
-                        )}
-                    </Animated.View>
+                    <View style={[styles.phraseOverlay, { top: phraseTop, height: phraseAreaH }]}>
+                        <Text style={styles.phraseText} numberOfLines={displayLines || undefined} ellipsizeMode={displayLines ? 'tail' : undefined}>
+                            {isPlaying && highlightRange && highlightRange.start >= 0
+                                ? <>
+                                    {content.slice(0, highlightRange.start)}
+                                    <Text style={styles.highlightWord}>
+                                        {content.slice(highlightRange.start, highlightRange.start + highlightRange.length)}
+                                    </Text>
+                                    {content.slice(highlightRange.start + highlightRange.length)}
+                                </>
+                                : content
+                            }
+                        </Text>
+                    </View>
 
                     {item.reflectionQuestion ? (
                         <View style={[styles.reflectionOverlay, { top: reflectionTop }]} pointerEvents="none">
@@ -347,13 +311,20 @@ export default function MicrolearningDetailScreen() {
     if (items.length === 0) return null;
 
     return (
-        <SafeAreaView style={styles.root} edges={['bottom']}>
+        <SafeAreaView
+            style={styles.root}
+            edges={['bottom']}
+            onLayout={e => setContainerSize({
+                width: e.nativeEvent.layout.width,
+                height: e.nativeEvent.layout.height,
+            })}
+        >
             <FlatList
                 ref={listRef}
                 data={items}
                 keyExtractor={item => item.id ?? `${item.bookId}-${item.order}`}
                 renderItem={renderItem}
-                extraData={{ playingId, currentPhrase, savedIds }}
+                extraData={{ playingId, highlightRange, savedIds }}
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
                 initialScrollIndex={startIndex}
@@ -392,10 +363,8 @@ const styles = StyleSheet.create({
     },
     highlightWord: {
         color: '#FFFFFF',
-        fontWeight: '800',
-        textShadowColor: 'rgba(0,0,0,0.4)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.22)',
+        borderRadius: 4,
     },
 
     reflectionOverlay: {
