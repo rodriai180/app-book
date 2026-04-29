@@ -16,16 +16,32 @@ import GeneratedCover from '../src/components/GeneratedCover';
 import { getFeed } from '../src/services/microlearningStore';
 import { MicrolearningData } from '../src/models/BookModels';
 
+const MAX_PHRASE_CHARS = 120;
+
+function chunkText(text: string, out: string[]) {
+    if (text.length <= MAX_PHRASE_CHARS) { out.push(text); return; }
+    let start = 0;
+    while (start < text.length) {
+        const end = start + MAX_PHRASE_CHARS;
+        if (end >= text.length) { out.push(text.slice(start).trim()); break; }
+        const breakAt = text.lastIndexOf(' ', end);
+        const cut = breakAt > start ? breakAt : end;
+        out.push(text.slice(start, cut).trim());
+        start = cut + 1;
+    }
+}
+
 function splitPhrases(text: string): string[] {
-    const re = /[^.!?]+[.!?]+\s*/g;
+    // Split on sentence endings AND newlines, then chunk long segments
+    const re = /[^.!?\n]+[.!?\n]+/g;
     const result: string[] = [];
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) !== null) {
         const s = m[0].trim();
-        if (s) result.push(s);
+        if (s) chunkText(s, result);
     }
     const tail = text.slice(re.lastIndex).trim();
-    if (tail) result.push(tail);
+    if (tail) chunkText(tail, result);
     return result;
 }
 
@@ -196,7 +212,7 @@ export default function MicrolearningDetailScreen() {
     const GAP = 16;
 
     const groupHeight = ICON_H + TITLE_H + PHRASE_H + REFLECTION_H + GAP * 3;
-    const groupTop = Math.max(32, (height - groupHeight) / 2);
+    const groupTop = Math.max(32, (height - groupHeight) / 2 - 60);
     const phraseTop = groupTop + ICON_H + TITLE_H + GAP;
     const reflectionTop = phraseTop + PHRASE_H + GAP;
 
@@ -219,7 +235,7 @@ export default function MicrolearningDetailScreen() {
 
                     <Animated.View style={[styles.phraseOverlay, { top: phraseTop, opacity: isPlaying ? fadeAnim : 0 }]}>
                         {currentPhrase !== null && (
-                            <Text style={styles.phraseText}>{currentPhrase}</Text>
+                            <Text style={styles.phraseText} numberOfLines={3}>{currentPhrase}</Text>
                         )}
                     </Animated.View>
 
@@ -343,6 +359,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center', alignItems: 'center', flexShrink: 0,
     },
 
+    topBar: {
+        position: 'absolute',
+        top: 14,
+        left: 14,
+        right: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     backBtn: {
         position: 'absolute',
         top: 14,
@@ -353,5 +378,18 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.45)',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    bookTitleBtn: {
+        flex: 1,
+        height: 36,
+        justifyContent: 'center',
+    },
+    bookTitleText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.9)',
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
 });
