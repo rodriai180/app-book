@@ -13,7 +13,7 @@ import {
     saveMicrolearning, unsaveMicrolearning, getSavedMicrolearnings,
 } from '../src/services/bookContentService';
 import GeneratedCover from '../src/components/GeneratedCover';
-import { getFeed } from '../src/services/microlearningStore';
+import { getFeed, updateFeedIndex } from '../src/services/microlearningStore';
 import { MicrolearningData } from '../src/models/BookModels';
 
 
@@ -136,9 +136,16 @@ export default function MicrolearningDetailScreen() {
     const [highlightRange, setHighlightRange] = useState<{ start: number; length: number } | null>(null);
 
     const playingIdRef = useRef<string | null>(null);
+    const pausedItemIdRef = useRef<string | null>(null);
     const tokenRef = useRef<{ active: boolean }>({ active: false });
     const cancelSpeakRef = useRef<(() => void) | null>(null);
     const listRef = useRef<FlatList>(null);
+    const [progressWidth, setProgressWidth] = useState(0);
+    const contentLengthRef = useRef(1);
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems.length > 0) updateFeedIndex(viewableItems[0].index ?? 0);
+    }).current;
+    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
     // Layout dinámico
     const HEADER_CLEARANCE = 70;
@@ -152,7 +159,9 @@ export default function MicrolearningDetailScreen() {
     const topAlignedPadding = HEADER_CLEARANCE;
     const phraseTop = HEADER_CLEARANCE + ICON_H + TITLE_H + GAP;
 
-    const stopTTS = () => {
+    const stopTTS = (clearPause = false) => {
+        if (playingIdRef.current) pausedItemIdRef.current = playingIdRef.current;
+        if (clearPause) { pausedItemIdRef.current = null; setProgressWidth(0); }
         tokenRef.current.active = false;
         if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
         playingIdRef.current = null;
@@ -169,41 +178,97 @@ export default function MicrolearningDetailScreen() {
         return () => stopTTS();
     }, []);
 
+    useEffect(() => {
+        if (highlightRange) {
+            setProgressWidth((highlightRange.start / contentLengthRef.current) * width);
+        }
+    }, [highlightRange, width]);
+
+    const getFullText = (item: MicrolearningData) => {
+        const parts: string[] = [];
+        if (item.title) parts.push(item.title);
+        if (item.content) parts.push(item.content);
+        if (item.reflectionQuestion) parts.push(item.reflectionQuestion);
+        return parts.join('\n\n');
+    };
+
+    const seekTo = (fraction: number, item: MicrolearningData) => {
+        if (!playingIdRef.current) return;
+        const fullText = getFullText(item);
+        const charPos = Math.floor(Math.max(0, Math.min(0.99, fraction)) * fullText.length);
+        if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
+        setProgressWidth(fraction * width);
+        setHighlightRange(null);
+        const token = tokenRef.current;
+        cancelSpeakRef.current = speakOne(
+            fullText.slice(charPos),
+            settings.rate,
+            settings.language,
+            () => {
+                if (!token.active) return;
+                playingIdRef.current = null;
+                setPlayingId(null);
+                setHighlightRange(null);
+                setProgressWidth(0);
+            },
+            (charIndex, charLength) => {
+                if (token.active) setHighlightRange({ start: charPos + charIndex, length: charLength });
+            },
+        );
+    };
+
     const handlePlay = (item: MicrolearningData) => {
         if (playingIdRef.current === item.id) { stopTTS(); return; }
-        stopTTS();
+
+        const isPaused = pausedItemIdRef.current === item.id && progressWidth > 0;
+        pausedItemIdRef.current = null;
+
+        tokenRef.current.active = false;
+        if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
+
         const token = { active: true };
         tokenRef.current = token;
         playingIdRef.current = item.id!;
         setPlayingId(item.id!);
         setHighlightRange(null);
 
-        const speakContent = () => {
+        const fullText = getFullText(item);
+
+        if (isPaused) {
+            const charPos = Math.round((progressWidth / width) * contentLengthRef.current);
             cancelSpeakRef.current = speakOne(
-                item.content ?? '',
+                fullText.slice(charPos),
                 settings.rate,
                 settings.language,
                 () => {
                     if (!token.active) return;
+                    playingIdRef.current = null;
+                    setPlayingId(null);
                     setHighlightRange(null);
-                    if (item.reflectionQuestion) {
-                        cancelSpeakRef.current = speakOne(
-                            item.reflectionQuestion,
-                            settings.rate,
-                            settings.language,
-                            () => { if (token.active) { playingIdRef.current = null; setPlayingId(null); } },
-                        );
-                    } else {
-                        playingIdRef.current = null;
-                        setPlayingId(null);
-                    }
+                    setProgressWidth(0);
+                },
+                (charIndex, charLength) => {
+                    if (token.active) setHighlightRange({ start: charPos + charIndex, length: charLength });
+                },
+            );
+        } else {
+            contentLengthRef.current = fullText.length || 1;
+            setProgressWidth(0);
+            cancelSpeakRef.current = speakOne(
+                fullText,
+                settings.rate,
+                settings.language,
+                () => {
+                    if (!token.active) return;
+                    playingIdRef.current = null;
+                    setPlayingId(null);
+                    setHighlightRange(null);
                 },
                 (charIndex, charLength) => {
                     if (token.active) setHighlightRange({ start: charIndex, length: charLength });
                 },
             );
-        };
-        speakContent();
+        }
     };
 
     const toggleSave = async (mlId: string) => {
@@ -245,6 +310,25 @@ export default function MicrolearningDetailScreen() {
         const displayLines = fits ? 0 : Math.max(3, Math.floor(availableH / PHRASE_LINE_H));
         const reflectionTop = phraseTop + phraseAreaH + GAP;
 
+        // highlight offsets within fullText: title + '\n\n' + content + '\n\n' + reflection
+        const contentStart = item.title ? item.title.length + 2 : 0;
+        const reflectionStart = contentStart + content.length + (item.reflectionQuestion ? 2 : 0);
+
+        const relativeHighlight =
+            isPlaying && highlightRange &&
+            highlightRange.start >= contentStart &&
+            highlightRange.start < contentStart + content.length
+                ? { start: highlightRange.start - contentStart, length: highlightRange.length }
+                : null;
+
+        const reflection = item.reflectionQuestion ?? '';
+        const relativeReflectionHighlight =
+            isPlaying && highlightRange && reflection.length > 0 &&
+            highlightRange.start >= reflectionStart &&
+            highlightRange.start < reflectionStart + reflection.length
+                ? { start: highlightRange.start - reflectionStart, length: highlightRange.length }
+                : null;
+
         return (
             <View style={{ width, height }}>
                 <TouchableOpacity onPress={() => handlePlay(item)} activeOpacity={0.9} style={{ flex: 1 }}>
@@ -260,29 +344,50 @@ export default function MicrolearningDetailScreen() {
 
                     <View style={[styles.phraseOverlay, { top: phraseTop, height: phraseAreaH }]}>
                         <Text style={styles.phraseText} numberOfLines={displayLines || undefined} ellipsizeMode={displayLines ? 'tail' : undefined}>
-                            {isPlaying && highlightRange && highlightRange.start >= 0
+                            {relativeHighlight
                                 ? <>
-                                    {content.slice(0, highlightRange.start)}
+                                    {content.slice(0, relativeHighlight.start)}
                                     <Text style={styles.highlightWord}>
-                                        {content.slice(highlightRange.start, highlightRange.start + highlightRange.length)}
+                                        {content.slice(relativeHighlight.start, relativeHighlight.start + relativeHighlight.length)}
                                     </Text>
-                                    {content.slice(highlightRange.start + highlightRange.length)}
+                                    {content.slice(relativeHighlight.start + relativeHighlight.length)}
                                 </>
                                 : content
                             }
                         </Text>
                     </View>
 
-                    {item.reflectionQuestion ? (
+                    {reflection ? (
                         <View style={[styles.reflectionOverlay, { top: reflectionTop }]} pointerEvents="none">
                             <Text style={styles.reflectionText} numberOfLines={3}>
-                                {item.reflectionQuestion}
+                                {relativeReflectionHighlight
+                                    ? <>
+                                        {reflection.slice(0, relativeReflectionHighlight.start)}
+                                        <Text style={styles.highlightWord}>
+                                            {reflection.slice(relativeReflectionHighlight.start, relativeReflectionHighlight.start + relativeReflectionHighlight.length)}
+                                        </Text>
+                                        {reflection.slice(relativeReflectionHighlight.start + relativeReflectionHighlight.length)}
+                                    </>
+                                    : reflection
+                                }
                             </Text>
                         </View>
                     ) : null}
                 </TouchableOpacity>
 
-                <View style={styles.footer} pointerEvents="box-none">
+                <View style={styles.footer} pointerEvents="box-none" >
+                    {progressWidth > 0 && (
+                        <View
+                            style={[styles.progressContainer, { opacity: isPlaying ? 1 : 0.5 }]}
+                            onStartShouldSetResponder={() => true}
+                            onResponderGrant={e => seekTo(e.nativeEvent.locationX / width, item)}
+                        >
+                            <View style={styles.progressTrack} />
+                            <View style={{ position: 'absolute', top: 0, left: 0, height: 4, borderRadius: 2, width: progressWidth, backgroundColor: '#FFFFFF' }}>
+                                <View style={styles.progressDot} />
+                            </View>
+                        </View>
+                    )}
                     <TouchableOpacity
                         style={styles.chapterLink}
                         onPress={() => router.push({
@@ -329,7 +434,9 @@ export default function MicrolearningDetailScreen() {
                 showsVerticalScrollIndicator={false}
                 initialScrollIndex={startIndex}
                 getItemLayout={(_data, index) => ({ length: height, offset: height * index, index })}
-                onMomentumScrollBegin={stopTTS}
+                onMomentumScrollBegin={() => stopTTS(true)}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
                 removeClippedSubviews
             />
 
@@ -371,7 +478,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 28,
         right: 28,
-        // top se inyecta dinámicamente
     },
     reflectionText: {
         fontSize: 13,
@@ -383,6 +489,47 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0,0,0,0.4)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
+    },
+
+    progressContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+    },
+    progressTrack: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 2,
+    },
+    progressFill: {
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    progressDot: {
+        position: 'absolute',
+        right: -4,
+        top: -2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 6,
+        elevation: 4,
     },
 
     footer: {
