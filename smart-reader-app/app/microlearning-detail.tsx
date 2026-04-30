@@ -65,8 +65,7 @@ function speakOne(
                 offsets.push(idx >= 0 ? idx : sp);
                 sp = (idx >= 0 ? idx : sp) + w.length;
             }
-            const msPerChar = 58 / rate;
-            const LEAD_MS = 100;
+            const msPerChar = 70 / rate;
 
             utt.onstart = () => {
                 const wordMs: number[] = [];
@@ -87,7 +86,7 @@ function speakOne(
                     wIdx++;
                     if (wIdx >= words.length) return;
                     const elapsed = Date.now() - startTime;
-                    wordTimer = setTimeout(schedule, Math.max(10, wordMs[wIdx] - elapsed - LEAD_MS));
+                    wordTimer = setTimeout(schedule, Math.max(10, wordMs[wIdx] - elapsed));
                 };
                 schedule();
             };
@@ -310,22 +309,25 @@ export default function MicrolearningDetailScreen() {
         const displayLines = fits ? 0 : Math.max(3, Math.floor(availableH / PHRASE_LINE_H));
         const reflectionTop = phraseTop + phraseAreaH + GAP;
 
-        // highlight offsets within fullText: title + '\n\n' + content + '\n\n' + reflection
         const contentStart = item.title ? item.title.length + 2 : 0;
-        const reflectionStart = contentStart + content.length + (item.reflectionQuestion ? 2 : 0);
+        const reflection = item.reflectionQuestion ?? '';
+        const reflectionStart = contentStart + content.length + (reflection ? 2 : 0);
 
-        const relativeHighlight =
+        const titleHighlight =
+            isPlaying && highlightRange && highlightRange.start < contentStart
+                ? { start: highlightRange.start, length: highlightRange.length }
+                : undefined;
+
+        const contentHl =
             isPlaying && highlightRange &&
             highlightRange.start >= contentStart &&
             highlightRange.start < contentStart + content.length
                 ? { start: highlightRange.start - contentStart, length: highlightRange.length }
                 : null;
 
-        const reflection = item.reflectionQuestion ?? '';
-        const relativeReflectionHighlight =
-            isPlaying && highlightRange && reflection.length > 0 &&
-            highlightRange.start >= reflectionStart &&
-            highlightRange.start < reflectionStart + reflection.length
+        const reflectionHl =
+            isPlaying && highlightRange && reflection &&
+            highlightRange.start >= reflectionStart
                 ? { start: highlightRange.start - reflectionStart, length: highlightRange.length }
                 : null;
 
@@ -339,18 +341,19 @@ export default function MicrolearningDetailScreen() {
                         tags={item.tags ?? []}
                         topAligned
                         topAlignedPadding={topAlignedPadding}
+                        titleHighlight={titleHighlight}
                         style={{ flex: 1 }}
                     />
 
                     <View style={[styles.phraseOverlay, { top: phraseTop, height: phraseAreaH }]}>
                         <Text style={styles.phraseText} numberOfLines={displayLines || undefined} ellipsizeMode={displayLines ? 'tail' : undefined}>
-                            {relativeHighlight
+                            {contentHl
                                 ? <>
-                                    {content.slice(0, relativeHighlight.start)}
+                                    {content.slice(0, contentHl.start)}
                                     <Text style={styles.highlightWord}>
-                                        {content.slice(relativeHighlight.start, relativeHighlight.start + relativeHighlight.length)}
+                                        {content.slice(contentHl.start, contentHl.start + contentHl.length)}
                                     </Text>
-                                    {content.slice(relativeHighlight.start + relativeHighlight.length)}
+                                    {content.slice(contentHl.start + contentHl.length)}
                                 </>
                                 : content
                             }
@@ -360,13 +363,13 @@ export default function MicrolearningDetailScreen() {
                     {reflection ? (
                         <View style={[styles.reflectionOverlay, { top: reflectionTop }]} pointerEvents="none">
                             <Text style={styles.reflectionText} numberOfLines={3}>
-                                {relativeReflectionHighlight
+                                {reflectionHl
                                     ? <>
-                                        {reflection.slice(0, relativeReflectionHighlight.start)}
+                                        {reflection.slice(0, reflectionHl.start)}
                                         <Text style={styles.highlightWord}>
-                                            {reflection.slice(relativeReflectionHighlight.start, relativeReflectionHighlight.start + relativeReflectionHighlight.length)}
+                                            {reflection.slice(reflectionHl.start, reflectionHl.start + reflectionHl.length)}
                                         </Text>
-                                        {reflection.slice(relativeReflectionHighlight.start + relativeReflectionHighlight.length)}
+                                        {reflection.slice(reflectionHl.start + reflectionHl.length)}
                                     </>
                                     : reflection
                                 }
