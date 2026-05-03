@@ -11,8 +11,9 @@ import {
 import {
     getBookById, getChaptersByBook, getMicrolearningsByChapter,
     isBookSaved, saveBook, unsaveBook,
+    markChapterRead, getBookProgress,
 } from '../src/services/bookContentService';
-import { BookData, ChapterData, MicrolearningData, Exercise } from '../src/models/BookModels';
+import { BookData, BookProgress, ChapterData, MicrolearningData, Exercise } from '../src/models/BookModels';
 import { AudioService } from '../src/services/AudioService';
 import { useTheme } from '../src/services/themeContext';
 import { useSettings } from '../src/services/settingsContext';
@@ -57,6 +58,8 @@ export default function ChapterDetailScreen() {
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
     const [summaryCollapsed, setSummaryCollapsed] = useState(true);
+    const [bookProgress, setBookProgress] = useState<BookProgress | null>(null);
+    const [totalChapters, setTotalChapters] = useState(0);
     const pausedAtRef = useRef<Map<string, number>>(new Map());
 
     // Ocultar el header nativo — usamos solo el header custom
@@ -78,8 +81,12 @@ export default function ChapterDetailScreen() {
                 setBook(bookData);
                 setChapter(ch);
                 setMicrolearnings(mls);
-                if (user && bookId) {
+                setTotalChapters(chapters.length);
+                if (user) {
                     isBookSaved(user.uid, bookId).then(setSaved);
+                    markChapterRead(user.uid, bookId, chapterId, chapters.length).then(() =>
+                        getBookProgress(user.uid, bookId).then(setBookProgress)
+                    );
                 }
             } finally {
                 setLoading(false);
@@ -185,6 +192,11 @@ export default function ChapterDetailScreen() {
                     <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
                         Cap. {chapter.chapterNumber} — {chapter.title}
                     </Text>
+                    {totalChapters > 0 && (
+                        <Text style={[styles.headerProgress, { color: colors.secondaryText }]}>
+                            {bookProgress?.completedChapterIds?.length ?? 1}/{totalChapters} capítulos leídos
+                        </Text>
+                    )}
                 </View>
                 <TouchableOpacity onPress={toggleSave} disabled={savingToggle} style={styles.backBtn} hitSlop={8}>
                     <Bookmark
@@ -194,6 +206,14 @@ export default function ChapterDetailScreen() {
                     />
                 </TouchableOpacity>
             </View>
+            {totalChapters > 0 && (
+                <View style={[styles.progressBar, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                    <View style={[styles.progressFill, {
+                        backgroundColor: colors.tint,
+                        width: `${Math.round(((bookProgress?.completedChapterIds?.length ?? 1) / totalChapters) * 100)}%` as any,
+                    }]} />
+                </View>
+            )}
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -496,6 +516,11 @@ const styles = StyleSheet.create({
     exerciseTypeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
     exerciseTitle: { fontSize: 14, fontWeight: '700', lineHeight: 20 },
     exerciseDesc: { fontSize: 13, lineHeight: 20 },
+
+    // Reading progress
+    headerProgress: { fontSize: 11, marginTop: 2 },
+    progressBar: { height: 3, width: '100%' },
+    progressFill: { height: 3 },
 
     // FAB compra
     fabContainer: { padding: 16, borderTopWidth: 1 },

@@ -11,8 +11,8 @@ import { DocumentService } from '../../src/services/DocumentService';
 import SmartImage from '../../src/components/SmartImage';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
-import { getSavedBooks, getSavedMicrolearnings } from '../../src/services/bookContentService';
-import { BookData, MicrolearningData } from '../../src/models/BookModels';
+import { getSavedBooks, getSavedMicrolearnings, getMultipleBookProgress } from '../../src/services/bookContentService';
+import { BookData, BookProgress, MicrolearningData } from '../../src/models/BookModels';
 import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
 import BookCardSkeleton from '../../components/BookCardSkeleton';
@@ -33,6 +33,7 @@ export default function LibraryScreen() {
 
     const [books, setBooks] = useState<BookMetadata[]>([]);
     const [savedBooks, setSavedBooks] = useState<BookData[]>([]);
+    const [savedBooksProgress, setSavedBooksProgress] = useState<Map<string, BookProgress>>(new Map());
     const [savedMicrolearnings, setSavedMicrolearnings] = useState<MicrolearningData[]>([]);
     const [savedMlIndex, setSavedMlIndex] = useState(0);
     const [savedMlViewportWidth, setSavedMlViewportWidth] = useState(0);
@@ -105,6 +106,10 @@ export default function LibraryScreen() {
             setBooks(userBooks);
             setSavedBooks(saved);
             setSavedMicrolearnings(savedMls);
+            if (saved.length > 0) {
+                getMultipleBookProgress(user.uid, saved.map(b => b.id!))
+                    .then(setSavedBooksProgress);
+            }
         } catch (error) {
             console.error('Error loading books:', error);
         } finally {
@@ -160,22 +165,35 @@ export default function LibraryScreen() {
     };
 
     // ── Render saved book card (horizontal) ───────────────────────────────────
-    const renderSavedBook = ({ item }: { item: BookData }) => (
-        <TouchableOpacity
-            style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
-            onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
-            activeOpacity={0.75}
-        >
-            <GeneratedCover
-                title={item.title}
-                author={item.author}
-                type="book"
-                category={item.category}
-                tags={item.tags}
-                style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
-            />
-        </TouchableOpacity>
-    );
+    const renderSavedBook = ({ item }: { item: BookData }) => {
+        const progress = savedBooksProgress.get(item.id!);
+        const pct = progress && progress.totalChapters > 0
+            ? Math.round((progress.completedChapterIds.length / progress.totalChapters) * 100)
+            : 0;
+        return (
+            <TouchableOpacity
+                style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+                onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
+                activeOpacity={0.75}
+            >
+                <View style={{ width: coverWidth, height: coverHeight }}>
+                    <GeneratedCover
+                        title={item.title}
+                        author={item.author}
+                        type="book"
+                        category={item.category}
+                        tags={item.tags}
+                        style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
+                    />
+                    {pct > 0 && (
+                        <View style={[styles.savedProgressBar, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
+                            <View style={[styles.savedProgressFill, { backgroundColor: colors.tint, width: `${pct}%` as any }]} />
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     // ── Render saved microlearning card (horizontal) ──────────────────────────
     const renderSavedMicrolearning = ({ item }: { item: MicrolearningData }) => {
@@ -422,6 +440,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
     },
     savedCover: { width: 80, height: 120, borderRadius: 12 },
+    savedProgressBar: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: 4, borderBottomLeftRadius: 12, borderBottomRightRadius: 12,
+    },
+    savedProgressFill: { height: 4, borderBottomLeftRadius: 12 },
     savedCoverFallback: { justifyContent: 'center', alignItems: 'center' },
     savedCoverInitial: { fontSize: 36, fontWeight: '700' },
     savedTitle: { fontSize: 12, fontWeight: '600', padding: 8, paddingBottom: 2, lineHeight: 16 },

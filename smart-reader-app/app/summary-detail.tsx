@@ -7,13 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import {
     ArrowLeft, Play, Square, ChevronDown, ChevronUp,
-    ShoppingCart, ChevronRight, Layers, Bookmark,
+    ShoppingCart, ChevronRight, Layers, Bookmark, Check,
 } from 'lucide-react-native';
 import {
     getBookById, getChaptersByBook, getMicrolearningsByChapter,
-    isBookSaved, saveBook, unsaveBook,
+    isBookSaved, saveBook, unsaveBook, getBookProgress,
 } from '../src/services/bookContentService';
-import { BookData, ChapterData } from '../src/models/BookModels';
+import { BookData, BookProgress, ChapterData } from '../src/models/BookModels';
 import { AudioService } from '../src/services/AudioService';
 import GeneratedCover from '../src/components/GeneratedCover';
 import HighlightedText from '../src/components/HighlightedText';
@@ -37,6 +37,7 @@ export default function SummaryDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
+    const [bookProgress, setBookProgress] = useState<BookProgress | null>(null);
 
     const [playing, setPlaying] = useState<PlayTarget | null>(null);
     const [boundary, setBoundary] = useState<{ charIndex: number; charLength: number } | null>(null);
@@ -65,6 +66,7 @@ export default function SummaryDetailScreen() {
 
                 if (user && bookId) {
                     isBookSaved(user.uid, bookId).then(setSaved);
+                    getBookProgress(user.uid, bookId).then(setBookProgress);
                 }
 
                 // Contar microlearnings por capítulo en paralelo
@@ -308,11 +310,27 @@ export default function SummaryDetailScreen() {
                 {/* ── Capítulos ── */}
                 {chapters.length > 0 && (
                     <View style={styles.section}>
-                        <Text style={[styles.sectionLabel, { color: sectionLabelColor }]}>
-                            CAPÍTULOS · {chapters.length}
-                        </Text>
+                        <View style={styles.chaptersSectionHeader}>
+                            <Text style={[styles.sectionLabel, { color: sectionLabelColor }]}>
+                                CAPÍTULOS · {chapters.length}
+                            </Text>
+                            {bookProgress && bookProgress.totalChapters > 0 && (
+                                <Text style={[styles.progressLabel, { color: colors.tint }]}>
+                                    {bookProgress.completedChapterIds.length}/{bookProgress.totalChapters} leídos
+                                </Text>
+                            )}
+                        </View>
+                        {bookProgress && bookProgress.totalChapters > 0 && (
+                            <View style={[styles.bookProgressBar, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                                <View style={[styles.bookProgressFill, {
+                                    backgroundColor: colors.tint,
+                                    width: `${Math.round((bookProgress.completedChapterIds.length / bookProgress.totalChapters) * 100)}%` as any,
+                                }]} />
+                            </View>
+                        )}
                         {chapters.map(ch => {
                             const count = mlCounts[ch.id!] ?? 0;
+                            const isRead = bookProgress?.completedChapterIds?.includes(ch.id!) ?? false;
                             return (
                                 <TouchableOpacity
                                     key={ch.id}
@@ -323,8 +341,16 @@ export default function SummaryDetailScreen() {
                                     style={[styles.chapterCard, { backgroundColor: cardBg }]}
                                     activeOpacity={0.75}
                                 >
+                                    <View style={[
+                                        styles.chapterReadDot,
+                                        isRead
+                                            ? { backgroundColor: colors.tint }
+                                            : { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: isDark ? '#3C3C3E' : '#D1D1D6' },
+                                    ]}>
+                                        {isRead && <Check size={7} color="#FFF" strokeWidth={3} />}
+                                    </View>
                                     <View style={styles.chapterLeft}>
-                                        <Text style={[styles.chapterNum, { color: colors.tint }]}>
+                                        <Text style={[styles.chapterNum, { color: isRead ? colors.tint : colors.secondaryText }]}>
                                             Cap. {ch.chapterNumber}
                                         </Text>
                                         <Text style={[styles.chapterTitle, { color: colors.text }]} numberOfLines={2}>
@@ -422,12 +448,17 @@ const styles = StyleSheet.create({
     },
 
     // Capítulos
+    chaptersSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+    progressLabel: { fontSize: 12, fontWeight: '600' },
+    bookProgressBar: { height: 4, borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
+    bookProgressFill: { height: 4, borderRadius: 2 },
     chapterCard: {
         borderRadius: 14, padding: 14,
         flexDirection: 'row', alignItems: 'center', gap: 12,
         shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
     },
+    chapterReadDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
     chapterLeft: { flex: 1, gap: 2 },
     chapterNum: { fontSize: 12, fontWeight: '700' },
     chapterTitle: { fontSize: 14, fontWeight: '600', lineHeight: 20 },

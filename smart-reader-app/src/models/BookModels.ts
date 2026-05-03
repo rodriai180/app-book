@@ -88,3 +88,10 @@ export interface MicrolearningData {
     chapterNumber: number;
     category: string;
 }
+
+export interface BookProgress {
+    completedChapterIds: string[];
+    totalChapters: number;
+    lastChapterId?: string;
+    lastReadAt?: Timestamp;
+}

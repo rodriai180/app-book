@@ -12,12 +12,14 @@ import {
   startAfter,
   writeBatch,
   serverTimestamp,
+  arrayUnion,
+  increment,
   QueryDocumentSnapshot,
   DocumentReference,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../constants/firebaseConfig";
-import { BookData, ChapterData, MicrolearningData } from "../models/BookModels";
+import { BookData, BookProgress, ChapterData, MicrolearningData } from "../models/BookModels";
 
 // ─── uploadCoverImage ─────────────────────────────────────────────────────────
 
@@ -490,6 +492,131 @@ export async function deleteBook(bookId: string): Promise<void> {
   }
 
   await deleteDoc(doc(db, "books_v2", bookId));
+}
+
+// ─── 11. Microlearning social (likes & comments) ─────────────────────────────
+
+export interface MlComment {
+  id?: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt?: any;
+}
+
+export async function getMlSocialData(
+  userId: string,
+  mlId: string,
+): Promise<{ likesCount: number; commentsCount: number; liked: boolean }> {
+  const [mlSnap, likeSnap] = await Promise.all([
+    getDoc(doc(db, "microlearnings", mlId)),
+    getDoc(doc(db, "microlearnings", mlId, "likes", userId)),
+  ]);
+  const data = mlSnap.data() ?? {};
+  return {
+    likesCount: (data.likesCount as number) ?? 0,
+    commentsCount: (data.commentsCount as number) ?? 0,
+    liked: likeSnap.exists(),
+  };
+}
+
+export async function toggleMlLike(
+  userId: string,
+  mlId: string,
+  nowLiked: boolean,
+): Promise<void> {
+  const likeRef = doc(db, "microlearnings", mlId, "likes", userId);
+  const mlRef = doc(db, "microlearnings", mlId);
+  if (nowLiked) {
+    await Promise.all([
+      setDoc(likeRef, { likedAt: serverTimestamp() }),
+      setDoc(mlRef, { likesCount: increment(1) }, { merge: true }),
+    ]);
+  } else {
+    await Promise.all([
+      deleteDoc(likeRef),
+      setDoc(mlRef, { likesCount: increment(-1) }, { merge: true }),
+    ]);
+  }
+}
+
+export async function getMlComments(mlId: string): Promise<MlComment[]> {
+  const q = query(
+    collection(db, "microlearnings", mlId, "comments"),
+    orderBy("createdAt", "asc"),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MlComment);
+}
+
+export async function addMlComment(
+  userId: string,
+  userName: string,
+  mlId: string,
+  text: string,
+): Promise<MlComment> {
+  const commentRef = doc(collection(db, "microlearnings", mlId, "comments"));
+  const mlRef = doc(db, "microlearnings", mlId);
+  const payload = { userId, userName, text: text.trim(), createdAt: serverTimestamp() };
+  await Promise.all([
+    setDoc(commentRef, payload),
+    setDoc(mlRef, { commentsCount: increment(1) }, { merge: true }),
+  ]);
+  return { id: commentRef.id, ...payload };
+}
+
+export async function deleteMlComment(
+  mlId: string,
+  commentId: string,
+): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, "microlearnings", mlId, "comments", commentId)),
+    setDoc(doc(db, "microlearnings", mlId), { commentsCount: increment(-1) }, { merge: true }),
+  ]);
+}
+
+// ─── 12. Book reading progress ───────────────────────────────────────────────
+
+export async function markChapterRead(
+  userId: string,
+  bookId: string,
+  chapterId: string,
+  totalChapters: number,
+): Promise<void> {
+  await setDoc(
+    doc(db, "users", userId, "bookProgress", bookId),
+    {
+      completedChapterIds: arrayUnion(chapterId),
+      totalChapters,
+      lastChapterId: chapterId,
+      lastReadAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function getBookProgress(
+  userId: string,
+  bookId: string,
+): Promise<BookProgress | null> {
+  const snap = await getDoc(doc(db, "users", userId, "bookProgress", bookId));
+  if (!snap.exists()) return null;
+  return snap.data() as BookProgress;
+}
+
+export async function getMultipleBookProgress(
+  userId: string,
+  bookIds: string[],
+): Promise<Map<string, BookProgress>> {
+  const result = new Map<string, BookProgress>();
+  if (bookIds.length === 0) return result;
+  const snaps = await Promise.all(
+    bookIds.map((id) => getDoc(doc(db, "users", userId, "bookProgress", id))),
+  );
+  snaps.forEach((snap, i) => {
+    if (snap.exists()) result.set(bookIds[i], snap.data() as BookProgress);
+  });
+  return result;
 }
 
 // ─── 10. updateBookFromJSON ───────────────────────────────────────────────────

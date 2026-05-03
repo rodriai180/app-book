@@ -1,18 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, FlatList,
     useWindowDimensions, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Bookmark, ChevronLeft } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Bookmark, ChevronLeft, Heart, MessageCircle } from 'lucide-react-native';
 import * as Speech from 'expo-speech';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
 import {
     saveMicrolearning, unsaveMicrolearning, getSavedMicrolearnings,
+    getMlSocialData, toggleMlLike,
 } from '../src/services/bookContentService';
 import GeneratedCover from '../src/components/GeneratedCover';
+import MlCommentsModal from '../src/components/MlCommentsModal';
 import { getFeed, updateFeedIndex } from '../src/services/microlearningStore';
 import { MicrolearningData } from '../src/models/BookModels';
 
@@ -134,6 +136,10 @@ export default function MicrolearningDetailScreen() {
     const [playingId, setPlayingId] = useState<string | null>(null);
     const [highlightRange, setHighlightRange] = useState<{ start: number; length: number } | null>(null);
 
+    type SocialEntry = { likesCount: number; commentsCount: number; liked: boolean };
+    const [socialData, setSocialData] = useState<Map<string, SocialEntry>>(new Map());
+    const [commentsOpenId, setCommentsOpenId] = useState<string | null>(null);
+
     const playingIdRef = useRef<string | null>(null);
     const pausedItemIdRef = useRef<string | null>(null);
     const tokenRef = useRef<{ active: boolean }>({ active: false });
@@ -176,6 +182,11 @@ export default function MicrolearningDetailScreen() {
             getSavedMicrolearnings(user.uid).then(saved =>
                 setSavedIds(new Set(saved.map(m => m.id!)))
             );
+            Promise.all(items.map(item => getMlSocialData(user.uid, item.id!))).then(results => {
+                const map = new Map<string, SocialEntry>();
+                results.forEach((r, i) => map.set(items[i].id!, r));
+                setSocialData(map);
+            });
         }
         const item = items[startIndex] ?? items[0];
         if (item) {
@@ -206,6 +217,10 @@ export default function MicrolearningDetailScreen() {
             setProgressWidth((highlightRange.start / contentLengthRef.current) * width);
         }
     }, [highlightRange, width]);
+
+    useFocusEffect(useCallback(() => {
+        return () => { stopTTS(); };
+    }, []));
 
     const getFullText = (item: MicrolearningData) => {
         const parts: string[] = [];
@@ -327,9 +342,26 @@ export default function MicrolearningDetailScreen() {
         }
     };
 
+    const handleLike = async (mlId: string) => {
+        if (!user) return;
+        const current = socialData.get(mlId);
+        const wasLiked = current?.liked ?? false;
+        setSocialData(prev => {
+            const next = new Map(prev);
+            next.set(mlId, {
+                likesCount: Math.max(0, (current?.likesCount ?? 0) + (wasLiked ? -1 : 1)),
+                commentsCount: current?.commentsCount ?? 0,
+                liked: !wasLiked,
+            });
+            return next;
+        });
+        await toggleMlLike(user.uid, mlId, !wasLiked);
+    };
+
     const renderItem = ({ item }: { item: MicrolearningData }) => {
         const isPlaying = playingId === item.id;
         const isSaved = savedIds.has(item.id!);
+        const social = socialData.get(item.id!) ?? { likesCount: 0, commentsCount: 0, liked: false };
 
         const content = item.content ?? '';
         const charsPerLine = Math.floor((width - 56) / 10);
@@ -414,7 +446,7 @@ export default function MicrolearningDetailScreen() {
                     ) : null}
                 </TouchableOpacity>
 
-                <View style={styles.footer} pointerEvents="box-none" >
+                <View style={styles.footer} pointerEvents="box-none">
                     {progressWidth > 0 && (
                         <View
                             style={[styles.progressContainer, { opacity: isPlaying ? 1 : 0.5 }]}
@@ -439,12 +471,33 @@ export default function MicrolearningDetailScreen() {
                             Cap. {item.chapterNumber} — {item.chapterTitle}
                         </Text>
                     </TouchableOpacity>
+                </View>
 
-                    <TouchableOpacity onPress={() => toggleSave(item.id!)} style={styles.iconBtn}>
+                {/* ── Barra de acciones derecha (estilo IG Reels) ── */}
+                <View style={styles.actionBar} pointerEvents="box-none">
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(item.id!)} activeOpacity={0.7}>
+                        <Heart
+                            size={28}
+                            color={social.liked ? '#FF3B30' : '#FFF'}
+                            fill={social.liked ? '#FF3B30' : 'transparent'}
+                        />
+                        {social.likesCount > 0 && (
+                            <Text style={styles.actionCount}>{social.likesCount}</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => setCommentsOpenId(item.id!)} activeOpacity={0.7}>
+                        <MessageCircle size={28} color="#FFF" />
+                        {social.commentsCount > 0 && (
+                            <Text style={styles.actionCount}>{social.commentsCount}</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => toggleSave(item.id!)} activeOpacity={0.7}>
                         <Bookmark
-                            size={16}
-                            color={isSaved ? '#FFF' : 'rgba(255,255,255,0.6)'}
-                            fill={isSaved ? '#FFF' : 'transparent'}
+                            size={26}
+                            color={isSaved ? '#FFD60A' : '#FFF'}
+                            fill={isSaved ? '#FFD60A' : 'transparent'}
                         />
                     </TouchableOpacity>
                 </View>
@@ -483,6 +536,21 @@ export default function MicrolearningDetailScreen() {
             <TouchableOpacity style={styles.backBtn} onPress={() => { stopTTS(); router.back(); }}>
                 <ChevronLeft size={22} color="#FFF" />
             </TouchableOpacity>
+
+            {commentsOpenId && user && (
+                <MlCommentsModal
+                    mlId={commentsOpenId}
+                    userId={user.uid}
+                    userName={user.displayName ?? user.email?.split('@')[0] ?? 'Usuario'}
+                    onClose={() => setCommentsOpenId(null)}
+                    onCountChange={(delta) => setSocialData(prev => {
+                        const next = new Map(prev);
+                        const cur = next.get(commentsOpenId);
+                        if (cur) next.set(commentsOpenId, { ...cur, commentsCount: Math.max(0, cur.commentsCount + delta) });
+                        return next;
+                    })}
+                />
+            )}
         </SafeAreaView>
     );
 }
@@ -610,6 +678,25 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.45)',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    actionBar: {
+        position: 'absolute',
+        right: 12,
+        bottom: 72,
+        alignItems: 'center',
+        gap: 18,
+    },
+    actionBtn: {
+        alignItems: 'center',
+        gap: 3,
+    },
+    actionCount: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     bookTitleBtn: {
         flex: 1,

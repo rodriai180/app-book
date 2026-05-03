@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { LogBox, View, ActivityIndicator, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/services/authContext';
@@ -21,6 +21,7 @@ function RootNavigator() {
     const segments = useSegments();
     const pathname = usePathname();
     const { width } = useWindowDimensions();
+    const didInitialRedirect = useRef(false);
 
     const isDesktop = Platform.OS === 'web' && width >= DESKTOP_BREAKPOINT;
     const isFullScreen = FULL_SCREEN_ROUTES.some(r => pathname.startsWith(r));
@@ -29,12 +30,18 @@ function RootNavigator() {
     useEffect(() => {
         if (loading) return;
 
-        const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+        const segs = segments as string[];
+        const inAuthGroup = segs[0] === 'login' || segs[0] === 'register';
+        const atTabsIndex = segs[0] === '(tabs)' && (!segs[1] || segs[1] === 'index');
+        const atRoot = segs.length === 0;
 
         if (!user && !inAuthGroup) {
             router.replace('/login');
         } else if (user && inAuthGroup) {
-            router.replace('/(tabs)');
+            router.replace('/(tabs)/summaries');
+        } else if (user && !didInitialRedirect.current && (atRoot || atTabsIndex)) {
+            didInitialRedirect.current = true;
+            router.replace('/(tabs)/summaries');
         }
     }, [user, loading, segments]);
 
