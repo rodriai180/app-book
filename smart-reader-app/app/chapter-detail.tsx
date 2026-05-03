@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator,
@@ -38,7 +38,7 @@ const EXERCISE_META: Record<Exercise['type'], { icon: React.ReactNode; color: st
     journaling: { icon: null, color: '#1DD1A1', label: 'Journaling' },
 };
 
-type PlayTarget = { kind: 'summary' } | { kind: 'ml'; id: string };
+type PlayTarget = { kind: 'summary' } | { kind: 'ml'; id: string } | { kind: 'insight'; index: number } | { kind: 'exercise'; index: number };
 
 export default function ChapterDetailScreen() {
     const { bookId, chapterId } = useLocalSearchParams<{ bookId: string; chapterId: string }>();
@@ -57,6 +57,7 @@ export default function ChapterDetailScreen() {
     const [saved, setSaved] = useState(false);
     const [savingToggle, setSavingToggle] = useState(false);
     const [summaryCollapsed, setSummaryCollapsed] = useState(true);
+    const pausedAtRef = useRef<Map<string, number>>(new Map());
 
     // Ocultar el header nativo — usamos solo el header custom
     React.useLayoutEffect(() => {
@@ -107,26 +108,41 @@ export default function ChapterDetailScreen() {
     // ── TTS helpers ───────────────────────────────────────────────────────────
     const isPlaying = (target: PlayTarget) => {
         if (!playing) return false;
-        if (target.kind === 'summary' && playing.kind === 'summary') return true;
+        if (target.kind !== playing.kind) return false;
+        if (target.kind === 'summary') return true;
         if (target.kind === 'ml' && playing.kind === 'ml') return target.id === playing.id;
+        if (target.kind === 'insight' && playing.kind === 'insight') return target.index === playing.index;
+        if (target.kind === 'exercise' && playing.kind === 'exercise') return target.index === playing.index;
         return false;
     };
 
+    const targetKey = (t: PlayTarget) => {
+        if (t.kind === 'summary') return 'summary';
+        if (t.kind === 'ml') return `ml:${t.id}`;
+        if (t.kind === 'insight') return `insight:${t.index}`;
+        return `exercise:${t.index}`;
+    };
+
     const speak = (text: string, target: PlayTarget) => {
+        const key = targetKey(target);
         if (isPlaying(target)) {
+            const pos = boundary?.charIndex ?? 0;
+            if (pos > 0) pausedAtRef.current.set(key, pos);
+            else pausedAtRef.current.delete(key);
             AudioService.stop();
             setPlaying(null);
             setBoundary(null);
             return;
         }
+        const charPos = pausedAtRef.current.get(key) ?? 0;
         AudioService.stop();
         setBoundary(null);
         setPlaying(target);
-        AudioService.speak(text, {
+        AudioService.speak(charPos > 0 ? text.slice(charPos) : text, {
             rate: settings.rate,
             language: settings.language,
-            onBoundary: setBoundary,
-            onDone: () => { setPlaying(null); setBoundary(null); },
+            onBoundary: (e) => setBoundary({ charIndex: e.charIndex + charPos, charLength: e.charLength }),
+            onDone: () => { pausedAtRef.current.delete(key); setPlaying(null); setBoundary(null); },
             onError: () => { setPlaying(null); setBoundary(null); },
         });
     };
@@ -261,12 +277,28 @@ export default function ChapterDetailScreen() {
                 {chapter.insights?.length > 0 && (
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: sectionTitleColor }]}>INSIGHTS</Text>
-                        {chapter.insights.map((insight, i) => (
-                            <View key={i} style={[styles.insightCard, { backgroundColor: cardBg }]}>
-                                <View style={[styles.insightDot, { backgroundColor: colors.tint }]} />
-                                <Text style={[styles.insightText, { color: colors.text }]}>{insight}</Text>
-                            </View>
-                        ))}
+                        {chapter.insights.map((insight, i) => {
+                            const insightPlaying = isPlaying({ kind: 'insight', index: i });
+                            return (
+                                <TouchableOpacity
+                                    key={i}
+                                    onPress={() => speak(insight, { kind: 'insight', index: i })}
+                                    style={[styles.insightCard, { backgroundColor: insightPlaying ? colors.tint + '18' : cardBg }]}
+                                    activeOpacity={0.75}
+                                >
+                                    <View style={[styles.insightDot, { backgroundColor: insightPlaying ? colors.tint : colors.tint }]} />
+                                    <View style={{ flex: 1 }}>
+                                        <HighlightedText
+                                            text={insight}
+                                            start={insightPlaying && boundary ? boundary.charIndex : -1}
+                                            length={insightPlaying && boundary ? boundary.charLength : 0}
+                                            baseStyle={[styles.insightText, { color: colors.text }]}
+                                            highlightBg={colors.tint + '33'}
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 )}
 
@@ -325,13 +357,15 @@ export default function ChapterDetailScreen() {
                                                         <View style={[styles.divider, { backgroundColor: dividerColor }]} />
                                                         <View style={styles.reflectionRow}>
                                                             <Mic size={13} color={colors.secondaryText} />
-                                                            <HighlightedText
-                                                                text={ml.reflectionQuestion}
-                                                                start={mlActive && boundary!.charIndex >= questionOffset ? boundary!.charIndex - questionOffset : -1}
-                                                                length={mlActive ? boundary!.charLength : 0}
-                                                                baseStyle={[styles.reflectionText, { color: colors.secondaryText }]}
-                                                                highlightBg={highlightBg}
-                                                            />
+                                                            <View style={{ flex: 1 }}>
+                                                                <HighlightedText
+                                                                    text={ml.reflectionQuestion}
+                                                                    start={mlActive && boundary!.charIndex >= questionOffset ? boundary!.charIndex - questionOffset : -1}
+                                                                    length={mlActive ? boundary!.charLength : 0}
+                                                                    baseStyle={[styles.reflectionText, { color: colors.secondaryText }]}
+                                                                    highlightBg={highlightBg}
+                                                                />
+                                                            </View>
                                                         </View>
                                                     </>
                                                 ) : null}
@@ -350,8 +384,14 @@ export default function ChapterDetailScreen() {
                         <Text style={[styles.sectionTitle, { color: sectionTitleColor }]}>EJERCICIOS PRÁCTICOS</Text>
                         {chapter.exercises.map((ex, i) => {
                             const meta = EXERCISE_META[ex.type];
+                            const exPlaying = isPlaying({ kind: 'exercise', index: i });
                             return (
-                                <View key={i} style={[styles.exerciseCard, { backgroundColor: cardBg, borderLeftColor: meta.color }]}>
+                                <TouchableOpacity
+                                    key={i}
+                                    onPress={() => speak(`${ex.title}. ${ex.description}`, { kind: 'exercise', index: i })}
+                                    style={[styles.exerciseCard, { backgroundColor: exPlaying ? meta.color + '18' : cardBg, borderLeftColor: meta.color }]}
+                                    activeOpacity={0.75}
+                                >
                                     <View style={styles.exerciseHeader}>
                                         {ex.type === 'reflection' && <Text style={styles.exerciseEmoji}>🪞</Text>}
                                         {ex.type === 'action'     && <Text style={styles.exerciseEmoji}>⚡</Text>}
@@ -364,7 +404,7 @@ export default function ChapterDetailScreen() {
                                         </View>
                                     </View>
                                     <Text style={[styles.exerciseDesc, { color: colors.secondaryText }]}>{ex.description}</Text>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })}
                     </View>

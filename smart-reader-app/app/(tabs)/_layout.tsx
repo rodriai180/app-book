@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Tabs } from 'expo-router';
 import { TouchableOpacity, View, Platform, useWindowDimensions } from 'react-native';
-import { Book, Menu, Compass, Library, LayoutDashboard } from 'lucide-react-native';
+import { Home, Menu, Search, Library, LayoutDashboard } from 'lucide-react-native';
 import SideMenu from '../../components/SideMenu';
 import { useTheme } from '../../src/services/themeContext';
 import { useAuth } from '../../src/services/authContext';
@@ -114,14 +114,14 @@ export default function TabLayout() {
                         name="index"
                         options={{
                             title: 'Mi Biblioteca',
-                            tabBarIcon: ({ color }) => <Book size={32} color={color} />,
+                            tabBarIcon: ({ color }) => <Home size={32} color={color} />,
                         }}
                     />
                     <Tabs.Screen
                         name="summaries"
                         options={{
                             title: 'Descubrir',
-                            tabBarIcon: ({ color }) => <Compass size={32} color={color} />,
+                            tabBarIcon: ({ color }) => <Search size={32} color={color} />,
                         }}
                     />
                     <Tabs.Screen

@@ -154,8 +154,8 @@ interface GeneratedCoverProps {
     titleHighlight?: { start: number; length: number };
     contentHighlight?: { start: number; length: number };
     questionHighlight?: { start: number; length: number };
-    hideTags?: boolean;
     hideText?: boolean;
+    hideIcon?: boolean;
     topAligned?: boolean;
     topAlignedPadding?: number;
     width?: number | string;
@@ -220,8 +220,8 @@ export default function GeneratedCover({
     titleHighlight,
     contentHighlight,
     questionHighlight,
-    hideTags = false,
     hideText = false,
+    hideIcon = false,
     topAligned = false,
     topAlignedPadding,
     width = '100%',
@@ -249,9 +249,8 @@ export default function GeneratedCover({
         style ?? {},
     ];
 
-    const bgLetter   = (tags[0] ?? title).charAt(0).toUpperCase();
-    const visibleTags = hideTags ? [] : tags.slice(0, 3);
-    const showText    = !hideText;
+    const bgLetter = (tags[0] ?? title).charAt(0).toUpperCase();
+    const showText = !hideText;
 
     // ── Microlearning ──────────────────────────────────────────────────────────
     if (type === 'microlearning') {
@@ -268,6 +267,13 @@ export default function GeneratedCover({
                 {/* 2. Letra gigante de fondo */}
                 <Text style={styles.bgLetter} numberOfLines={1}>{bgLetter}</Text>
 
+                {/* Ícono de fondo cuando hideIcon=true */}
+                {hideIcon && (
+                    <View style={styles.bgIcon} pointerEvents="none">
+                        <Icon size={180} color="rgba(255,255,255,0.1)" strokeWidth={0.6} />
+                    </View>
+                )}
+
                 {/* 3. Icono + glow centrados */}
                 <View style={[
                     styles.mlContent,
@@ -275,26 +281,24 @@ export default function GeneratedCover({
                     topAligned ? { paddingTop: topAlignedPadding ?? 48 } : null,
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
-                    <View style={styles.iconWrapper}>
-                        <View style={styles.iconGlow} />
-                        <View style={[
-                            styles.iconOuterRing,
-                            iconShape === 1 && styles.iconOuterSquare,
-                            iconShape === 2 && styles.iconOuterDiamond,
-                        ]}>
+                    {!hideIcon && (
+                        <View style={styles.iconWrapper}>
+                            <View style={styles.iconGlow} />
                             <View style={[
-                                styles.iconInnerCircle,
-                                iconShape === 1 && styles.iconInnerSquare,
-                                iconShape === 2 && styles.iconInnerDiamond,
+                                styles.iconOuterRing,
+                                iconShape === 1 && styles.iconOuterSquare,
+                                iconShape === 2 && styles.iconOuterDiamond,
                             ]}>
-                                <Icon
-                                    size={32}
-                                    color="#FFFFFF"
-                                    strokeWidth={1.5}
-                                />
+                                <View style={[
+                                    styles.iconInnerCircle,
+                                    iconShape === 1 && styles.iconInnerSquare,
+                                    iconShape === 2 && styles.iconInnerDiamond,
+                                ]}>
+                                    <Icon size={32} color="#FFFFFF" strokeWidth={1.5} />
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    )}
 
                     {/* Título */}
                     {showText && (
@@ -494,6 +498,13 @@ const styles = StyleSheet.create({
     },
 
     // ── Microlearning ──────────────────────────────────────────────────────────
+
+    bgIcon: {
+        position: 'absolute',
+        bottom: '15%',
+        right: -30,
+        opacity: 1,
+    },
 
     mlContent: {
         flex: 1,

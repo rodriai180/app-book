@@ -138,6 +138,9 @@ export default function MicrolearningDetailScreen() {
     const pausedItemIdRef = useRef<string | null>(null);
     const tokenRef = useRef<{ active: boolean }>({ active: false });
     const cancelSpeakRef = useRef<(() => void) | null>(null);
+    const handlePlayRef = useRef<(item: MicrolearningData) => void>(() => {});
+    const isAutoScrollingRef = useRef(false);
+    const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const listRef = useRef<FlatList>(null);
     const [progressWidth, setProgressWidth] = useState(0);
     const contentLengthRef = useRef(1);
@@ -149,7 +152,7 @@ export default function MicrolearningDetailScreen() {
     // Layout dinámico
     const HEADER_CLEARANCE = 70;
     const FOOTER_CLEARANCE = 58;
-    const ICON_H = 145;
+    const ICON_H = 0;
     const TITLE_H = 46;
     const REFLECTION_H = 60;
     const GAP = 16;
@@ -174,8 +177,29 @@ export default function MicrolearningDetailScreen() {
                 setSavedIds(new Set(saved.map(m => m.id!)))
             );
         }
+        const item = items[startIndex] ?? items[0];
+        if (item) {
+            const t = setTimeout(() => {
+                if (!playingIdRef.current) handlePlayRef.current(item);
+            }, 400);
+            return () => { clearTimeout(t); stopTTS(); };
+        }
         return () => stopTTS();
     }, []);
+
+    const handleScroll = (e: any) => {
+        if (isAutoScrollingRef.current) return;
+        if (playingIdRef.current) stopTTS(false);
+        if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+        const y = e.nativeEvent.contentOffset.y;
+        scrollTimerRef.current = setTimeout(() => {
+            const idx = Math.round(y / height);
+            const item = items[idx];
+            if (item && item.id !== playingIdRef.current) {
+                handlePlayRef.current(item);
+            }
+        }, 200);
+    };
 
     useEffect(() => {
         if (highlightRange) {
@@ -262,6 +286,16 @@ export default function MicrolearningDetailScreen() {
                     playingIdRef.current = null;
                     setPlayingId(null);
                     setHighlightRange(null);
+                    const idx = items.findIndex(i => i.id === item.id);
+                    if (idx >= 0 && idx < items.length - 1) {
+                        const nextItem = items[idx + 1];
+                        isAutoScrollingRef.current = true;
+                        listRef.current?.scrollToIndex({ index: idx + 1, animated: true });
+                        setTimeout(() => {
+                            isAutoScrollingRef.current = false;
+                            handlePlayRef.current(nextItem);
+                        }, 600);
+                    }
                 },
                 (charIndex, charLength) => {
                     if (token.active) setHighlightRange({ start: charIndex, length: charLength });
@@ -269,6 +303,8 @@ export default function MicrolearningDetailScreen() {
             );
         }
     };
+
+    handlePlayRef.current = handlePlay;
 
     const toggleSave = async (mlId: string) => {
         if (!user) return;
@@ -307,7 +343,6 @@ export default function MicrolearningDetailScreen() {
         const fits = neededH <= availableH;
         const phraseAreaH = fits ? neededH : availableH;
         const displayLines = fits ? 0 : Math.max(3, Math.floor(availableH / PHRASE_LINE_H));
-        const reflectionTop = phraseTop + phraseAreaH + GAP;
 
         const contentStart = item.title ? item.title.length + 2 : 0;
         const reflection = item.reflectionQuestion ?? '';
@@ -332,7 +367,7 @@ export default function MicrolearningDetailScreen() {
                 : null;
 
         return (
-            <View style={{ width, height }}>
+            <View style={{ width, height, overflow: 'hidden' }}>
                 <TouchableOpacity onPress={() => handlePlay(item)} activeOpacity={0.9} style={{ flex: 1 }}>
                     <GeneratedCover
                         type="microlearning"
@@ -342,6 +377,7 @@ export default function MicrolearningDetailScreen() {
                         topAligned
                         topAlignedPadding={topAlignedPadding}
                         titleHighlight={titleHighlight}
+                        hideIcon
                         style={{ flex: 1 }}
                     />
 
@@ -361,7 +397,7 @@ export default function MicrolearningDetailScreen() {
                     </View>
 
                     {reflection ? (
-                        <View style={[styles.reflectionOverlay, { top: reflectionTop }]} pointerEvents="none">
+                        <View style={[styles.reflectionOverlay, { bottom: FOOTER_CLEARANCE + GAP, maxHeight: REFLECTION_H, overflow: 'hidden' }]} pointerEvents="none">
                             <Text style={styles.reflectionText} numberOfLines={3}>
                                 {reflectionHl
                                     ? <>
@@ -437,7 +473,8 @@ export default function MicrolearningDetailScreen() {
                 showsVerticalScrollIndicator={false}
                 initialScrollIndex={startIndex}
                 getItemLayout={(_data, index) => ({ length: height, offset: height * index, index })}
-                onMomentumScrollBegin={() => stopTTS(true)}
+                onScroll={handleScroll}
+                scrollEventThrottle={50}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 removeClippedSubviews
