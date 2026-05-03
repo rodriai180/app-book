@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-    View, Text, StyleSheet, TouchableOpacity, FlatList,
+    View, Text, StyleSheet, TouchableOpacity, FlatList, ScrollView,
     useWindowDimensions, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Bookmark, ChevronLeft, Heart, MessageCircle } from 'lucide-react-native';
+import { Bookmark, ChevronLeft, ChevronRight, Heart, MessageCircle } from 'lucide-react-native';
 import * as Speech from 'expo-speech';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
@@ -122,6 +122,38 @@ function speakOne(
     }
 }
 
+type SlideData =
+    | { type: 'title' }
+    | { type: 'content'; text: string }
+    | { type: 'reflection'; text: string };
+
+function buildSlides(item: MicrolearningData): SlideData[] {
+    const slides: SlideData[] = [{ type: 'title' }];
+    const content = (item.content ?? '').trim();
+    if (content) {
+        const sentences = content.match(/[^.!?]+[.!?]+/g) ?? [content];
+        sentences.map(s => s.trim()).filter(s => s.length > 0).forEach(s =>
+            slides.push({ type: 'content', text: s })
+        );
+    }
+    if (item.reflectionQuestion?.trim()) {
+        slides.push({ type: 'reflection', text: item.reflectionQuestion.trim() });
+    }
+    return slides;
+}
+
+function slideText(item: MicrolearningData, slide: SlideData): string {
+    if (slide.type === 'title') return `${item.title}. ${item.bookTitle}, por ${item.bookAuthor}`;
+    return slide.text;
+}
+
+function hlSegment(text: string, globalOffset: number, hlStart: number, hlLen: number): [string, string, string] {
+    const s = Math.max(0, Math.min(text.length, hlStart - globalOffset));
+    const e = Math.max(0, Math.min(text.length, hlStart - globalOffset + hlLen));
+    if (hlLen <= 0 || e <= 0 || s >= text.length || s === e) return [text, '', ''];
+    return [text.slice(0, s), text.slice(s, e), text.slice(e)];
+}
+
 export default function MicrolearningDetailScreen() {
     const router = useRouter();
     const { settings } = useSettings();
@@ -140,41 +172,31 @@ export default function MicrolearningDetailScreen() {
     const [socialData, setSocialData] = useState<Map<string, SocialEntry>>(new Map());
     const [commentsOpenId, setCommentsOpenId] = useState<string | null>(null);
 
+    const [slideIndexMap, setSlideIndexMap] = useState<Map<string, number>>(new Map());
+
     const playingIdRef = useRef<string | null>(null);
-    const pausedItemIdRef = useRef<string | null>(null);
     const tokenRef = useRef<{ active: boolean }>({ active: false });
     const cancelSpeakRef = useRef<(() => void) | null>(null);
-    const handlePlayRef = useRef<(item: MicrolearningData) => void>(() => {});
+    const handlePlayRef = useRef<(item: MicrolearningData, slideIdx?: number, charOffset?: number) => void>(() => {});
+    const highlightRangeRef = useRef<{ start: number; length: number } | null>(null);
+    const pausedRef = useRef<{ itemId: string; slideIdx: number; charOffset: number } | null>(null);
     const isAutoScrollingRef = useRef(false);
     const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const slideListRefs = useRef<Map<string, ScrollView>>(new Map());
+    const slideTimerMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
     const listRef = useRef<FlatList>(null);
-    const [progressWidth, setProgressWidth] = useState(0);
-    const contentLengthRef = useRef(1);
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
         if (viewableItems.length > 0) updateFeedIndex(viewableItems[0].index ?? 0);
     }).current;
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
-    // Layout dinámico
-    const HEADER_CLEARANCE = 70;
-    const FOOTER_CLEARANCE = 58;
-    const ICON_H = 0;
-    const TITLE_H = 46;
-    const REFLECTION_H = 60;
-    const GAP = 16;
-    const PHRASE_LINE_H = 26;
-
-    const topAlignedPadding = HEADER_CLEARANCE;
-    const phraseTop = HEADER_CLEARANCE + ICON_H + TITLE_H + GAP;
-
-    const stopTTS = (clearPause = false) => {
-        if (playingIdRef.current) pausedItemIdRef.current = playingIdRef.current;
-        if (clearPause) { pausedItemIdRef.current = null; setProgressWidth(0); }
+    const stopTTS = () => {
         tokenRef.current.active = false;
         if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
         playingIdRef.current = null;
         setPlayingId(null);
         setHighlightRange(null);
+        highlightRangeRef.current = null;
     };
 
     useEffect(() => {
@@ -191,7 +213,7 @@ export default function MicrolearningDetailScreen() {
         const item = items[startIndex] ?? items[0];
         if (item) {
             const t = setTimeout(() => {
-                if (!playingIdRef.current) handlePlayRef.current(item);
+                if (!playingIdRef.current) handlePlayRef.current(item, 0);
             }, 400);
             return () => { clearTimeout(t); stopTTS(); };
         }
@@ -200,66 +222,43 @@ export default function MicrolearningDetailScreen() {
 
     const handleScroll = (e: any) => {
         if (isAutoScrollingRef.current) return;
-        if (playingIdRef.current) stopTTS(false);
+        if (playingIdRef.current) stopTTS();
         if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
         const y = e.nativeEvent.contentOffset.y;
         scrollTimerRef.current = setTimeout(() => {
             const idx = Math.round(y / height);
             const item = items[idx];
             if (item && item.id !== playingIdRef.current) {
-                handlePlayRef.current(item);
+                handlePlayRef.current(item, 0);
             }
         }, 200);
     };
-
-    useEffect(() => {
-        if (highlightRange) {
-            setProgressWidth((highlightRange.start / contentLengthRef.current) * width);
-        }
-    }, [highlightRange, width]);
 
     useFocusEffect(useCallback(() => {
         return () => { stopTTS(); };
     }, []));
 
-    const getFullText = (item: MicrolearningData) => {
-        const parts: string[] = [];
-        if (item.title) parts.push(item.title);
-        if (item.content) parts.push(item.content);
-        if (item.reflectionQuestion) parts.push(item.reflectionQuestion);
-        return parts.join('\n\n');
-    };
+    const handlePlay = (item: MicrolearningData, forceSlideIdx?: number, charOffset?: number) => {
+        const isForcedCall = forceSlideIdx !== undefined || charOffset !== undefined;
 
-    const seekTo = (fraction: number, item: MicrolearningData) => {
-        if (!playingIdRef.current) return;
-        const fullText = getFullText(item);
-        const charPos = Math.floor(Math.max(0, Math.min(0.99, fraction)) * fullText.length);
-        if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
-        setProgressWidth(fraction * width);
-        setHighlightRange(null);
-        const token = tokenRef.current;
-        cancelSpeakRef.current = speakOne(
-            fullText.slice(charPos),
-            settings.rate,
-            settings.language,
-            () => {
-                if (!token.active) return;
-                playingIdRef.current = null;
-                setPlayingId(null);
-                setHighlightRange(null);
-                setProgressWidth(0);
-            },
-            (charIndex, charLength) => {
-                if (token.active) setHighlightRange({ start: charPos + charIndex, length: charLength });
-            },
-        );
-    };
+        // Tap on playing item → PAUSE: save position and stop
+        if (playingIdRef.current === item.id && !isForcedCall) {
+            const curSlide = slideIndexMap.get(item.id!) ?? 0;
+            pausedRef.current = { itemId: item.id!, slideIdx: curSlide, charOffset: highlightRangeRef.current?.start ?? 0 };
+            stopTTS();
+            return;
+        }
 
-    const handlePlay = (item: MicrolearningData) => {
-        if (playingIdRef.current === item.id) { stopTTS(); return; }
+        // Tap on paused item → RESUME from saved position
+        const paused = pausedRef.current;
+        if (!isForcedCall && paused && paused.itemId === item.id) {
+            pausedRef.current = null;
+            handlePlayRef.current(item, paused.slideIdx, paused.charOffset);
+            return;
+        }
 
-        const isPaused = pausedItemIdRef.current === item.id && progressWidth > 0;
-        pausedItemIdRef.current = null;
+        // Swipe / auto-start → fresh start, clear any saved pause
+        if (!charOffset) pausedRef.current = null;
 
         tokenRef.current.active = false;
         if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
@@ -269,54 +268,34 @@ export default function MicrolearningDetailScreen() {
         playingIdRef.current = item.id!;
         setPlayingId(item.id!);
         setHighlightRange(null);
+        highlightRangeRef.current = null;
 
-        const fullText = getFullText(item);
+        const slides = buildSlides(item);
+        const slideIdx = forceSlideIdx ?? (slideIndexMap.get(item.id!) ?? 0);
+        const slide = slides[slideIdx] ?? slides[0];
+        const fullText = slideText(item, slide);
+        const offset = charOffset ?? 0;
+        const text = offset > 0 ? fullText.slice(offset) : fullText;
 
-        if (isPaused) {
-            const charPos = Math.round((progressWidth / width) * contentLengthRef.current);
-            cancelSpeakRef.current = speakOne(
-                fullText.slice(charPos),
-                settings.rate,
-                settings.language,
-                () => {
-                    if (!token.active) return;
-                    playingIdRef.current = null;
-                    setPlayingId(null);
-                    setHighlightRange(null);
-                    setProgressWidth(0);
-                },
-                (charIndex, charLength) => {
-                    if (token.active) setHighlightRange({ start: charPos + charIndex, length: charLength });
-                },
-            );
-        } else {
-            contentLengthRef.current = fullText.length || 1;
-            setProgressWidth(0);
-            cancelSpeakRef.current = speakOne(
-                fullText,
-                settings.rate,
-                settings.language,
-                () => {
-                    if (!token.active) return;
-                    playingIdRef.current = null;
-                    setPlayingId(null);
-                    setHighlightRange(null);
-                    const idx = items.findIndex(i => i.id === item.id);
-                    if (idx >= 0 && idx < items.length - 1) {
-                        const nextItem = items[idx + 1];
-                        isAutoScrollingRef.current = true;
-                        listRef.current?.scrollToIndex({ index: idx + 1, animated: true });
-                        setTimeout(() => {
-                            isAutoScrollingRef.current = false;
-                            handlePlayRef.current(nextItem);
-                        }, 600);
-                    }
-                },
-                (charIndex, charLength) => {
-                    if (token.active) setHighlightRange({ start: charIndex, length: charLength });
-                },
-            );
-        }
+        cancelSpeakRef.current = speakOne(
+            text,
+            settings.rate,
+            settings.language,
+            () => {
+                if (!token.active) return;
+                setHighlightRange(null);
+                highlightRangeRef.current = null;
+                playingIdRef.current = null;
+                setPlayingId(null);
+            },
+            (charIndex, charLength) => {
+                if (token.active) {
+                    const range = { start: offset + charIndex, length: charLength };
+                    setHighlightRange(range);
+                    highlightRangeRef.current = range;
+                }
+            },
+        );
     };
 
     handlePlayRef.current = handlePlay;
@@ -358,107 +337,119 @@ export default function MicrolearningDetailScreen() {
         await toggleMlLike(user.uid, mlId, !wasLiked);
     };
 
+    const goToSlide = (item: MicrolearningData, idx: number) => {
+        pausedRef.current = null;
+        slideListRefs.current.get(item.id!)?.scrollTo({ x: idx * width, animated: true });
+        setSlideIndexMap(prev => new Map(prev).set(item.id!, idx));
+        const existing = slideTimerMap.current.get(item.id!);
+        if (existing) clearTimeout(existing);
+        const t = setTimeout(() => {
+            slideTimerMap.current.delete(item.id!);
+            handlePlayRef.current(item, idx);
+        }, 250);
+        slideTimerMap.current.set(item.id!, t);
+    };
+
     const renderItem = ({ item }: { item: MicrolearningData }) => {
         const isPlaying = playingId === item.id;
         const isSaved = savedIds.has(item.id!);
         const social = socialData.get(item.id!) ?? { likesCount: 0, commentsCount: 0, liked: false };
-
-        const content = item.content ?? '';
-        const charsPerLine = Math.floor((width - 56) / 10);
-        const contentLines = Math.ceil(content.length / charsPerLine);
-        const neededH = Math.max(PHRASE_LINE_H * 3, contentLines * PHRASE_LINE_H);
-
-        const reflectionReserve = item.reflectionQuestion ? REFLECTION_H + GAP : 0;
-        const itemPhraseBottom = FOOTER_CLEARANCE + GAP + reflectionReserve;
-        const availableH = height - phraseTop - itemPhraseBottom;
-
-        const fits = neededH <= availableH;
-        const phraseAreaH = fits ? neededH : availableH;
-        const displayLines = fits ? 0 : Math.max(3, Math.floor(availableH / PHRASE_LINE_H));
-
-        const contentStart = item.title ? item.title.length + 2 : 0;
-        const reflection = item.reflectionQuestion ?? '';
-        const reflectionStart = contentStart + content.length + (reflection ? 2 : 0);
-
-        const titleHighlight =
-            isPlaying && highlightRange && highlightRange.start < contentStart
-                ? { start: highlightRange.start, length: highlightRange.length }
-                : undefined;
-
-        const contentHl =
-            isPlaying && highlightRange &&
-            highlightRange.start >= contentStart &&
-            highlightRange.start < contentStart + content.length
-                ? { start: highlightRange.start - contentStart, length: highlightRange.length }
-                : null;
-
-        const reflectionHl =
-            isPlaying && highlightRange && reflection &&
-            highlightRange.start >= reflectionStart
-                ? { start: highlightRange.start - reflectionStart, length: highlightRange.length }
-                : null;
+        const slides = buildSlides(item);
+        const currentSlideIdx = slideIndexMap.get(item.id!) ?? 0;
+        const hlStart = isPlaying && highlightRange ? highlightRange.start : -1;
+        const hlLen = isPlaying && highlightRange ? highlightRange.length : 0;
+        const isDesktop = width >= 768;
 
         return (
             <View style={{ width, height, overflow: 'hidden' }}>
-                <TouchableOpacity onPress={() => handlePlay(item)} activeOpacity={0.9} style={{ flex: 1 }}>
-                    <GeneratedCover
-                        type="microlearning"
-                        title={item.title}
-                        category={item.category}
-                        tags={item.tags ?? []}
-                        topAligned
-                        topAlignedPadding={topAlignedPadding}
-                        titleHighlight={titleHighlight}
-                        hideIcon
-                        style={{ flex: 1 }}
-                    />
+                {/* Fondo fijo */}
+                <GeneratedCover
+                    type="microlearning"
+                    title={item.title}
+                    category={item.category}
+                    tags={item.tags ?? []}
+                    hideIcon
+                    hideText
+                    width={width}
+                    height={height}
+                    style={{ position: 'absolute', top: 0, left: 0 }}
+                />
 
-                    <View style={[styles.phraseOverlay, { top: phraseTop, height: phraseAreaH }]}>
-                        <Text style={styles.phraseText} numberOfLines={displayLines || undefined} ellipsizeMode={displayLines ? 'tail' : undefined}>
-                            {contentHl
-                                ? <>
-                                    {content.slice(0, contentHl.start)}
-                                    <Text style={styles.highlightWord}>
-                                        {content.slice(contentHl.start, contentHl.start + contentHl.length)}
-                                    </Text>
-                                    {content.slice(contentHl.start + contentHl.length)}
-                                </>
-                                : content
-                            }
-                        </Text>
-                    </View>
+                {/* Carrusel horizontal de slides */}
+                <ScrollView
+                    ref={ref => { if (ref) slideListRefs.current.set(item.id!, ref as any); }}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    scrollEventThrottle={50}
+                    onScroll={e => {
+                        const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+                        setSlideIndexMap(prev => new Map(prev).set(item.id!, idx));
+                        const existing = slideTimerMap.current.get(item.id!);
+                        if (existing) clearTimeout(existing);
+                        const t = setTimeout(() => {
+                            slideTimerMap.current.delete(item.id!);
+                            handlePlayRef.current(item, idx);
+                        }, 200);
+                        slideTimerMap.current.set(item.id!, t);
+                    }}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                >
+                    {slides.map((slide, i) => {
+                        const isCurrentSlide = i === currentSlideIdx;
+                        const text = slide.type !== 'title' ? slide.text : '';
 
-                    {reflection ? (
-                        <View style={[styles.reflectionOverlay, { bottom: FOOTER_CLEARANCE + GAP, maxHeight: REFLECTION_H, overflow: 'hidden' }]} pointerEvents="none">
-                            <Text style={styles.reflectionText} numberOfLines={3}>
-                                {reflectionHl
-                                    ? <>
-                                        {reflection.slice(0, reflectionHl.start)}
-                                        <Text style={styles.highlightWord}>
-                                            {reflection.slice(reflectionHl.start, reflectionHl.start + reflectionHl.length)}
-                                        </Text>
-                                        {reflection.slice(reflectionHl.start + reflectionHl.length)}
-                                    </>
-                                    : reflection
-                                }
-                            </Text>
-                        </View>
-                    ) : null}
-                </TouchableOpacity>
+                        const slideContent = slide.type === 'title' ? (() => {
+                            const isHl = i === currentSlideIdx && hlStart >= 0;
+                            const titleOff = 0;
+                            const bookOff = (item.title?.length ?? 0) + 2;
+                            const authorOff = bookOff + (item.bookTitle?.length ?? 0) + 6;
+                            const [tB, tH, tA] = isHl ? hlSegment(item.title ?? '', titleOff, hlStart, hlLen) : [item.title ?? '', '', ''];
+                            const [bB, bH, bA] = isHl ? hlSegment(item.bookTitle ?? '', bookOff, hlStart, hlLen) : [item.bookTitle ?? '', '', ''];
+                            const [aB, aH, aA] = isHl ? hlSegment(item.bookAuthor ?? '', authorOff, hlStart, hlLen) : [item.bookAuthor ?? '', '', ''];
+                            return <>
+                                <Text style={styles.slideTitleText}>{tB}{tH ? <Text style={styles.highlightWord}>{tH}</Text> : null}{tA}</Text>
+                                <Text style={styles.slideBookText}>{bB}{bH ? <Text style={styles.highlightWord}>{bH}</Text> : null}{bA}</Text>
+                                <Text style={styles.slideAuthorText}>{aB}{aH ? <Text style={styles.highlightWord}>{aH}</Text> : null}{aA}</Text>
+                            </>;
+                        })() : (() => {
+                            const showHl = isCurrentSlide && hlStart >= 0 && hlStart < text.length;
+                            return <>
+                                {slide.type === 'reflection' && <Text style={styles.reflectionIcon}>💭</Text>}
+                                <Text style={slide.type === 'reflection' ? styles.slideReflectionText : styles.slideContentText}>
+                                    {showHl ? <>{text.slice(0, hlStart)}<Text style={styles.highlightWord}>{text.slice(hlStart, hlStart + hlLen)}</Text>{text.slice(hlStart + hlLen)}</> : text}
+                                </Text>
+                            </>;
+                        })();
 
-                <View style={styles.footer} pointerEvents="box-none">
-                    {progressWidth > 0 && (
-                        <View
-                            style={[styles.progressContainer, { opacity: isPlaying ? 1 : 0.5 }]}
-                            onStartShouldSetResponder={() => true}
-                            onResponderGrant={e => seekTo(e.nativeEvent.locationX / width, item)}
-                        >
-                            <View style={styles.progressTrack} />
-                            <View style={{ position: 'absolute', top: 0, left: 0, height: 4, borderRadius: 2, width: progressWidth, backgroundColor: '#FFFFFF' }}>
-                                <View style={styles.progressDot} />
+                        return (
+                            <View key={i} style={[styles.slide, { width, height }]}>
+                                {slideContent}
+                                <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => handlePlay(item)} activeOpacity={1} />
+                                {isDesktop && i > 0 && (
+                                    <TouchableOpacity style={styles.slideArrowLeft} onPress={() => goToSlide(item, i - 1)} activeOpacity={0.7}>
+                                        <ChevronLeft size={22} color="rgba(255,255,255,0.7)" />
+                                    </TouchableOpacity>
+                                )}
+                                {isDesktop && i < slides.length - 1 && (
+                                    <TouchableOpacity style={styles.slideArrowRight} onPress={() => goToSlide(item, i + 1)} activeOpacity={0.7}>
+                                        <ChevronRight size={22} color="rgba(255,255,255,0.7)" />
+                                    </TouchableOpacity>
+                                )}
                             </View>
-                        </View>
-                    )}
+                        );
+                    })}
+                </ScrollView>
+
+                {/* Dots indicadores de slide */}
+                <View style={styles.slideDots}>
+                    {slides.map((_, i) => (
+                        <View key={i} style={[styles.slideDot, i === currentSlideIdx && styles.slideDotActive]} />
+                    ))}
+                </View>
+
+                {/* Footer */}
+                <View style={styles.footer} pointerEvents="box-none">
                     <TouchableOpacity
                         style={styles.chapterLink}
                         onPress={() => router.push({
@@ -473,32 +464,18 @@ export default function MicrolearningDetailScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* ── Barra de acciones derecha (estilo IG Reels) ── */}
+                {/* Barra de acciones derecha */}
                 <View style={styles.actionBar} pointerEvents="box-none">
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(item.id!)} activeOpacity={0.7}>
-                        <Heart
-                            size={28}
-                            color={social.liked ? '#FF3B30' : '#FFF'}
-                            fill={social.liked ? '#FF3B30' : 'transparent'}
-                        />
-                        {social.likesCount > 0 && (
-                            <Text style={styles.actionCount}>{social.likesCount}</Text>
-                        )}
+                        <Heart size={28} color={social.liked ? '#FF3B30' : '#FFF'} fill={social.liked ? '#FF3B30' : 'transparent'} />
+                        {social.likesCount > 0 && <Text style={styles.actionCount}>{social.likesCount}</Text>}
                     </TouchableOpacity>
-
                     <TouchableOpacity style={styles.actionBtn} onPress={() => setCommentsOpenId(item.id!)} activeOpacity={0.7}>
                         <MessageCircle size={28} color="#FFF" />
-                        {social.commentsCount > 0 && (
-                            <Text style={styles.actionCount}>{social.commentsCount}</Text>
-                        )}
+                        {social.commentsCount > 0 && <Text style={styles.actionCount}>{social.commentsCount}</Text>}
                     </TouchableOpacity>
-
                     <TouchableOpacity style={styles.actionBtn} onPress={() => toggleSave(item.id!)} activeOpacity={0.7}>
-                        <Bookmark
-                            size={26}
-                            color={isSaved ? '#FFD60A' : '#FFF'}
-                            fill={isSaved ? '#FFD60A' : 'transparent'}
-                        />
+                        <Bookmark size={26} color={isSaved ? '#FFD60A' : '#FFF'} fill={isSaved ? '#FFD60A' : 'transparent'} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -521,7 +498,7 @@ export default function MicrolearningDetailScreen() {
                 data={items}
                 keyExtractor={item => item.id ?? `${item.bookId}-${item.order}`}
                 renderItem={renderItem}
-                extraData={{ playingId, highlightRange, savedIds }}
+                extraData={{ playingId, highlightRange, savedIds, slideIndexMap, socialData }}
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
                 initialScrollIndex={startIndex}
@@ -558,86 +535,96 @@ export default function MicrolearningDetailScreen() {
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#000' },
 
-    phraseOverlay: {
-        position: 'absolute',
-        left: 28,
-        right: 28,
+    slide: {
         justifyContent: 'center',
         alignItems: 'center',
-        overflow: 'hidden',
+        paddingHorizontal: 32,
+        paddingVertical: 80,
+        backgroundColor: 'transparent',
     },
-    phraseText: {
-        fontSize: 17,
+    slideTitleText: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        lineHeight: 34,
+        marginBottom: 16,
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 8,
+    },
+    slideBookText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.85)',
+        textAlign: 'center',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+    slideAuthorText: {
+        fontSize: 14,
+        fontWeight: '400',
+        color: 'rgba(255,255,255,0.65)',
+        textAlign: 'center',
+        marginTop: 6,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+    slideContentText: {
+        fontSize: 20,
         fontWeight: '600',
         color: '#FFFFFF',
         textAlign: 'center',
-        lineHeight: 26,
+        lineHeight: 30,
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 8,
     },
+    slideReflectionText: {
+        fontSize: 18,
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.9)',
+        textAlign: 'center',
+        lineHeight: 28,
+        fontStyle: 'italic',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
+        marginTop: 12,
+    },
+    reflectionIcon: {
+        fontSize: 36,
+        marginBottom: 16,
+    },
+    slideDots: {
+        position: 'absolute',
+        bottom: 56,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+    },
+    slideDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.35)',
+    },
+    slideDotActive: {
+        backgroundColor: '#FFFFFF',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+
     highlightWord: {
         color: '#FFFFFF',
         backgroundColor: 'rgba(255, 255, 255, 0.22)',
         borderRadius: 4,
-    },
-
-    reflectionOverlay: {
-        position: 'absolute',
-        left: 28,
-        right: 28,
-    },
-    reflectionText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: 'rgba(255,255,255,0.65)',
-        textAlign: 'center',
-        lineHeight: 19,
-        fontStyle: 'italic',
-        textShadowColor: 'rgba(0,0,0,0.4)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
-    },
-
-    progressContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 4,
-    },
-    progressTrack: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 4,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 2,
-    },
-    progressFill: {
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#FFFFFF',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.9,
-        shadowRadius: 6,
-        elevation: 4,
-    },
-    progressDot: {
-        position: 'absolute',
-        right: -4,
-        top: -2,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#FFFFFF',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.9,
-        shadowRadius: 6,
-        elevation: 4,
     },
 
     footer: {
@@ -654,20 +641,7 @@ const styles = StyleSheet.create({
     },
     chapterLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
     footerChapter: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.9)', flexShrink: 1 },
-    iconBtn: {
-        width: 32, height: 32, borderRadius: 16,
-        justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-    },
 
-    topBar: {
-        position: 'absolute',
-        top: 14,
-        left: 14,
-        right: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
     backBtn: {
         position: 'absolute',
         top: 14,
@@ -698,17 +672,28 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
-    bookTitleBtn: {
-        flex: 1,
-        height: 36,
+    slideArrowLeft: {
+        position: 'absolute',
+        left: 10,
+        top: '50%',
+        transform: [{ translateY: -20 }],
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.28)',
+        alignItems: 'center',
         justifyContent: 'center',
     },
-    bookTitleText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.9)',
-        textShadowColor: 'rgba(0,0,0,0.6)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
+    slideArrowRight: {
+        position: 'absolute',
+        right: 10,
+        top: '50%',
+        transform: [{ translateY: -20 }],
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.28)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
