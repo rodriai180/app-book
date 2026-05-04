@@ -147,12 +147,6 @@ function slideText(item: MicrolearningData, slide: SlideData): string {
     return slide.text;
 }
 
-function hlSegment(text: string, globalOffset: number, hlStart: number, hlLen: number): [string, string, string] {
-    const s = Math.max(0, Math.min(text.length, hlStart - globalOffset));
-    const e = Math.max(0, Math.min(text.length, hlStart - globalOffset + hlLen));
-    if (hlLen <= 0 || e <= 0 || s >= text.length || s === e) return [text, '', ''];
-    return [text.slice(0, s), text.slice(s, e), text.slice(e)];
-}
 
 export default function MicrolearningDetailScreen() {
     const router = useRouter();
@@ -398,21 +392,40 @@ export default function MicrolearningDetailScreen() {
                     {slides.map((slide, i) => {
                         const isCurrentSlide = i === currentSlideIdx;
                         const text = slide.type !== 'title' ? slide.text : '';
+                        const isHl = isCurrentSlide && hlStart >= 0;
 
-                        const slideContent = slide.type === 'title' ? (() => {
-                            const isHl = i === currentSlideIdx && hlStart >= 0;
-                            const titleOff = 0;
+                        // Title slide: full GeneratedCover (icon + title) + book info overlay
+                        if (slide.type === 'title') {
                             const bookOff = (item.title?.length ?? 0) + 2;
                             const authorOff = bookOff + (item.bookTitle?.length ?? 0) + 6;
-                            const [tB, tH, tA] = isHl ? hlSegment(item.title ?? '', titleOff, hlStart, hlLen) : [item.title ?? '', '', ''];
-                            const [bB, bH, bA] = isHl ? hlSegment(item.bookTitle ?? '', bookOff, hlStart, hlLen) : [item.bookTitle ?? '', '', ''];
-                            const [aB, aH, aA] = isHl ? hlSegment(item.bookAuthor ?? '', authorOff, hlStart, hlLen) : [item.bookAuthor ?? '', '', ''];
-                            return <>
-                                <Text style={styles.slideTitleText}>{tB}{tH ? <Text style={styles.highlightWord}>{tH}</Text> : null}{tA}</Text>
-                                <Text style={styles.slideBookText}>{bB}{bH ? <Text style={styles.highlightWord}>{bH}</Text> : null}{bA}</Text>
-                                <Text style={styles.slideAuthorText}>{aB}{aH ? <Text style={styles.highlightWord}>{aH}</Text> : null}{aA}</Text>
-                            </>;
-                        })() : (() => {
+                            return (
+                                <View key={i} style={{ width, height, overflow: 'hidden' }}>
+                                    <GeneratedCover
+                                        type="microlearning"
+                                        title={item.title}
+                                        category={item.category}
+                                        tags={item.tags ?? []}
+                                        width={width}
+                                        height={height}
+                                        style={{ position: 'absolute', top: 0, left: 0 }}
+                                        titleHighlight={isHl ? { start: hlStart, length: hlLen } : undefined}
+                                        content={item.bookTitle ?? undefined}
+                                        reflectionQuestion={item.bookAuthor ?? undefined}
+                                        centerContent
+                                        contentHighlight={isHl ? { start: hlStart - bookOff, length: hlLen } : undefined}
+                                        questionHighlight={isHl ? { start: hlStart - authorOff, length: hlLen } : undefined}
+                                    />
+                                    <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => handlePlay(item)} activeOpacity={1} />
+                                    {isDesktop && i < slides.length - 1 && (
+                                        <TouchableOpacity style={styles.slideArrowRight} onPress={() => goToSlide(item, i + 1)} activeOpacity={0.7}>
+                                            <ChevronRight size={22} color="rgba(255,255,255,0.7)" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            );
+                        }
+
+                        const slideContent = (() => {
                             const showHl = isCurrentSlide && hlStart >= 0 && hlStart < text.length;
                             return <>
                                 {slide.type === 'reflection' && <Text style={styles.reflectionIcon}>💭</Text>}
@@ -671,6 +684,14 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0,0,0,0.6)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
+    },
+    titleSlideBookInfo: {
+        position: 'absolute',
+        bottom: 100,
+        left: 32,
+        right: 32,
+        alignItems: 'center',
+        gap: 4,
     },
     slideArrowLeft: {
         position: 'absolute',

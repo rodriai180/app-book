@@ -163,6 +163,7 @@ interface GeneratedCoverProps {
     style?: ViewStyle;
     large?: boolean;
     grow?: boolean;
+    centerContent?: boolean;
 }
 
 // ─── Decoraciones geométricas de fondo ───────────────────────────────────────
@@ -229,6 +230,7 @@ export default function GeneratedCover({
     style,
     large = false,
     grow = false,
+    centerContent = false,
 }: GeneratedCoverProps) {
     const resolvedHeight = height ?? (type === 'chapter' ? 200 : type === 'book' ? 280 : 150);
     const gradient      = getGradient(category);
@@ -277,7 +279,7 @@ export default function GeneratedCover({
                 {/* 3. Icono + glow centrados */}
                 <View style={[
                     styles.mlContent,
-                    (topAligned || content) ? { justifyContent: 'flex-start' } : null,
+                    (topAligned || (content && !centerContent)) ? { justifyContent: 'flex-start' } : null,
                     topAligned ? { paddingTop: topAlignedPadding ?? 48 } : null,
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
