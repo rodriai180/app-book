@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     },
     slideDots: {
         position: 'absolute',
-        bottom: 56,
+        bottom: 80,
         left: 0,
         right: 0,
         flexDirection: 'row',
@@ -653,12 +653,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 18,
         gap: 8,
-        backgroundColor: 'rgba(0,0,0,0.35)',
+        backgroundColor: 'rgba(0,0,0,0.45)',
     },
-    chapterLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-    footerChapter: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.9)', flexShrink: 1 },
+    chapterLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+    footerChapter: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', flexShrink: 1 },
 
     backBtn: {
         position: 'absolute',
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     actionBar: {
         position: 'absolute',
         right: 12,
-        bottom: 72,
+        bottom: 86,
         alignItems: 'center',
         gap: 18,
     },
