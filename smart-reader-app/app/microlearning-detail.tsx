@@ -131,10 +131,15 @@ function buildSlides(item: MicrolearningData): SlideData[] {
     const slides: SlideData[] = [{ type: 'title' }];
     const content = (item.content ?? '').trim();
     if (content) {
-        const sentences = content.match(/[^.!?]+[.!?]+/g) ?? [content];
-        sentences.map(s => s.trim()).filter(s => s.length > 0).forEach(s =>
-            slides.push({ type: 'content', text: s })
-        );
+        const sentences = (content.match(/[^.!?]+[.!?]+/g) ?? [content])
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        for (let i = 0; i < sentences.length; i += 2) {
+            const text = i + 1 < sentences.length
+                ? sentences[i] + ' ' + sentences[i + 1]
+                : sentences[i];
+            slides.push({ type: 'content', text });
+        }
     }
     if (item.reflectionQuestion?.trim()) {
         slides.push({ type: 'reflection', text: item.reflectionQuestion.trim() });
