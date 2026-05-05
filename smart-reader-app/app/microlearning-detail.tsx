@@ -227,8 +227,16 @@ export default function MicrolearningDetailScreen() {
         scrollTimerRef.current = setTimeout(() => {
             const idx = Math.round(y / height);
             const item = items[idx];
-            if (item && item.id !== playingIdRef.current) {
-                handlePlayRef.current(item, 0);
+            if (item) {
+                // Reset slide horizontal al 0 para el nuevo item
+                const existing = slideTimerMap.current.get(item.id!);
+                if (existing) clearTimeout(existing);
+                slideTimerMap.current.delete(item.id!);
+                setSlideIndexMap(prev => new Map(prev).set(item.id!, 0));
+                slideListRefs.current.get(item.id!)?.scrollTo({ x: 0, animated: false });
+                if (item.id !== playingIdRef.current) {
+                    handlePlayRef.current(item, 0);
+                }
             }
         }, 200);
     };

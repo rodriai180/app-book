@@ -71,7 +71,7 @@ export default function WebSidebar() {
             <View>
                 <View style={{ paddingHorizontal: 10, paddingBottom: 28 }}>
                     <Text style={{ fontSize: 20, fontWeight: '800', color: colors.tint, letterSpacing: -0.5 }}>
-                        SmartReader
+                        Nuggeto
                     </Text>
                 </View>
 

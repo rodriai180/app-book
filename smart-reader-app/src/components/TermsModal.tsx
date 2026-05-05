@@ -77,7 +77,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ visible, onClose, onAcce
                                 <ShieldCheck size={40} color={colors.tint} />
                             </View>
                             <Text style={[styles.introText, { color: colors.text }]}>
-                                Al usar Smart Reader, aceptas cumplir con las siguientes normas para garantizar una experiencia segura y legal para todos.
+                                Al usar Nuggeto, aceptas cumplir con las siguientes normas para garantizar una experiencia segura y legal para todos.
                             </Text>
                         </View>
 
@@ -85,13 +85,13 @@ export const TermsModal: React.FC<TermsModalProps> = ({ visible, onClose, onAcce
                             <Section
                                 icon={Info}
                                 title="1. Aceptación de los Términos"
-                                content="Al crear una cuenta, aceptas quedar vinculado por estos términos. Si no estás de acuerdo con alguna parte, no podrás utilizar los servicios de Smart Reader."
+                                content="Al crear una cuenta, aceptas quedar vinculado por estos términos. Si no estás de acuerdo con alguna parte, no podrás utilizar los servicios de Nuggeto."
                             />
 
                             <Section
                                 icon={Scale}
                                 title="2. Responsabilidad de Contenido (Crítico)"
-                                content="Smart Reader es una herramienta de procesamiento de documentos. Usted declara y garantiza que posee los derechos legales o el permiso explícito del autor para subir cualquier PDF a esta plataforma. El usuario asume toda la responsabilidad legal por infracciones de propiedad intelectual."
+                                content="Nuggeto es una herramienta de procesamiento de documentos. Usted declara y garantiza que posee los derechos legales o el permiso explícito del autor para subir cualquier PDF a esta plataforma. El usuario asume toda la responsabilidad legal por infracciones de propiedad intelectual."
                             />
 
                             <Section
@@ -109,7 +109,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ visible, onClose, onAcce
                             <Section
                                 icon={ShieldCheck}
                                 title="5. Limitación de Responsabilidad"
-                                content="Smart Reader no será responsable de daños indirectos, incidentales o consecuentes derivados del uso de la herramienta. El procesamiento de texto por IA se ofrece 'tal cual' sin garantías de exactitud absoluta."
+                                content="Nuggeto no será responsable de daños indirectos, incidentales o consecuentes derivados del uso de la herramienta. El procesamiento de texto por IA se ofrece 'tal cual' sin garantías de exactitud absoluta."
                             />
                         </View>
 

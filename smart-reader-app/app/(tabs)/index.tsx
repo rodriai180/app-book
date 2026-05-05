@@ -5,13 +5,13 @@ import {
     Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Trash2, BookMarked, Zap } from 'lucide-react-native';
+import { Plus, Trash2, BookMarked, Zap, BookmarkX } from 'lucide-react-native';
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router';
 import { DocumentService } from '../../src/services/DocumentService';
 import SmartImage from '../../src/components/SmartImage';
 import { BookService, BookMetadata } from '../../src/services/bookService';
 import { PdfLocalStorage } from '../../src/services/PdfLocalStorage';
-import { getSavedBooks, getSavedMicrolearnings, getMultipleBookProgress } from '../../src/services/bookContentService';
+import { getSavedBooks, getSavedMicrolearnings, getMultipleBookProgress, unsaveMicrolearning } from '../../src/services/bookContentService';
 import { BookData, BookProgress, MicrolearningData } from '../../src/models/BookModels';
 import { useAuth } from '../../src/services/authContext';
 import { useTheme } from '../../src/services/themeContext';
@@ -150,6 +150,16 @@ export default function LibraryScreen() {
         }
     };
 
+    const handleUnsaveMl = async (mlId: string) => {
+        if (!user) return;
+        try {
+            await unsaveMicrolearning(user.uid, mlId);
+            setSavedMicrolearnings(prev => prev.filter(ml => ml.id !== mlId));
+        } catch (error) {
+            console.error('Error removing microlearning:', error);
+        }
+    };
+
     const handleDeleteBook = async (bookId: string, title: string) => {
         if (!user) return;
         const confirmed = typeof window !== 'undefined'
@@ -203,14 +213,25 @@ export default function LibraryScreen() {
                 onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
                 activeOpacity={0.75}
             >
-                <GeneratedCover
-                    type="microlearning"
-                    title={item.title}
-                    category={item.category}
-                    tags={item.tags}
-                    hideText
-                    style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
-                />
+                <View style={{ width: '100%', height: coverHeight, alignItems: 'center' }}>
+                    <View style={{ width: coverWidth, height: coverHeight }}>
+                        <GeneratedCover
+                            type="microlearning"
+                            title={item.title}
+                            category={item.category}
+                            tags={item.tags}
+                            hideText
+                            style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
+                        />
+                        <TouchableOpacity
+                            style={[styles.deleteButton, { backgroundColor: 'rgba(0,0,0,0.4)', top: undefined, right: 8, bottom: 8 }]}
+                            onPress={() => handleUnsaveMl(item.id!)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                            <BookmarkX size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
                 <Text style={[styles.savedTitle, { color: colors.text, fontSize: fs(12) }]} numberOfLines={2}>{item.title}</Text>
                 <Text style={[styles.savedAuthor, { color: colors.secondaryText, fontSize: fs(11) }]} numberOfLines={1}>
                     Cap. {item.chapterNumber} — {item.chapterTitle}

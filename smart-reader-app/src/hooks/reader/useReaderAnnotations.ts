@@ -37,7 +37,7 @@ export const useReaderAnnotations = (
             const textToShare = pages[selectedParagraph];
             await Share.share({
                 message: textToShare,
-                title: 'Compartido desde Smart Reader',
+                title: 'Compartido desde Nuggeto',
             });
             setShowActions(false);
         } catch (error) {

@@ -96,7 +96,7 @@ export default function RegisterScreen() {
                             <BookOpen size={32} color="#FFFFFF" />
                         </View>
                         <Text style={[styles.title, { color: colors.text }]}>Crear Cuenta</Text>
-                        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>Únete a Smart Reader</Text>
+                        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>Únete a Nuggeto</Text>
                     </View>
 
                     {/* Form */}

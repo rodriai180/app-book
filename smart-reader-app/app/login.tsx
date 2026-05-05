@@ -94,7 +94,7 @@ export default function LoginScreen() {
                         <View style={[styles.logoCircle, { backgroundColor: colors.tint }]}>
                             <BookOpen size={36} color="#FFFFFF" />
                         </View>
-                        <Text style={[styles.appName, { color: colors.text }]}>Smart Reader</Text>
+                        <Text style={[styles.appName, { color: colors.text }]}>Nuggeto</Text>
                         <Text style={[styles.subtitle, { color: colors.secondaryText }]}>Tu asistente de lectura inteligente</Text>
                     </View>
 

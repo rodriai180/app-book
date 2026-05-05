@@ -256,6 +256,7 @@ export default function GeneratedCover({
 
     // ── Microlearning ──────────────────────────────────────────────────────────
     if (type === 'microlearning') {
+        const titleBg = title.split(/\s+/).slice(0, 4).join(' ');
         return (
             <LinearGradient
                 colors={gradient as [string, string]}
@@ -263,20 +264,29 @@ export default function GeneratedCover({
                 end={gradientDir.end}
                 style={containerStyle}
             >
-                {/* 1. Decoración geométrica variable */}
+                {/* Capa de profundidad: círculos grandes superpuestos */}
+                <View style={[deco.circle, { width: 260, height: 260, top: -80, left: -80 }]} />
+                <View style={[deco.circle, { width: 200, height: 200, bottom: -60, right: -60 }]} />
+                <View style={[deco.ring,   { width: 220, height: 220, bottom: -90, left: -70, borderWidth: 1 }]} />
+                <View style={[deco.ring,   { width: 110, height: 110, top: '25%', right: -20 }]} />
+                <View style={[deco.circle, { width: 55,  height: 55,  top: '18%', right: '20%', opacity: 0.14 }]} />
+
+                {/* Título como elemento tipográfico de fondo */}
+                <Text style={styles.mlBgTitle} numberOfLines={3} allowFontScaling={false}>{titleBg}</Text>
+
+                {/* Decoraciones geométricas variables por seed */}
                 <MicroDecoration seed={seed} />
 
-                {/* 2. Letra gigante de fondo */}
-                <Text style={styles.bgLetter} numberOfLines={1}>{bgLetter}</Text>
+                {/* Banda de brillo diagonal */}
+                <View style={styles.mlShimmer} />
 
-                {/* Ícono de fondo cuando hideIcon=true */}
+                {/* Ícono grande translúcido en modo tarjeta */}
                 {hideIcon && (
                     <View style={styles.bgIcon} pointerEvents="none">
-                        <Icon size={180} color="rgba(255,255,255,0.1)" strokeWidth={0.6} />
+                        <Icon size={200} color="rgba(255,255,255,0.07)" strokeWidth={0.5} />
                     </View>
                 )}
 
-                {/* 3. Icono + glow centrados */}
                 <View style={[
                     styles.mlContent,
                     (topAligned || (content && !centerContent)) ? { justifyContent: 'flex-start' } : null,
@@ -284,25 +294,25 @@ export default function GeneratedCover({
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
                     {!hideIcon && (
-                        <View style={styles.iconWrapper}>
-                            <View style={styles.iconGlow} />
+                        <View style={styles.mlIconWrapper}>
+                            <View style={styles.mlIconGlowOuter} />
+                            <View style={styles.mlIconGlow} />
                             <View style={[
-                                styles.iconOuterRing,
+                                styles.mlIconRing,
                                 iconShape === 1 && styles.iconOuterSquare,
                                 iconShape === 2 && styles.iconOuterDiamond,
                             ]}>
                                 <View style={[
-                                    styles.iconInnerCircle,
+                                    styles.mlIconInner,
                                     iconShape === 1 && styles.iconInnerSquare,
                                     iconShape === 2 && styles.iconInnerDiamond,
                                 ]}>
-                                    <Icon size={32} color="#FFFFFF" strokeWidth={1.5} />
+                                    <Icon size={38} color="#FFFFFF" strokeWidth={1.5} />
                                 </View>
                             </View>
                         </View>
                     )}
 
-                    {/* Título */}
                     {showText && (
                         <HighlightedText
                             text={title}
@@ -314,7 +324,6 @@ export default function GeneratedCover({
                         />
                     )}
 
-                    {/* Contenido y pregunta de reflexión */}
                     {showText && content && (
                         <HighlightedText
                             text={content}
@@ -333,7 +342,6 @@ export default function GeneratedCover({
                             highlightBg="rgba(255,255,255,0.35)"
                         />
                     )}
-
                 </View>
             </LinearGradient>
         );
@@ -469,6 +477,82 @@ const styles = StyleSheet.create({
         bottom: -30,
         right: -10,
         lineHeight: 180,
+    },
+
+    mlBgTitle: {
+        position: 'absolute',
+        fontSize: 88,
+        fontWeight: '900',
+        color: 'rgba(255,255,255,0.07)',
+        top: '10%',
+        left: -6,
+        right: -6,
+        lineHeight: 96,
+        letterSpacing: -3,
+        transform: [{ rotate: '-10deg' }],
+    },
+
+    mlShimmer: {
+        position: 'absolute',
+        width: '160%',
+        height: 55,
+        left: '-30%',
+        top: '40%',
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        transform: [{ rotate: '-8deg' }],
+    },
+
+    mlIconWrapper: {
+        width: 140,
+        height: 140,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+
+    mlIconGlowOuter: {
+        position: 'absolute',
+        width: 170,
+        height: 170,
+        borderRadius: 85,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        top: -15,
+        left: -15,
+    },
+
+    mlIconGlow: {
+        position: 'absolute',
+        width: 110,
+        height: 110,
+        borderRadius: 55,
+        backgroundColor: 'rgba(255,255,255,0.13)',
+        top: 15,
+        left: 15,
+    },
+
+    mlIconRing: {
+        width: 82,
+        height: 82,
+        borderRadius: 41,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.4)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 18,
+        elevation: 10,
+    },
+
+    mlIconInner: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     // Círculo grande translúcido que simula una fuente de luz detrás del ícono
