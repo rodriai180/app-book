@@ -186,20 +186,22 @@ export default function LibraryScreen() {
                 onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
                 activeOpacity={0.75}
             >
-                <View style={{ width: coverWidth, height: coverHeight }}>
-                    <GeneratedCover
-                        title={item.title}
-                        author={item.author}
-                        type="book"
-                        category={item.category}
-                        tags={item.tags}
-                        style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
-                    />
-                    {pct > 0 && (
-                        <View style={[styles.savedProgressBar, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
-                            <View style={[styles.savedProgressFill, { backgroundColor: colors.tint, width: `${pct}%` as any }]} />
-                        </View>
-                    )}
+                <View style={{ width: '100%', height: coverHeight, alignItems: 'center' }}>
+                    <View style={{ width: coverWidth, height: coverHeight }}>
+                        <GeneratedCover
+                            title={item.title}
+                            author={item.author}
+                            type="book"
+                            category={item.category}
+                            tags={item.tags}
+                            style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
+                        />
+                        {pct > 0 && (
+                            <View style={[styles.savedProgressBar, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
+                                <View style={[styles.savedProgressFill, { backgroundColor: colors.tint, width: `${pct}%` as any }]} />
+                            </View>
+                        )}
+                    </View>
                 </View>
             </TouchableOpacity>
         );

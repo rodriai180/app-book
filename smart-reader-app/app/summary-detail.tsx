@@ -314,20 +314,7 @@ export default function SummaryDetailScreen() {
                             <Text style={[styles.sectionLabel, { color: sectionLabelColor }]}>
                                 CAPÍTULOS · {chapters.length}
                             </Text>
-                            {bookProgress && bookProgress.totalChapters > 0 && (
-                                <Text style={[styles.progressLabel, { color: colors.tint }]}>
-                                    {bookProgress.completedChapterIds.length}/{bookProgress.totalChapters} leídos
-                                </Text>
-                            )}
                         </View>
-                        {bookProgress && bookProgress.totalChapters > 0 && (
-                            <View style={[styles.bookProgressBar, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                                <View style={[styles.bookProgressFill, {
-                                    backgroundColor: colors.tint,
-                                    width: `${Math.round((bookProgress.completedChapterIds.length / bookProgress.totalChapters) * 100)}%` as any,
-                                }]} />
-                            </View>
-                        )}
                         {chapters.map(ch => {
                             const count = mlCounts[ch.id!] ?? 0;
                             const isRead = bookProgress?.completedChapterIds?.includes(ch.id!) ?? false;
@@ -450,8 +437,6 @@ const styles = StyleSheet.create({
     // Capítulos
     chaptersSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     progressLabel: { fontSize: 12, fontWeight: '600' },
-    bookProgressBar: { height: 4, borderRadius: 2, marginBottom: 10, overflow: 'hidden' },
-    bookProgressFill: { height: 4, borderRadius: 2 },
     chapterCard: {
         borderRadius: 14, padding: 14,
         flexDirection: 'row', alignItems: 'center', gap: 12,

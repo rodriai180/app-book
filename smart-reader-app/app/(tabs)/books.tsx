@@ -12,6 +12,7 @@ import { getAllBooks } from '../../src/services/bookContentService';
 import { BookData } from '../../src/models/BookModels';
 import GeneratedCover from '../../src/components/GeneratedCover';
 import { useTheme } from '../../src/services/themeContext';
+import { ALL_CATEGORIES } from '../../src/services/settingsContext';
 
 export default function BooksScreen() {
     const { colors, isDark } = useTheme();
@@ -22,6 +23,15 @@ export default function BooksScreen() {
     const [books, setBooks] = useState<BookData[]>([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState('');
+    const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set());
+
+    const toggleCategory = (key: string) => {
+        setActiveCategories(prev => {
+            const next = new Set(prev);
+            next.has(key) ? next.delete(key) : next.add(key);
+            return next;
+        });
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -34,12 +44,12 @@ export default function BooksScreen() {
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return books;
-        return books.filter(b =>
-            b.title.toLowerCase().includes(q) ||
-            b.author.toLowerCase().includes(q)
-        );
-    }, [books, query]);
+        return books.filter(b => {
+            if (q && !b.title.toLowerCase().includes(q) && !b.author.toLowerCase().includes(q)) return false;
+            if (activeCategories.size > 0 && !activeCategories.has(b.category)) return false;
+            return true;
+        });
+    }, [books, query, activeCategories]);
 
     const renderItem = ({ item }: { item: BookData }) => {
         if (isDesktop) {
@@ -122,6 +132,35 @@ export default function BooksScreen() {
                     clearButtonMode="while-editing"
                 />
             </View>
+
+            {/* Filtros por categoría */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipsScroll}
+                contentContainerStyle={styles.chipsRow}
+            >
+                {ALL_CATEGORIES.map(({ key, label }) => {
+                    const active = activeCategories.has(key);
+                    return (
+                        <TouchableOpacity
+                            key={key}
+                            onPress={() => toggleCategory(key)}
+                            activeOpacity={0.7}
+                            style={[
+                                styles.chip,
+                                active
+                                    ? { backgroundColor: colors.tint, borderColor: colors.tint }
+                                    : { backgroundColor: 'transparent', borderColor: colors.border },
+                            ]}
+                        >
+                            <Text style={[styles.chipText, { color: active ? '#FFFFFF' : colors.text }]}>
+                                {label}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </ScrollView>
 
             {loading ? (
                 <View style={styles.center}>
@@ -254,4 +293,25 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     badgeText: { fontSize: 10, fontWeight: '600' },
+
+    chipsRow: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        gap: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    chip: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1.5,
+    },
+    chipText: { fontSize: 13, fontWeight: '600' },
+
+    chipsScroll: {
+        flexGrow: 0,
+        flexShrink: 0,
+        height: 44,
+    },
 });
