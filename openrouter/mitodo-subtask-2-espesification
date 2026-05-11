@@ -1,0 +1,129 @@
+Perfecto. Acá va el paso a paso completo para la subtask 2:
+
+---
+
+## Subtask 2 — Bundle and build config
+
+### PASO 1 — Relevamiento con Copilot en VS Code
+
+Abrí el chat de Copilot y pegá estos prompts uno por uno, guardando el output de cada uno:
+
+**Prompt 1 — angular.json:**
+
+```
+@workspace Analyze the angular.json file and tell me:
+1. Is optimization set to true for production build?
+2. Is buildOptimizer set to true?
+3. Is sourceMap disabled for production?
+4. Are there configured budgets for bundle size?
+5. Is aot enabled?
+List each with current value and whether it needs to be changed.
+```
+
+**Prompt 2 — package.json:**
+
+```
+@workspace Analyze package.json and tell me:
+1. Which dependencies could be moved to devDependencies?
+2. Are there any unused or duplicated packages?
+3. Which packages have known heavy bundle sizes (moment, lodash, echarts, rxjs)?
+4. Are there outdated packages that have lighter modern alternatives?
+List each finding with the package name and recommendation.
+```
+
+**Prompt 3 — Rutas lazy loading:**
+
+```
+@workspace Analyze all routing files in the project. For each route tell me:
+1. Is it using loadComponent or loadChildren for lazy loading?
+2. If not, which components are being eagerly loaded that should be lazy?
+3. Is there a preload strategy configured in AppRoutingModule?
+List every route with its current loading strategy.
+```
+
+**Prompt 4 — ECharts:**
+
+```
+@workspace Search all files that import from 'echarts'. For each file tell me:
+1. The exact import line
+2. Whether it's importing the full library or specific modules
+3. Which chart types and components are actually used in that file
+List every file with its import pattern.
+```
+
+---
+
+### PASO 2 — Instalar bundle analyzer
+
+En la terminal del proyecto:
+
+```powershell
+npm install --save-dev webpack-bundle-analyzer
+npm run build -- --configuration production --stats-json
+npx webpack-bundle-analyzer dist/stats.json
+```
+
+Esto abre un mapa visual en el browser. Anotá los 5 chunks más pesados.
+
+---
+
+### PASO 3 — Llevar hallazgos a Claude Code
+
+Abrí Claude Code en la raíz del proyecto y pegá este prompt con los outputs de Copilot:
+
+```
+I have an Angular project (PTI/NPTO) with these modules:
+patrimonio, immobili, sdv, servizi, filantropia, aircraft-yacht, shared,
+and root-level folders: home-page, landing-page, models, welcome-page.
+
+Services are injected using inject() not constructor injection.
+
+Based on this analysis from Copilot:
+[PEGÁ ACÁ EL OUTPUT DEL PROMPT 1 - angular.json]
+[PEGÁ ACÁ EL OUTPUT DEL PROMPT 2 - package.json]
+[PEGÁ ACÁ EL OUTPUT DEL PROMPT 3 - lazy routes]
+[PEGÁ ACÁ EL OUTPUT DEL PROMPT 4 - echarts]
+[PEGÁ ACÁ LOS 5 CHUNKS MÁS PESADOS DEL BUNDLE ANALYZER]
+
+Generate a PowerShell script called audit-bundle.ps1 that:
+1. Checks angular.json and reports missing optimization flags
+2. Lists all routes that are not using lazy loading
+3. Lists all echarts imports that are not modular
+4. Generates a report file bundle-audit-report.txt with all findings
+   and specific recommended fixes for each one
+Do not apply any changes, only report.
+```
+
+---
+
+### PASO 4 — Validación
+
+Una vez que Claude Code generó el script, correlo:
+
+```powershell
+.\audit-bundle.ps1
+```
+
+Revisá el `bundle-audit-report.txt` generado y llevalo de vuelta a Copilot para validar:
+
+```
+@workspace I ran a bundle audit and got these findings:
+[PEGÁ EL CONTENIDO DE bundle-audit-report.txt]
+
+For each finding, show me the exact code change needed in the affected file.
+Prioritize by estimated impact on bundle size.
+```
+
+---
+
+### Criterio de aceptación de la subtask 2
+
+- `angular.json` tiene todos los flags de producción activos
+- No hay rutas eager que deberían ser lazy
+- ECharts usa imports modulares en todos los archivos
+- Bundle inicial (`main.js`) reducido respecto al baseline
+- `bundle-audit-report.txt` con 0 findings pendientes
+
+---
+
+¿Arrancamos con el paso 1 o necesitás algo más antes?
