@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import Svg, { Path, Ellipse, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Ellipse } from 'react-native-svg';
 import HighlightedText from './HighlightedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -217,19 +217,18 @@ function NuggetIcon({ children }: { children: React.ReactNode }) {
     return (
         <View style={nuggetStyles.wrapper}>
             <Svg width={230} height={154} viewBox="0 0 120 80" style={nuggetStyles.svg}>
-                <Defs>
-                    <SvgLinearGradient id="ng" x1="0.3" y1="0" x2="0.7" y2="1">
-                        <Stop offset="0" stopColor="#FFC240" />
-                        <Stop offset="1" stopColor="#D97000" />
-                    </SvgLinearGradient>
-                </Defs>
-                <Path d={NUGGET_PATH} fill="url(#ng)" stroke="#B36000" strokeWidth={2.5} />
-                <Ellipse cx={32} cy={22} rx={6} ry={4} fill="#C56A00" opacity={0.6} />
-                <Ellipse cx={72} cy={20} rx={7} ry={4} fill="#C56A00" opacity={0.6} />
-                <Ellipse cx={104} cy={42} rx={4} ry={6} fill="#C56A00" opacity={0.6} />
-                <Ellipse cx={24} cy={58} rx={6} ry={3.5} fill="#C56A00" opacity={0.6} />
-                <Ellipse cx={72} cy={68} rx={7} ry={3.5} fill="#C56A00" opacity={0.6} />
-                <Path d="M22 22 C50 10,80 10,100 22" fill="none" stroke="rgba(255,230,130,0.55)" strokeWidth={5} strokeLinecap="round" />
+                {/* Cuerpo principal */}
+                <Path d={NUGGET_PATH} fill="#F5A623" stroke="#B36000" strokeWidth={2.5} />
+                {/* Capa de luz superior para simular gradiente */}
+                <Path d={NUGGET_PATH} fill="#FFC240" stroke="none" opacity={0.45} />
+                {/* Bumps de textura */}
+                <Ellipse cx={32} cy={22} rx={6} ry={4} fill="#C56A00" opacity={0.55} />
+                <Ellipse cx={72} cy={20} rx={7} ry={4} fill="#C56A00" opacity={0.55} />
+                <Ellipse cx={104} cy={42} rx={4} ry={6} fill="#C56A00" opacity={0.55} />
+                <Ellipse cx={24} cy={58} rx={6} ry={3.5} fill="#C56A00" opacity={0.55} />
+                <Ellipse cx={72} cy={68} rx={7} ry={3.5} fill="#C56A00" opacity={0.55} />
+                {/* Highlight */}
+                <Path d="M22 22 C50 10,80 10,100 22" fill="none" stroke="rgba(255,230,130,0.6)" strokeWidth={5} strokeLinecap="round" />
             </Svg>
             <View style={nuggetStyles.iconCenter}>{children}</View>
         </View>
