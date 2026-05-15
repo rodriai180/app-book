@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import Svg, { Path, Ellipse, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import HighlightedText from './HighlightedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -13,17 +14,17 @@ import {
 // ─── Mapeo de categorías → gradientes ────────────────────────────────────────
 
 const CATEGORY_GRADIENTS: Record<string, readonly [string, string]> = {
-    'comunicacion':        ['#6C63FF', '#3F3D9E'],
-    'psicologia':          ['#E91E63', '#9C27B0'],
-    'negocios':            ['#FF9800', '#F44336'],
-    'desarrollo-personal': ['#4CAF50', '#2E7D32'],
-    'finanzas':            ['#00BCD4', '#006064'],
-    'liderazgo':           ['#FFC107', '#FF6F00'],
-    'habitos':             ['#26C6DA', '#00838F'],
-    'productividad':       ['#7C4DFF', '#304FFE'],
+    'comunicacion':        ['#FF6E00', '#CC4400'],
+    'psicologia':          ['#FF6E00', '#CC4400'],
+    'negocios':            ['#FF6E00', '#CC4400'],
+    'desarrollo-personal': ['#FF6E00', '#CC4400'],
+    'finanzas':            ['#FF6E00', '#CC4400'],
+    'liderazgo':           ['#FF6E00', '#CC4400'],
+    'habitos':             ['#FF6E00', '#CC4400'],
+    'productividad':       ['#FF6E00', '#CC4400'],
 };
 
-const DEFAULT_GRADIENT: readonly [string, string] = ['#546E7A', '#263238'];
+const DEFAULT_GRADIENT: readonly [string, string] = ['#FF6E00', '#CC4400'];
 
 // ─── 4 direcciones posibles del gradiente principal ──────────────────────────
 // La semilla elige cuál → mismo ML siempre tiene la misma dirección.
@@ -207,6 +208,53 @@ function MicroDecoration({ seed }: { seed: number }) {
     );
 }
 
+// ─── Nugget shape SVG ─────────────────────────────────────────────────────────
+
+// Elongated nugget in 120x80 viewBox
+const NUGGET_PATH = "M10 40 C9 30,14 18,26 13 C36 8,48 7,60 9 C70 11,82 7,92 13 C102 19,113 28,112 40 C111 52,102 62,90 68 C80 74,66 76,54 75 C42 74,30 76,20 70 C10 64,9 52,10 40 Z";
+
+function NuggetIcon({ children }: { children: React.ReactNode }) {
+    return (
+        <View style={nuggetStyles.wrapper}>
+            <Svg width={230} height={154} viewBox="0 0 120 80" style={nuggetStyles.svg}>
+                <Defs>
+                    <SvgLinearGradient id="ng" x1="0.3" y1="0" x2="0.7" y2="1">
+                        <Stop offset="0" stopColor="#FFC240" />
+                        <Stop offset="1" stopColor="#D97000" />
+                    </SvgLinearGradient>
+                </Defs>
+                <Path d={NUGGET_PATH} fill="url(#ng)" stroke="#B36000" strokeWidth={2.5} />
+                <Ellipse cx={32} cy={22} rx={6} ry={4} fill="#C56A00" opacity={0.6} />
+                <Ellipse cx={72} cy={20} rx={7} ry={4} fill="#C56A00" opacity={0.6} />
+                <Ellipse cx={104} cy={42} rx={4} ry={6} fill="#C56A00" opacity={0.6} />
+                <Ellipse cx={24} cy={58} rx={6} ry={3.5} fill="#C56A00" opacity={0.6} />
+                <Ellipse cx={72} cy={68} rx={7} ry={3.5} fill="#C56A00" opacity={0.6} />
+                <Path d="M22 22 C50 10,80 10,100 22" fill="none" stroke="rgba(255,230,130,0.55)" strokeWidth={5} strokeLinecap="round" />
+            </Svg>
+            <View style={nuggetStyles.iconCenter}>{children}</View>
+        </View>
+    );
+}
+
+const nuggetStyles = StyleSheet.create({
+    wrapper: {
+        width: 230,
+        height: 154,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+        transform: [{ rotate: '-37.5deg' }],
+    },
+    svg: {
+        position: 'absolute',
+    },
+    iconCenter: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ rotate: '37.5deg' }],
+    },
+});
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function GeneratedCover({
@@ -239,8 +287,6 @@ export default function GeneratedCover({
                             : getIcon(category);
     const seed          = getVisualSeed(tags.length > 0 ? tags : [title]);
     const gradientDir   = GRADIENT_DIRS[seed % 4];
-    // 3 formas posibles del contenedor del ícono: 0=círculo, 1=cuadrado redondeado, 2=diamante
-    const iconShape     = seed % 3;
 
     const hasAspectRatio = style && 'aspectRatio' in style;
     const hasFlex = style && ('flex' in style || 'flexGrow' in style);
@@ -251,7 +297,6 @@ export default function GeneratedCover({
         style ?? {},
     ];
 
-    const bgLetter = (tags[0] ?? title).charAt(0).toUpperCase();
     const showText = !hideText;
 
     // ── Microlearning ──────────────────────────────────────────────────────────
@@ -294,23 +339,9 @@ export default function GeneratedCover({
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
                     {!hideIcon && (
-                        <View style={styles.mlIconWrapper}>
-                            <View style={styles.mlIconGlowOuter} />
-                            <View style={styles.mlIconGlow} />
-                            <View style={[
-                                styles.mlIconRing,
-                                iconShape === 1 && styles.iconOuterSquare,
-                                iconShape === 2 && styles.iconOuterDiamond,
-                            ]}>
-                                <View style={[
-                                    styles.mlIconInner,
-                                    iconShape === 1 && styles.iconInnerSquare,
-                                    iconShape === 2 && styles.iconInnerDiamond,
-                                ]}>
-                                    <Icon size={38} color="#FFFFFF" strokeWidth={1.5} />
-                                </View>
-                            </View>
-                        </View>
+                        <NuggetIcon>
+                            <Icon size={38} color="#FFFFFF" strokeWidth={1.5} />
+                        </NuggetIcon>
                     )}
 
                     {showText && (
@@ -626,13 +657,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    // Forma 1: cuadrado redondeado (override de borderRadius)
-    iconOuterSquare: { borderRadius: 18 },
-    iconInnerSquare: { borderRadius: 12 },
-
-    // Forma 2: diamante (cuadrado rotado 45°, ícono contra-rotado)
-    iconOuterDiamond: { borderRadius: 14, transform: [{ rotate: '45deg' }] },
-    iconInnerDiamond: { borderRadius: 8,  transform: [{ rotate: '-45deg' }] },
+    nuggetOuter: {
+        borderTopLeftRadius: 52,
+        borderTopRightRadius: 28,
+        borderBottomLeftRadius: 36,
+        borderBottomRightRadius: 48,
+    },
+    nuggetInner: {
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 20,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 38,
+    },
 
     mlTitle: {
         fontSize: 15,
