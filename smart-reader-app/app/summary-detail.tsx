@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Linking,
+    ActivityIndicator, Linking, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -44,6 +44,7 @@ export default function SummaryDetailScreen() {
     const [prefaceOpen, setPrefaceOpen] = useState(false);
     const [shortOpen, setShortOpen] = useState(false);
     const [longOpen, setLongOpen] = useState(false);
+    const [buyModalVisible, setBuyModalVisible] = useState(false);
 
     // ── Ocultar header de navegación ─────────────────────────────────────────
     React.useLayoutEffect(() => {
@@ -363,17 +364,58 @@ export default function SummaryDetailScreen() {
             </ScrollView>
 
             {/* ── FAB comprar ── */}
-            {book.purchaseLink ? (
+            {(book.purchaseLinkPhysical || book.purchaseLinkVirtual || book.purchaseLinkAudio || book.purchaseLink) ? (
                 <View style={[styles.fabContainer, { backgroundColor: colors.background, borderTopColor: dividerColor }]}>
                     <TouchableOpacity
                         style={[styles.buyBtn, { backgroundColor: colors.tint }]}
-                        onPress={() => Linking.openURL(book.purchaseLink)}
+                        onPress={() => setBuyModalVisible(true)}
                     >
                         <ShoppingCart size={18} color="#FFF" />
                         <Text style={styles.buyLabel}>Comprar libro</Text>
                     </TouchableOpacity>
                 </View>
             ) : null}
+
+            {/* ── Modal opciones de compra ── */}
+            <Modal
+                visible={buyModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setBuyModalVisible(false)}
+            >
+                <Pressable style={styles.modalOverlay} onPress={() => setBuyModalVisible(false)}>
+                    <Pressable style={[styles.modalBox, { backgroundColor: colors.card }]} onPress={() => {}}>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>¿Cómo querés comprarlo?</Text>
+                        {(book.purchaseLinkPhysical || book.purchaseLink) ? (
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.tint }]}
+                                onPress={() => { setBuyModalVisible(false); Linking.openURL(book.purchaseLinkPhysical || book.purchaseLink!); }}
+                            >
+                                <Text style={styles.modalBtnText}>📦 Libro físico</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        {(book.purchaseLinkVirtual || book.purchaseLink) ? (
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.tint }]}
+                                onPress={() => { setBuyModalVisible(false); Linking.openURL(book.purchaseLinkVirtual || book.purchaseLink!); }}
+                            >
+                                <Text style={styles.modalBtnText}>📱 Libro virtual</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        {(book.purchaseLinkAudio || book.purchaseLink) ? (
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: colors.tint }]}
+                                onPress={() => { setBuyModalVisible(false); Linking.openURL(book.purchaseLinkAudio || book.purchaseLink!); }}
+                            >
+                                <Text style={styles.modalBtnText}>🎧 Audiolibro</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        <TouchableOpacity onPress={() => setBuyModalVisible(false)} style={styles.modalCancel}>
+                            <Text style={[styles.modalCancelText, { color: colors.tabIconDefault }]}>Cancelar</Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -458,4 +500,23 @@ const styles = StyleSheet.create({
         gap: 10, paddingVertical: 14, borderRadius: 14,
     },
     buyLabel: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+    // Modal compra
+    modalOverlay: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    modalBox: {
+        width: '85%', borderRadius: 20, padding: 24, gap: 12,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+    },
+    modalTitle: { fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+    modalBtn: {
+        paddingVertical: 14, borderRadius: 12,
+        alignItems: 'center',
+    },
+    modalBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+    modalCancel: { alignItems: 'center', paddingVertical: 8 },
+    modalCancelText: { fontSize: 14, fontWeight: '600' },
 });

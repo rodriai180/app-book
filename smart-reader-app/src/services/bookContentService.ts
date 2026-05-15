@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
   deleteDoc,
   query,
   orderBy,
@@ -73,6 +74,9 @@ interface BookJSON {
   category: string;
   tags?: string[];
   purchaseLink?: string;
+  purchaseLinkPhysical?: string;
+  purchaseLinkVirtual?: string;
+  purchaseLinkAudio?: string;
   preface?: string;
   shortSummary?: string;
   longSummary?: string;
@@ -221,6 +225,9 @@ export async function uploadBookFromJSON(
     category: data.category ?? "",
     tags: data.tags ?? [],
     purchaseLink: data.purchaseLink ?? "",
+    purchaseLinkPhysical: data.purchaseLinkPhysical ?? "",
+    purchaseLinkVirtual: data.purchaseLinkVirtual ?? "",
+    purchaseLinkAudio: data.purchaseLinkAudio ?? "",
     preface: data.preface ?? "",
     shortSummary: data.shortSummary ?? "",
     longSummary: data.longSummary ?? "",
@@ -456,6 +463,9 @@ export async function getBookFullJSON(bookId: string): Promise<object | null> {
     category: book.category,
     tags: book.tags,
     purchaseLink: book.purchaseLink,
+    purchaseLinkPhysical: book.purchaseLinkPhysical ?? "",
+    purchaseLinkVirtual: book.purchaseLinkVirtual ?? "",
+    purchaseLinkAudio: book.purchaseLinkAudio ?? "",
     preface: book.preface,
     shortSummary: book.shortSummary,
     longSummary: book.longSummary,
@@ -619,7 +629,31 @@ export async function getMultipleBookProgress(
   return result;
 }
 
-// ─── 10. updateBookFromJSON ───────────────────────────────────────────────────
+// ─── 10. updateBookMetadata ──────────────────────────────────────────────────
+
+/**
+ * Actualiza solo los campos del documento raíz del libro sin tocar capítulos ni microlearnings.
+ */
+export async function updateBookMetadata(
+  bookId: string,
+  fields: {
+    title: string;
+    author: string;
+    category: string;
+    tags: string[];
+    purchaseLink: string;
+    purchaseLinkPhysical: string;
+    purchaseLinkVirtual: string;
+    purchaseLinkAudio: string;
+    preface: string;
+    shortSummary: string;
+    longSummary: string;
+  },
+): Promise<void> {
+  await updateDoc(doc(db, "books_v2", bookId), fields);
+}
+
+// ─── 11. updateBookFromJSON ───────────────────────────────────────────────────
 
 /**
  * Elimina el contenido anterior del libro y lo reemplaza con el nuevo JSON,
@@ -644,6 +678,9 @@ export async function updateBookFromJSON(
     category: data.category ?? "",
     tags: data.tags ?? [],
     purchaseLink: data.purchaseLink ?? "",
+    purchaseLinkPhysical: data.purchaseLinkPhysical ?? "",
+    purchaseLinkVirtual: data.purchaseLinkVirtual ?? "",
+    purchaseLinkAudio: data.purchaseLinkAudio ?? "",
     preface: data.preface ?? "",
     shortSummary: data.shortSummary ?? "",
     longSummary: data.longSummary ?? "",

@@ -32,6 +32,7 @@ function LevelCard({
     lessonId,
     router,
     lessonLevel,
+    isDesktop,
 }: {
     level: Level;
     theme: any;
@@ -41,6 +42,7 @@ function LevelCard({
     lessonId: string;
     router: any;
     lessonLevel: string;
+    isDesktop?: boolean;
 }) {
     const { width } = useWindowDimensions();
     const isNarrow = width < 420;
@@ -66,7 +68,9 @@ function LevelCard({
                 backgroundColor: theme.card,
                 borderColor: theme.success,
                 borderWidth: 3,
-                alignItems: cardItemsAlignment
+                alignItems: cardItemsAlignment,
+                width: isDesktop ? '100%' : '95%',
+                ...(isDesktop && { flex: 1 }),
             }
         ]}>
             <View style={[styles.levelHeader, { justifyContent: 'space-between' }]}>
@@ -252,6 +256,9 @@ export default function ClaseScreen() {
         Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9 });
     };
 
+    const { width: screenWidth } = useWindowDimensions();
+    const isDesktop = screenWidth >= 768;
+
     const contentAlignment = 'left';
     const cardItemsAlignment = 'flex-start';
 
@@ -284,9 +291,15 @@ export default function ClaseScreen() {
                 style={[styles.container, { backgroundColor: theme.surface }]}
                 contentContainerStyle={styles.contentContainer}
             >
-                <View style={styles.listContainer}>
+                <View style={[
+                    styles.listContainer,
+                    isDesktop && { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', justifyContent: 'space-between' }
+                ]}>
                     {levels.map((level) => (
-                        <View key={level.id} style={styles.levelWrapper}>
+                        <View key={level.id} style={[
+                            styles.levelWrapper,
+                            isDesktop && { width: '48%', alignItems: 'stretch' }
+                        ]}>
                             <LevelCard
                                 level={level as any}
                                 theme={theme}
@@ -296,6 +309,7 @@ export default function ClaseScreen() {
                                 lessonId={lessonId || '1'}
                                 router={router}
                                 lessonLevel={lessonLevel}
+                                isDesktop={isDesktop}
                             />
                         </View>
                     ))}
@@ -330,6 +344,7 @@ const styles = StyleSheet.create({
     levelWrapper: {
         width: '100%',
         alignItems: 'center',
+        flexDirection: 'column',
     },
     levelCard: {
         width: '95%',

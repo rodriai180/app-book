@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
+    ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import {
     getBookFullJSON,
     updateBookFromJSON,
+    updateBookMetadata,
 } from '../src/services/bookContentService';
 import GeneratedCover from '../src/components/GeneratedCover';
 import { useTheme } from '../src/services/themeContext';
@@ -55,6 +56,9 @@ interface BookForm {
     category: string;
     tags: string;
     purchaseLink: string;
+    purchaseLinkPhysical: string;
+    purchaseLinkVirtual: string;
+    purchaseLinkAudio: string;
     preface: string;
     shortSummary: string;
     longSummary: string;
@@ -62,7 +66,9 @@ interface BookForm {
 
 const EMPTY_BOOK: BookForm = {
     title: '', author: '', category: '', tags: '',
-    purchaseLink: '', preface: '', shortSummary: '', longSummary: '',
+    purchaseLink: '',
+    purchaseLinkPhysical: '', purchaseLinkVirtual: '', purchaseLinkAudio: '',
+    preface: '', shortSummary: '', longSummary: '',
 };
 
 const EMPTY_ML = (): MicrolearningForm => ({
@@ -179,6 +185,8 @@ export default function EditBookScreen() {
     const [loadError, setLoadError] = useState('');
     const [saveError, setSaveError] = useState('');
 
+    const initialChaptersJsonRef = useRef<string>('[]');
+
     // ── Cargar datos ──────────────────────────────────────────────────────────
     useEffect(() => {
         (async () => {
@@ -191,11 +199,16 @@ export default function EditBookScreen() {
                     category: data.category ?? '',
                     tags: (data.tags ?? []).join(', '),
                     purchaseLink: data.purchaseLink ?? '',
+                    purchaseLinkPhysical: data.purchaseLinkPhysical ?? '',
+                    purchaseLinkVirtual: data.purchaseLinkVirtual ?? '',
+                    purchaseLinkAudio: data.purchaseLinkAudio ?? '',
                     preface: data.preface ?? '',
                     shortSummary: data.shortSummary ?? '',
                     longSummary: data.longSummary ?? '',
                 });
-                setChapters(rawToForm(data.chapters ?? []));
+                const chapterForms = rawToForm(data.chapters ?? []);
+                setChapters(chapterForms);
+                initialChaptersJsonRef.current = JSON.stringify(formToRaw(chapterForms));
             } catch (e: any) {
                 setLoadError('Error al cargar: ' + (e?.message || String(e)));
             } finally {
@@ -213,39 +226,51 @@ export default function EditBookScreen() {
         }
         setSaving(true);
         try {
-            // Convertir imágenes de capítulos y microlearnings a base64
-            const resolvedChapters = await Promise.all(
-                chapters.map(async (ch) => {
-                    // Imagen del capítulo
-                    let resolved = ch;
-                    if (ch.localImageUri) {
-                        const base64 = await uriToBase64(ch.localImageUri);
-                        resolved = { ...resolved, chapterImageUrl: base64, localImageUri: null };
-                    }
-                    // Imágenes de microlearnings
-                    const resolvedMLs = await Promise.all(
-                        resolved.microlearnings.map(async (ml) => {
-                            if (!ml.localImageUri) return ml;
-                            const base64 = await uriToBase64(ml.localImageUri);
-                            return { ...ml, microlearningImageUrl: base64, localImageUri: null };
-                        })
-                    );
-                    return { ...resolved, microlearnings: resolvedMLs };
-                })
-            );
-
-            const bookJson = {
+            const metadata = {
                 title: form.title.trim(),
                 author: form.author.trim(),
                 category: form.category.trim(),
                 tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
                 purchaseLink: form.purchaseLink.trim(),
+                purchaseLinkPhysical: form.purchaseLinkPhysical.trim(),
+                purchaseLinkVirtual: form.purchaseLinkVirtual.trim(),
+                purchaseLinkAudio: form.purchaseLinkAudio.trim(),
                 preface: form.preface.trim(),
                 shortSummary: form.shortSummary.trim(),
                 longSummary: form.longSummary.trim(),
-                chapters: formToRaw(resolvedChapters),
             };
-            await updateBookFromJSON(bookId, bookJson);
+
+            const hasNewImages = chapters.some(ch =>
+                ch.localImageUri || ch.microlearnings.some(ml => ml.localImageUri)
+            );
+            const chaptersChanged =
+                hasNewImages ||
+                JSON.stringify(formToRaw(chapters)) !== initialChaptersJsonRef.current;
+
+            if (!chaptersChanged) {
+                await updateBookMetadata(bookId, metadata);
+            } else {
+                // Convertir imágenes de capítulos y microlearnings a base64
+                const resolvedChapters = await Promise.all(
+                    chapters.map(async (ch) => {
+                        let resolved = ch;
+                        if (ch.localImageUri) {
+                            const base64 = await uriToBase64(ch.localImageUri);
+                            resolved = { ...resolved, chapterImageUrl: base64, localImageUri: null };
+                        }
+                        const resolvedMLs = await Promise.all(
+                            resolved.microlearnings.map(async (ml) => {
+                                if (!ml.localImageUri) return ml;
+                                const base64 = await uriToBase64(ml.localImageUri);
+                                return { ...ml, microlearningImageUrl: base64, localImageUri: null };
+                            })
+                        );
+                        return { ...resolved, microlearnings: resolvedMLs };
+                    })
+                );
+                await updateBookFromJSON(bookId, { ...metadata, chapters: formToRaw(resolvedChapters) });
+            }
+
             router.back();
         } catch (e: any) {
             setSaveError('Error al guardar: ' + (e?.message || String(e)));
@@ -365,7 +390,14 @@ export default function EditBookScreen() {
                         <Field label="Tags (separados por coma)" value={form.tags} onChangeText={set('tags')}
                             placeholder="liderazgo, hábitos, productividad"
                             colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
-                        <Field label="Link de compra" value={form.purchaseLink} onChangeText={set('purchaseLink')}
+                        <Field label="Link de compra — Libro físico" value={form.purchaseLinkPhysical} onChangeText={set('purchaseLinkPhysical')}
+                            placeholder="https://..."
+                            colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
+                        <Field label="Link de compra — Libro virtual" value={form.purchaseLinkVirtual} onChangeText={set('purchaseLinkVirtual')}
+                            placeholder="https://..."
+                            colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
+                        <Field label="Link de compra — Audiolibro" value={form.purchaseLinkAudio} onChangeText={set('purchaseLinkAudio')}
+                            placeholder="https://..."
                             colors={colors} inputBg={inputBg} inputBorder={inputBorder} labelColor={labelColor} />
                         <Field label="Prefacio" value={form.preface} onChangeText={set('preface')}
                             multiline numberOfLines={4}

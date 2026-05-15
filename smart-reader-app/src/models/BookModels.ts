@@ -46,6 +46,9 @@ export interface BookData {
     category: string;
     tags: string[];
     purchaseLink: string;
+    purchaseLinkPhysical?: string;
+    purchaseLinkVirtual?: string;
+    purchaseLinkAudio?: string;
     preface: string;
     shortSummary: string;
     longSummary: string;
