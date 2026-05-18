@@ -369,18 +369,21 @@ export default function GeneratedCover({
                             length={titleHighlight?.length ?? 0}
                             baseStyle={styles.mlTitle}
                             highlightBg="rgba(255,255,255,0.35)"
-                            numberOfLines={2}
+                            numberOfLines={3}
                         />
                     )}
 
                     {showText && content && (
-                        <HighlightedText
-                            text={content}
-                            start={contentHighlight?.start ?? -1}
-                            length={contentHighlight?.length ?? 0}
-                            baseStyle={styles.mlBodyText}
-                            highlightBg="rgba(255,255,255,0.35)"
-                        />
+                        <>
+                            {centerContent && <View style={styles.mlDivider} />}
+                            <HighlightedText
+                                text={content}
+                                start={contentHighlight?.start ?? -1}
+                                length={contentHighlight?.length ?? 0}
+                                baseStyle={centerContent ? styles.mlBookTitle : styles.mlBodyText}
+                                highlightBg="rgba(255,255,255,0.35)"
+                            />
+                        </>
                     )}
                     {showText && reflectionQuestion && (
                         <HighlightedText
@@ -391,6 +394,10 @@ export default function GeneratedCover({
                             highlightBg="rgba(255,255,255,0.35)"
                         />
                     )}
+                </View>
+
+                <View style={styles.mlBranding}>
+                    <Text style={styles.mlBrandingText}>nuggeto</Text>
                 </View>
             </LinearGradient>
         );
@@ -689,10 +696,10 @@ const styles = StyleSheet.create({
     },
 
     mlTitle: {
-        fontSize: 15,
+        fontSize: 20,
         fontWeight: '800',
         color: '#FFFFFF',
-        lineHeight: 21,
+        lineHeight: 27,
         textAlign: 'center',
         textShadowColor: 'rgba(0,0,0,0.4)',
         textShadowOffset: { width: 0, height: 1 },
@@ -700,21 +707,52 @@ const styles = StyleSheet.create({
     },
 
     mlBodyText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '400',
         color: 'rgba(255,255,255,0.88)',
-        lineHeight: 18,
+        lineHeight: 19,
         textAlign: 'center',
         textShadowColor: 'rgba(0,0,0,0.3)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 3,
     },
 
-    mlReflectionText: {
+    mlBookTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.9)',
+        lineHeight: 20,
+        textAlign: 'center',
+        letterSpacing: 0.2,
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+
+    mlDivider: {
+        width: 36,
+        height: 1.5,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 1,
+    },
+
+    mlBranding: {
+        position: 'absolute',
+        bottom: 10,
+        alignSelf: 'center',
+    },
+    mlBrandingText: {
         fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.4)',
+        letterSpacing: 2.5,
+    },
+
+    mlReflectionText: {
+        fontSize: 12,
         fontWeight: '500',
         color: 'rgba(255,255,255,0.65)',
-        lineHeight: 16,
+        lineHeight: 17,
         textAlign: 'center',
         fontStyle: 'italic',
     },
