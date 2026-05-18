@@ -211,24 +211,43 @@ function MicroDecoration({ seed }: { seed: number }) {
 // ─── Nugget shape SVG ─────────────────────────────────────────────────────────
 
 // Elongated nugget in 120x80 viewBox
-const NUGGET_PATH = "M10 40 C9 30,14 18,26 13 C36 8,48 7,60 9 C70 11,82 7,92 13 C102 19,113 28,112 40 C111 52,102 62,90 68 C80 74,66 76,54 75 C42 74,30 76,20 70 C10 64,9 52,10 40 Z";
+// Nugget desde 0: 8 puntos ancla + bumps que sobresalen del óvalo base (rx=48,ry=32,center 60,40)
+const NUGGET_PATH = [
+    "M 58 4",
+    "C 70 2, 82 8, 88 16",    // → upper-right: bump up (CP y=2)
+    "C 94 22, 112 28, 110 42", // → right bump (CP x=112 sobresale)
+    "C 108 54, 100 66, 86 70", // → lower-right
+    "C 76 74, 64 77, 52 76",   // → bottom bump (CP y=77)
+    "C 40 72, 28 68, 18 58",   // → lower-left
+    "C 10 50, 8 38, 14 28",    // → left bump (CP x=8 sobresale)
+    "C 18 20, 28 12, 40 10",   // → upper-left lobe
+    "C 48 8, 54 6, 58 4 Z",    // → top close
+].join(" ");
 
 function NuggetIcon({ children }: { children: React.ReactNode }) {
     return (
         <View style={nuggetStyles.wrapper}>
             <Svg width={230} height={154} viewBox="0 0 120 80" style={nuggetStyles.svg}>
-                {/* Cuerpo principal */}
-                <Path d={NUGGET_PATH} fill="#F5A623" stroke="#B36000" strokeWidth={2.5} />
-                {/* Capa de luz superior para simular gradiente */}
-                <Path d={NUGGET_PATH} fill="#FFC240" stroke="none" opacity={0.45} />
-                {/* Bumps de textura */}
-                <Ellipse cx={32} cy={22} rx={6} ry={4} fill="#C56A00" opacity={0.55} />
-                <Ellipse cx={72} cy={20} rx={7} ry={4} fill="#C56A00" opacity={0.55} />
-                <Ellipse cx={104} cy={42} rx={4} ry={6} fill="#C56A00" opacity={0.55} />
-                <Ellipse cx={24} cy={58} rx={6} ry={3.5} fill="#C56A00" opacity={0.55} />
-                <Ellipse cx={72} cy={68} rx={7} ry={3.5} fill="#C56A00" opacity={0.55} />
-                {/* Highlight */}
-                <Path d="M22 22 C50 10,80 10,100 22" fill="none" stroke="rgba(255,230,130,0.6)" strokeWidth={5} strokeLinecap="round" />
+                {/* Sombra sutil */}
+                <Path d={NUGGET_PATH} fill="#B35800" stroke="none" opacity={0.3} />
+                {/* Cuerpo base */}
+                <Path d={NUGGET_PATH} fill="#E8920A" stroke="#8C4A00" strokeWidth={2.5} />
+                {/* Capa dorada */}
+                <Path d={NUGGET_PATH} fill="#FDB838" stroke="none" opacity={0.45} />
+                {/* Textura rebozado: puntos oscuros por toda la superficie */}
+                <Ellipse cx={36} cy={20} rx={5} ry={3} fill="#B36000" opacity={0.55} />
+                <Ellipse cx={56} cy={16} rx={4} ry={3} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={76} cy={19} rx={5} ry={3} fill="#B36000" opacity={0.55} />
+                <Ellipse cx={92} cy={30} rx={4} ry={5} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={94} cy={50} rx={4} ry={5} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={78} cy={62} rx={5} ry={3} fill="#B36000" opacity={0.55} />
+                <Ellipse cx={58} cy={66} rx={5} ry={3} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={38} cy={62} rx={5} ry={3} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={22} cy={50} rx={4} ry={5} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={22} cy={30} rx={4} ry={5} fill="#B36000" opacity={0.5} />
+                <Ellipse cx={48} cy={36} rx={5} ry={4} fill="#B36000" opacity={0.4} />
+                <Ellipse cx={72} cy={38} rx={5} ry={4} fill="#B36000" opacity={0.4} />
+                <Ellipse cx={60} cy={50} rx={5} ry={4} fill="#B36000" opacity={0.38} />
             </Svg>
             <View style={nuggetStyles.iconCenter}>{children}</View>
         </View>
