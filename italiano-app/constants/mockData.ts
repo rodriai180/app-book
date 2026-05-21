@@ -15,6 +15,14 @@ export interface LevelContent {
   title: string;
   phrases: Phrase[];
   explanation?: string;
+  subSections?: {
+    label: string;
+    items: string[];
+  }[];
+  groups?: {
+    label: string;
+    subSections: { label: string; items: string[] }[];
+  }[];
   dialogue?: {
     personA: string;
     personB: string;
@@ -406,22 +414,106 @@ export const levelContents: Record<string, LevelContent[]> = {
   '3': [
     {
       id: 'l1',
-      title: 'Artículos Determinativos',
-      explanation: 'Se usan para referirse a algo específico (el, la, los, las).\n\n• IL (Sg. Masc. + Consonante): Il libro.\n• LA (Sg. Fem. + Consonante): La casa.\n• L\' (Sg. Masc/Fem + Vocal): L\'amico, l\'amica.\n• I (Pl. Masc. + Consonante): I libri.\n• LE (Pl. Fem.): Le case.',
+      title: 'Art. Det. Singulares',
+      explanation: 'Se usan para referirse a algo específico (el, la).',
+      subSections: [
+        {
+          label: 'Masculino',
+          items: [
+            'IL (+ Consonante): Il libro, il ragazzo.',
+            'LO (+ S imp./Z/GN): Lo zaino, lo studente.',
+            "L' (+ Vocal): L'amico.",
+          ],
+        },
+        {
+          label: 'Femenino',
+          items: [
+            'LA (+ Consonante): La casa, la ragazza.',
+            "L' (+ Vocal): L'amica.",
+          ],
+        },
+      ],
       phrases: [
         { italian: 'Il ragazzo', spanish: 'El chico' },
+        { italian: 'Lo zaino', spanish: 'La mochila' },
         { italian: 'La ragazza', spanish: 'La chica' },
-        { italian: 'L\'acqua', spanish: 'El agua' },
+        { italian: "L'acqua", spanish: 'El agua' },
+      ],
+    },
+    {
+      id: 'l1b',
+      title: 'Art. Det. Plurales',
+      explanation: 'Se usan para referirse a algo específico (los, las).',
+      subSections: [
+        {
+          label: 'Masculino',
+          items: [
+            'I (+ Consonante): I libri, i ragazzi.',
+            'GLI (+ S imp./Z/GN/Vocal): Gli studenti, gli amici.',
+          ],
+        },
+        {
+          label: 'Femenino',
+          items: [
+            'LE (todos los casos): Le case, le ragazze.',
+          ],
+        },
+      ],
+      phrases: [
+        { italian: 'I libri', spanish: 'Los libros' },
+        { italian: 'Gli studenti', spanish: 'Los estudiantes' },
+        { italian: 'Le case', spanish: 'Las casas' },
       ],
     },
     {
       id: 'l2',
-      title: 'Artículos Indeterminativos',
-      explanation: 'Se usan para referirse a algo no específico (un, una).\n\n• UN (Masc. + Consonante/Vocal): Un libro, un amico.\n• UNO (Masc. + Z/S+Cons/GN): Uno zaino.\n• UNA (Fem. + Consonante): Una casa.\n• UN\' (Fem. + Vocal): Un\'amica.',
+      title: 'Art. Indet. Singulares',
+      explanation: 'Se usan para referirse a algo no específico (un, una). Solo existen en singular.',
+      subSections: [
+        {
+          label: 'Masculino',
+          items: [
+            'UN (+ Consonante/Vocal): Un libro, un amico.',
+            'UNO (+ S imp./Z/GN): Uno zaino, uno studente.',
+          ],
+        },
+        {
+          label: 'Femenino',
+          items: [
+            'UNA (+ Consonante): Una casa.',
+            "UN' (+ Vocal): Un'amica, un'arancia.",
+          ],
+        },
+      ],
       phrases: [
         { italian: 'Un caffè', spanish: 'Un café' },
-        { italian: 'Un\'arancia', spanish: 'Una naranja' },
+        { italian: "Un'arancia", spanish: 'Una naranja' },
         { italian: 'Uno studente', spanish: 'Un estudiante' },
+      ],
+    },
+    {
+      id: 'l2b',
+      title: 'Art. Indet. Plurales',
+      explanation: 'El plural de los indeterminativos usa artículos partitivos (DI + artículo det.).',
+      subSections: [
+        {
+          label: 'Masculino',
+          items: [
+            'DEI (+ Consonante): Dei libri, dei ragazzi.',
+            'DEGLI (+ S imp./Z/GN/Vocal): Degli studenti, degli amici.',
+          ],
+        },
+        {
+          label: 'Femenino',
+          items: [
+            'DELLE (todos los casos): Delle case, delle ragazze.',
+          ],
+        },
+      ],
+      phrases: [
+        { italian: 'Dei libri', spanish: 'Unos libros' },
+        { italian: 'Degli amici', spanish: 'Unos amigos' },
+        { italian: 'Delle case', spanish: 'Unas casas' },
       ],
     },
     {
@@ -435,23 +527,56 @@ export const levelContents: Record<string, LevelContent[]> = {
       ],
     },
     {
-      id: 'l4',
-      title: 'Pronunciación especial',
-      explanation: 'Casos especiales para palabras que empiezan por Z, S+consonante, GN, y vocales.\n\n• LO / GLI se usan para Z o S+consonante: Lo zaino, Gli studenti.',
-      phrases: [
-        { italian: 'Lo studente', spanish: 'El estudiante' },
-        { italian: 'Gli gnomi', spanish: 'Los gnomos' },
-        { italian: 'Lo psicologo', spanish: 'El psicólogo' },
-      ],
-    },
-    {
       id: 'l5',
       title: 'Artículos Partitivos',
-      explanation: 'Indican una cantidad indeterminada ("un poco de"). Se forman con DI + artículo determinado.\n\n• del, dello, dell\', della (Singular)\n• dei, degli, delle (Plural)',
+      explanation: 'Indican una cantidad indeterminada ("un poco de"). Se forman con DI + artículo determinado.',
+      groups: [
+        {
+          label: 'Singular',
+          subSections: [
+            {
+              label: 'Masculino',
+              items: [
+                'DEL (+ consonante): del pane, del vino',
+                'DELLO (+ Z, S+cons., GN, PS): dello zucchero',
+                "DELL' (+ vocal): dell'olio, dell'uomo",
+              ],
+            },
+            {
+              label: 'Femenino',
+              items: [
+                'DELLA (+ consonante): della pizza, della birra',
+                "DELL' (+ vocal): dell'acqua, dell'arancia",
+              ],
+            },
+          ],
+        },
+        {
+          label: 'Plural',
+          subSections: [
+            {
+              label: 'Masculino',
+              items: [
+                'DEI (+ consonante): dei libri, dei ragazzi',
+                'DEGLI (+ Z, S+cons., vocal): degli studenti, degli amici',
+              ],
+            },
+            {
+              label: 'Femenino',
+              items: [
+                'DELLE: delle ragazze, delle donne, delle arance',
+              ],
+            },
+          ],
+        },
+      ],
       phrases: [
         { italian: 'Vorrei del pane', spanish: 'Quisiera un poco de pan' },
         { italian: 'Mangio della pizza', spanish: 'Como un poco de pizza' },
         { italian: 'Ho dei libri', spanish: 'Tengo algunos libros' },
+        { italian: 'Prendo dello zucchero', spanish: 'Tomo un poco de azúcar' },
+        { italian: 'Bevo dell\'acqua', spanish: 'Bebo un poco de agua' },
+        { italian: 'Compro delle mele', spanish: 'Compro algunas manzanas' },
       ],
     },
   ],
@@ -1206,12 +1331,12 @@ export const exercises: Exercise[] = [
   { id: 'e25_1', lessonId: '3', subtopic: 'Artículos Determinativos', question: '_______ cane (maschile) dorme sul divano.', options: ['Il', 'Lo', 'La', 'I'], correctAnswer: 'Il', tip: 'Regla: "Cane" es masculino singular que empieza con consonante, usa IL.' },
   { id: 'e25_2', lessonId: '3', subtopic: 'Artículos Indeterminativos', question: 'Vorrei _______ caffè, per favore.', options: ['un', 'uno', 'una', 'un\''], correctAnswer: 'un', tip: 'Regla: "Caffè" es masculino que empieza con consonante, usa UN.' },
   { id: 'e25_3', lessonId: '3', subtopic: 'Formación del plural', question: 'Il libro → I _______', options: ['libri', 'libre', 'libra', 'libria'], correctAnswer: 'libri', tip: 'Regla: Las palabras masculinas en -o cambian a -i en plural.' },
-  { id: 'e25_4', lessonId: '3', subtopic: 'Pronunciación especial', question: '_______ zaino è nuovo.', options: ['Il', 'Lo', 'La', 'L\''], correctAnswer: 'Lo', tip: 'Regla: Las palabras masculinas que empiezan con Z usan LO.' },
+  { id: 'e25_4', lessonId: '3', subtopic: 'Artículos Determinativos', question: '_______ zaino è nuovo.', options: ['Il', 'Lo', 'La', "L'"], correctAnswer: 'Lo', tip: 'Regla: Las palabras masculinas que empiezan con Z usan LO.' },
   { id: 'e25_5', lessonId: '3', subtopic: 'Artículos Partitivos', question: 'Vorrei _______ pane.', options: ['del', 'dello', 'della', 'dei'], correctAnswer: 'del', tip: 'Regla: "Pane" es masculino singular con consonante, usamos DEL (di + il).' },
-  { id: 'e25_6', lessonId: '3', subtopic: 'Artículos Determinativos', question: '_______ amica di Maria è simpatica.', options: ['Il', 'Lo', 'La', 'L\''], correctAnswer: 'L\'', tip: 'Regla: Las palabras femeninas que empiezan con vocal usan L\'.' },
+  { id: 'e25_6', lessonId: '3', subtopic: 'Artículos Determinativos', question: '_______ amica di Maria è simpatica.', options: ['Il', 'Lo', 'La', "L'"], correctAnswer: "L'", tip: 'Regla: Las palabras femeninas que empiezan con vocal usan L\'.' },
   { id: 'e25_7', lessonId: '3', subtopic: 'Artículos Indeterminativos', question: 'Dov’è _______ studente?', options: ['un', 'uno', 'una', 'un\''], correctAnswer: 'uno', tip: 'Regla: "Studente" empieza con S+consonante, usa UNO.' },
   { id: 'e25_8', lessonId: '3', subtopic: 'Formación del plural', question: 'La ragazza → Le _______', options: ['ragazzi', 'ragazze', 'ragazza', 'ragazzo'], correctAnswer: 'ragazze', tip: 'Regla: Las palabras femeninas en -a cambian a -e en plural.' },
-  { id: 'e25_9', lessonId: '3', subtopic: 'Pronunciación especial', question: '_______ amici sono simpatici.', options: ['I', 'Gli', 'Le', 'Lo'], correctAnswer: 'Gli', tip: 'Regla: El plural masculino para palabras que empiezan con vocal es GLI.' },
+  { id: 'e25_9', lessonId: '3', subtopic: 'Artículos Determinativos', question: '_______ amici sono simpatici.', options: ['I', 'Gli', 'Le', 'Lo'], correctAnswer: 'Gli', tip: 'Regla: El plural masculino para palabras que empiezan con vocal usa GLI.' },
   { id: 'e25_10', lessonId: '3', subtopic: 'Artículos Partitivos', question: 'Prendi _______ zucchero?', options: ['del', 'dello', 'della', 'dell\''], correctAnswer: 'dello', tip: 'Regla: "Zucchero" empieza con Z, usamos DELLO (di + lo).' },
 
   // 4. Verbi più usati (Verbos)

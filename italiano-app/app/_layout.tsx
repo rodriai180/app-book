@@ -125,15 +125,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="clase" options={{ title: 'Clase' }} />
-        <Stack.Screen name="pratica-saluti" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-sopravvivenza" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-articoli" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-verbi" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-espressioni" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-domande" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-connettori" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-passato" options={{ title: 'Pratica' }} />
-        <Stack.Screen name="pratica-partitivi" options={{ title: 'Pratica' }} />
+        <Stack.Screen name="pratica" options={{ headerShown: false }} />
         <Stack.Screen name="reto-rapido" options={{ title: 'Reto Rápido' }} />
         <Stack.Screen name="vocab-detail" options={{ title: 'Detalle' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

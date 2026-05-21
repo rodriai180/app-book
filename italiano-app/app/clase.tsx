@@ -19,6 +19,8 @@ interface Level {
     id: string;
     title: string;
     explanation?: string;
+    subSections?: { label: string; items: string[] }[];
+    groups?: { label: string; subSections: { label: string; items: string[] }[] }[];
     phrases: Phrase[];
     dialogue?: any[];
 }
@@ -106,8 +108,8 @@ function LevelCard({
                             ]}
                             onPress={() => {
                                 // Redirection logic remains same but could be improved
-                                if (lessonId === '0') router.push('/pratica-fonetica');
-                                else if (lessonId === '1') router.push('/pratica-saluti');
+                                if (lessonId === '0') router.push('/pratica/fonetica');
+                                else if (lessonId === '1') router.push('/pratica/saluti');
                                 // ... (rest of practice routes)
                             }}
                         >
@@ -118,11 +120,91 @@ function LevelCard({
                 </View>
             </View>
 
-            {explanation && (
+            {level.groups ? (
+                <View style={{ marginBottom: Theme.spacing.md, width: '100%' }}>
+                    {explanation && (
+                        <Text style={[styles.explanationText, { color: theme.text, marginBottom: 10 }]}>
+                            {explanation}
+                        </Text>
+                    )}
+                    <View style={{ gap: 12, width: '100%' }}>
+                        {level.groups.map((group, gi) => (
+                            <View key={gi} style={{ width: '100%' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.muted, letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>
+                                    {group.label}
+                                </Text>
+                                <View style={{ flexDirection: isDesktop ? 'row' : 'row', gap: 8, width: '100%' }}>
+                                    {group.subSections.map((section, si) => {
+                                        const isMasc = section.label === 'Masculino';
+                                        return (
+                                            <View
+                                                key={si}
+                                                style={{
+                                                    flex: 1,
+                                                    backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
+                                                    borderRadius: 8,
+                                                    padding: 10,
+                                                    borderLeftWidth: 3,
+                                                    borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
+                                                }}
+                                            >
+                                                <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
+                                                    {section.label}
+                                                </Text>
+                                                {section.items.map((item, j) => (
+                                                    <Text key={j} style={{ fontSize: 12, color: theme.text, lineHeight: 19 }}>
+                                                        • {item}
+                                                    </Text>
+                                                ))}
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            ) : level.subSections ? (
+                <View style={{ marginBottom: Theme.spacing.md, width: '100%' }}>
+                    {explanation && (
+                        <Text style={[styles.explanationText, { color: theme.text, marginBottom: 8 }]}>
+                            {explanation}
+                        </Text>
+                    )}
+                    <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 8, width: '100%' }}>
+                        {level.subSections.map((section, i) => {
+                            const isMasc = section.label === 'Masculino';
+                            return (
+                                <View
+                                    key={i}
+                                    style={{
+                                        flex: 1,
+                                        minWidth: 120,
+                                        backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
+                                        borderRadius: 8,
+                                        padding: 10,
+                                        borderLeftWidth: 3,
+                                        borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
+                                    }}
+                                >
+                                    <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
+                                        {section.label}
+                                    </Text>
+                                    {section.items.map((item, j) => (
+                                        <Text key={j} style={{ fontSize: 13, color: theme.text, lineHeight: 20 }}>
+                                            • {item}
+                                        </Text>
+                                    ))}
+                                </View>
+                            );
+                        })}
+                    </View>
+                </View>
+            ) : explanation ? (
                 <Text style={[styles.explanationText, { color: theme.text, textAlign: contentAlignment }]}>
                     {explanation}
                 </Text>
-            )}
+            ) : null}
 
             {level.phrases.length > 0 && (
                 <>

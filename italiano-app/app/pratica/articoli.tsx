@@ -13,8 +13,7 @@ import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, u
 const RELEVANT_SUBTOPICS = [
     'Artículos Determinativos',
     'Artículos Indeterminativos',
-    'Formación del plural',
-    'Pronunciación especial'
+    'Formación del plural'
 ];
 
 export default function PraticaArticoliScreen() {
