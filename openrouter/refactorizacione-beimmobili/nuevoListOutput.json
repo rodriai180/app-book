@@ -1,0 +1,155 @@
+{
+    "report": {
+        "idReport": 60,
+        "dsReport": "Report al 31.12.2025",
+        "idReportPrecedente": 27,
+        "flagStato": 2,
+        "flagStatoProgetti": -1,
+        "flagStatoImmobili": -1,
+        "flagStatoTimereport": -1,
+        "note": null,
+        "dataRiferimento": "2025-12-31T00:00:00",
+        "dataInizio": "2025-01-01T00:00:00",
+        "fgStatoPat": 0
+    },
+    "filtri": {
+        "filtroIntestatario": [
+            {
+                "valueNumber": null,
+                "valueString": null,
+                "text": null,
+                "extraData": null
+            },
+            {
+                "valueNumber": 7913,
+                "valueString": null,
+                "text": "SARL Gentiana",
+                "extraData": null
+            }
+        ],
+        "filtroImmobile": [
+            {
+                "valueNumber": 5557,
+                "valueString": null,
+                "text": "Cap Ferrat - Villa la Gentiana",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5532,
+                "valueString": null,
+                "text": "Lucignano - Canonica Lucignano",
+                "extraData": null
+            }
+        ],
+        "filtroCategoria": [
+            {
+                "valueNumber": 5721,
+                "valueString": null,
+                "text": "Personali",
+                "extraData": null
+            }
+        ],
+        "filtroTipoGestione": [
+            {
+                "valueNumber": 4,
+                "valueString": null,
+                "text": "Immobile di terzi",
+                "extraData": null
+            },
+            {
+                "valueNumber": 3,
+                "valueString": null,
+                "text": "Immobile di una società partecipata",
+                "extraData": null
+            }
+        ],
+        "filtroGestioneFo": [
+            {
+                "valueNumber": 1,
+                "valueString": null,
+                "text": "IS",
+                "extraData": null
+            },
+            {
+                "valueNumber": 2,
+                "valueString": null,
+                "text": "MP",
+                "extraData": null
+            },
+            {
+                "valueNumber": 0,
+                "valueString": null,
+                "text": "Altro",
+                "extraData": null
+            }
+        ]
+    },
+    "listaImmobili": [
+        {
+            "immobile": {
+                "idImmobile": 5557,
+                "dsImmobile": "Cap Ferrat - Villa la Gentiana",
+                "idIntestatario": 7913,
+                "dsIntestatario": "SARL Gentiana",
+                "latitudine": 43.680280481092,
+                "longitudine": 7.331195380135,
+                "indirizzo": "Avenue Bellevue n. 23",
+                "cap": "06230",
+                "idCitta": 181,
+                "dsCitta": "Saint-Jean-Cap-Ferrat",
+                "idNazione": 24,
+                "dsNazione": "France",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Avenue Bellevue n. 23, 06230, Saint-Jean-Cap-Ferrat, France",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": null,
+                "dsCategoria": "Personali"
+            },
+            "valore": 4.4,
+            "tipoGestione": {
+                "idTipoGestione": 3,
+                "dsTipoGestione": "Immobile di una società partecipata"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 4,
+            "numAttivita": 2,
+            "numCantieri": 1
+        },
+        {
+            "immobile": {
+                "idImmobile": 5532,
+                "dsImmobile": "Lucignano - Canonica Lucignano",
+                "idIntestatario": null,
+                "dsIntestatario": null,
+                "latitudine": 43.120915529645,
+                "longitudine": 11.592522884901,
+                "indirizzo": "Borgo - Lucignano",
+                "cap": " ",
+                "idCitta": 382,
+                "dsCitta": "Lucignano d'Asso (SI)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Borgo - Lucignano,  , Lucignano d'Asso (SI), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": null,
+                "dsCategoria": "Personali"
+            },
+            "valore": 0,
+            "tipoGestione": {
+                "idTipoGestione": 4,
+                "dsTipoGestione": "Immobile di terzi"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 1,
+            "numAttivita": 4,
+            "numCantieri": 0
+        }
+    ]
+}

@@ -2,7 +2,7 @@ import SideMenu from '@/components/SideMenu';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Tabs } from 'expo-router';
-import { Library, Menu, Milestone, Zap } from 'lucide-react-native';
+import { LayoutDashboard, Library, Menu, Milestone, Zap } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 
@@ -55,6 +55,13 @@ export default function TabLayout() {
           options={{
             title: 'Vocabulario',
             tabBarIcon: ({ color }) => <Library size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="panel"
+          options={{
+            title: 'Panel',
+            tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
           }}
         />
       </Tabs>

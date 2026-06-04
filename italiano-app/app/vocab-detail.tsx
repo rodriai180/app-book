@@ -1,11 +1,12 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Volume2, Info, Lightbulb } from 'lucide-react-native';
 import * as Speech from 'expo-speech';
 import { Colors } from '@/constants/Colors';
 import { Theme } from '@/constants/Theme';
-import { vocabulary } from '@/constants/mockData';
+import { VocabularyItem } from '@/constants/mockData';
+import { getVocabularyById } from '@/services/firestoreService';
 import { useColorScheme } from '@/components/useColorScheme';
 
 export default function VocabDetailScreen() {
@@ -13,12 +14,35 @@ export default function VocabDetailScreen() {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
 
+    const [item, setItem] = useState<VocabularyItem | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetch = async () => {
+            try {
+                const data = await getVocabularyById(id ?? '');
+                setItem(data);
+            } catch (err) {
+                console.error('Error fetching vocab item:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetch();
+    }, [id]);
+
     const speak = (text: string) => {
         Speech.stop();
         Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9 });
     };
 
-    const item = vocabulary.find((v) => v.id === id);
+    if (loading) {
+        return (
+            <View style={[styles.container, { backgroundColor: theme.surface, justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={theme.primary} />
+            </View>
+        );
+    }
 
     if (!item) {
         return (

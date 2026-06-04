@@ -1,0 +1,56 @@
+/*
+export class FinanazaImprenditorialeCardComponent { no va mas ? porqeu no se esta usando
+ app-riconciliazione-card, non fa a vedere piu el chart ?
+checkear arrivare a imobili di patrimoni siempra que no fae bene el loading spining
+todos los  "*ngFor without trackBy:" , son de codigo comenteado
+AnalisiCostiCardComponent, parece qeu no se usa,
+"app-card-kpi",  parece que no se usa mas 
+"Modulo Filantropia" ce un saco di componente sensa uso
+"export class ModalSupportoComponent" creo qeu no va mas este popup
+al abrir y cerrar la sidebar aparece el loading espiner.
+
+RingComposizioneComponent, no se usa mas 
+*/
+
+
+//TODO
+-- CHEQUEAR FUNCIONAMIENTO DE GRAFICI  FINANZA EN COMPOSIZIONE
+-- HACERCONTROL DE EMPTY PROGRAMACION DEFENSIVA
+    Entendido. De ahora en más, cada vez que migre un componente voy a verificar:
+    Si las opciones de un select/scroll-menu se cargan dinámicamente → advertir que el valor guardado puede quedar inválido
+    Si los tabs se generan dinámicamente o pueden cambiar en cantidad → advertir que el índice guardado puede estar fuera de rango
+    Si un switch/toggle solo aparece condicionalmente (@if) → advertir que el valor se restaura pero el control puede no existir
+    Si el componente se usa en múltiples contextos → advertir que la key puede necesitar ser dinámica (como economics-fase-due)
+-- VER COMO GESTIR LOS SWITCH DENTRO DE LA PTI-CARD
+-- simulatore no tiene el loading... al entrar 
+
+//TOFO DEL TASK  REESCOPO
+ 
+--immobili e proeycto yatiene pero podria irarlos para atras e implmentear el mio asi qeudan unificados
+
+
+--> Componentes compartidos que ya recuerdan la elección del usuario vía `PersistStatePage`:
+    - `pti-pie-chart` — switch de visualización % / €M (composizione-actual, gestori)
+    - `pti-tab-selector` — tabs (composizione, movimentazione, flussi-cassa, indicatori-impegno, performance-contribution, aggregati-societa)
+    - `pti-dynamic-switch` — toggles actual vs budget (composizione-actual, liquidita-case, patrimonio-case, patrimonio-case-before)
+    - `app-scroll-menu` — menú tipo gestori (gestori)
+    - `app-search-bar` — búsqueda (indicatori-eur, indicatori-lc, elenco-completo-case, posizioni-case)
+    - `pti-radio` — radio patrimonio/liquidità (flussi-cassa vía subheader)
+    - `app-select-menu` — selección de fechas dal/al (table-movimentazione-storica, table-movimentazione-previsionale)
+
+
+
+
+    //error token:
+bootstrap.ts:126 RuntimeError: NG0200: Circular dependency detected for `InjectionToken HTTP_INTERCEPTORS`. Find more at https://v20.angular.dev/errors/NG0200
+(anonymous)	@	bootstrap.ts:126
+Promise.then		
+(anonymous)	@	src_bootstrap_ts.js:1
+PendingScript		
+(anonymous)	@	main.ts:3
+
+
+
+//dependencia ciruclar 
+bootstrap.ts:126 RuntimeError: NG0200: Circular dependency detected for `InjectionToken HTTP_INTERCEPTORS`. Find more at https://v20.angular.dev/errors/NG0200
+

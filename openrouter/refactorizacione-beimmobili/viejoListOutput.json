@@ -1,0 +1,788 @@
+{
+    "report": {
+        "idReport": 60,
+        "dsReport": "Report al 31.12.2025",
+        "idReportPrecedente": 27,
+        "flagStato": 2,
+        "flagStatoProgetti": -1,
+        "flagStatoImmobili": -1,
+        "flagStatoTimereport": -1,
+        "note": null,
+        "dataRiferimento": "2025-12-31T00:00:00",
+        "dataInizio": "2025-01-01T00:00:00",
+        "fgStatoPat": 0
+    },
+    "filtri": {
+        "filtroIntestatario": [
+            {
+                "valueNumber": null,
+                "valueString": null,
+                "text": null,
+                "extraData": null
+            },
+            {
+                "valueNumber": 128822,
+                "valueString": null,
+                "text": "Armonia ss IS",
+                "extraData": null
+            },
+            {
+                "valueNumber": 8782,
+                "valueString": null,
+                "text": "Imm. Gelsy",
+                "extraData": null
+            },
+            {
+                "valueNumber": 95780,
+                "valueString": null,
+                "text": "IS/SS",
+                "extraData": null
+            },
+            {
+                "valueNumber": 184522,
+                "valueString": null,
+                "text": "Osservanza 62",
+                "extraData": null
+            },
+            {
+                "valueNumber": 7913,
+                "valueString": null,
+                "text": "SARL Gentiana",
+                "extraData": null
+            },
+            {
+                "valueNumber": 3562,
+                "valueString": null,
+                "text": "Sci Goodwill France",
+                "extraData": null
+            },
+            {
+                "valueNumber": 1372,
+                "valueString": null,
+                "text": "Seràgnoli Isabella",
+                "extraData": null
+            }
+        ],
+        "filtroImmobile": [
+            {
+                "valueNumber": 7704,
+                "valueString": null,
+                "text": "Anacapri - Villa Serenella",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5546,
+                "valueString": null,
+                "text": "BO -  Via di Jano 9 - Loghetto",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5548,
+                "valueString": null,
+                "text": "BO - Via Begatto 22",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5564,
+                "valueString": null,
+                "text": "BO - Via delle Rose 50",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5553,
+                "valueString": null,
+                "text": "BO - Via Gaibola 7",
+                "extraData": null
+            },
+            {
+                "valueNumber": 37386,
+                "valueString": null,
+                "text": "BO - Via Osservanza 62 ",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5547,
+                "valueString": null,
+                "text": "BO - Via Quadri 6/8",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5538,
+                "valueString": null,
+                "text": "Calderara - Via 1° Maggio 1",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5557,
+                "valueString": null,
+                "text": "Cap Ferrat - Villa la Gentiana",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5556,
+                "valueString": null,
+                "text": "Cap Ferrat - Villa Roseraie",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5550,
+                "valueString": null,
+                "text": "Cortina - Via Riva (IS/SS)",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5535,
+                "valueString": null,
+                "text": "Cortina - Via Riva 21 (IS)",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5533,
+                "valueString": null,
+                "text": "Ischia - Villa Camelia",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5555,
+                "valueString": null,
+                "text": "Londra - Mount Row",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5540,
+                "valueString": null,
+                "text": "Londra - Portman Square",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5532,
+                "valueString": null,
+                "text": "Lucignano - Canonica Lucignano",
+                "extraData": null
+            },
+            {
+                "valueNumber": 5563,
+                "valueString": null,
+                "text": "Milano Marittima - Vle Matteotti 134",
+                "extraData": null
+            }
+        ],
+        "filtroCategoria": [
+            {
+                "valueNumber": 5721,
+                "valueString": null,
+                "text": "Personali",
+                "extraData": null
+            }
+        ],
+        "filtroTipoGestione": [
+            {
+                "valueNumber": null,
+                "valueString": null,
+                "text": "Altro",
+                "extraData": null
+            },
+            {
+                "valueNumber": 1,
+                "valueString": null,
+                "text": "Immobile di proprietà",
+                "extraData": null
+            },
+            {
+                "valueNumber": 4,
+                "valueString": null,
+                "text": "Immobile di terzi",
+                "extraData": null
+            },
+            {
+                "valueNumber": 3,
+                "valueString": null,
+                "text": "Immobile di una società partecipata",
+                "extraData": null
+            }
+        ],
+        "filtroGestioneFo": [
+            {
+                "valueNumber": 1,
+                "valueString": null,
+                "text": "IS",
+                "extraData": null
+            },
+            {
+                "valueNumber": 2,
+                "valueString": null,
+                "text": "MP",
+                "extraData": null
+            },
+            {
+                "valueNumber": 0,
+                "valueString": null,
+                "text": "Altro",
+                "extraData": null
+            }
+        ]
+    },
+    "listaImmobili": [
+        {
+            "immobile": {
+                "idImmobile": 5556,
+                "dsImmobile": "Cap Ferrat - Villa Roseraie",
+                "idIntestatario": 3562,
+                "dsIntestatario": "Sci Goodwill France",
+                "latitudine": 43.680280481092,
+                "longitudine": 7.331169856247,
+                "indirizzo": "Avenue Centrale n. 22",
+                "cap": "06230",
+                "idCitta": 181,
+                "dsCitta": "Saint-Jean-Cap-Ferrat",
+                "idNazione": 24,
+                "dsNazione": "France",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Avenue Centrale n. 22, 06230, Saint-Jean-Cap-Ferrat, France",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 22.1,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 5,
+            "numAttivita": 6,
+            "numCantieri": 1
+        },
+        {
+            "immobile": {
+                "idImmobile": 5564,
+                "dsImmobile": "BO - Via delle Rose 50",
+                "idIntestatario": 95780,
+                "dsIntestatario": "IS/SS",
+                "latitudine": 44.482762918085,
+                "longitudine": 11.346466655763,
+                "indirizzo": "Via delle Rose n. 50 ",
+                "cap": "40136",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via delle Rose n. 50 , 40136, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 9.59,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 3,
+            "numCantieri": 2
+        },
+        {
+            "immobile": {
+                "idImmobile": 7704,
+                "dsImmobile": "Anacapri - Villa Serenella",
+                "idIntestatario": 128822,
+                "dsIntestatario": "Armonia ss IS",
+                "latitudine": 40.5520310065,
+                "longitudine": 14.214638212335,
+                "indirizzo": "Via Tito Minniti",
+                "cap": "80071",
+                "idCitta": 2641,
+                "dsCitta": "Anacapri",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via Tito Minniti, 80071, Anacapri, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 8.71,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 1,
+            "numAttivita": 4,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5555,
+                "dsImmobile": "Londra - Mount Row",
+                "idIntestatario": 1372,
+                "dsIntestatario": "Seràgnoli Isabella",
+                "latitudine": 51.510841440092,
+                "longitudine": -0.148586586339,
+                "indirizzo": "Mount Row, 12/14 ",
+                "cap": " ",
+                "idCitta": 78,
+                "dsCitta": "London",
+                "idNazione": 23,
+                "dsNazione": "United Kingdom",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Mount Row, 12/14 ,  , London, United Kingdom",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 7.75,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 2,
+            "numAttivita": 4,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5553,
+                "dsImmobile": "BO - Via Gaibola 7",
+                "idIntestatario": 8782,
+                "dsIntestatario": "Imm. Gelsy",
+                "latitudine": 44.47450502197,
+                "longitudine": 11.319479072421,
+                "indirizzo": "Via di Gaibola n. 7",
+                "cap": "40136",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via di Gaibola n. 7, 40136, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 6.94,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 13,
+            "numAttivita": 14,
+            "numCantieri": 1
+        },
+        {
+            "immobile": {
+                "idImmobile": 5535,
+                "dsImmobile": "Cortina - Via Riva 21 (IS)",
+                "idIntestatario": 1372,
+                "dsIntestatario": "Seràgnoli Isabella",
+                "latitudine": 46.538853498487,
+                "longitudine": 12.135421056181,
+                "indirizzo": "In Riva",
+                "cap": "33100",
+                "idCitta": 52,
+                "dsCitta": "Cortina D'Ampezzo (BL)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "In Riva, 33100, Cortina D'Ampezzo (BL), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 6.86,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 2,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5547,
+                "dsImmobile": "BO - Via Quadri 6/8",
+                "idIntestatario": 1372,
+                "dsIntestatario": "Seràgnoli Isabella",
+                "latitudine": 44.49352349487,
+                "longitudine": 11.35262154227,
+                "indirizzo": "Via Quadri n. 6/8 - Via San Vitale n. 55",
+                "cap": "40125",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via Quadri n. 6/8 - Via San Vitale n. 55, 40125, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 6.58,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 6,
+            "numAttivita": 8,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5533,
+                "dsImmobile": "Ischia - Villa Camelia",
+                "idIntestatario": 128822,
+                "dsIntestatario": "Armonia ss IS",
+                "latitudine": null,
+                "longitudine": null,
+                "indirizzo": "Via Baldassarre Cossa 74/76",
+                "cap": "80077",
+                "idCitta": 3885,
+                "dsCitta": "Ischia Porto (NA)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via Baldassarre Cossa 74/76, 80077, Ischia Porto (NA), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 4.9,
+            "tipoGestione": {
+                "idTipoGestione": null,
+                "dsTipoGestione": null
+            },
+            "gestioneFo": 1,
+            "numProgetti": 4,
+            "numAttivita": 6,
+            "numCantieri": 1
+        },
+        {
+            "immobile": {
+                "idImmobile": 5557,
+                "dsImmobile": "Cap Ferrat - Villa la Gentiana",
+                "idIntestatario": 7913,
+                "dsIntestatario": "SARL Gentiana",
+                "latitudine": 43.680280481092,
+                "longitudine": 7.331195380135,
+                "indirizzo": "Avenue Bellevue n. 23",
+                "cap": "06230",
+                "idCitta": 181,
+                "dsCitta": "Saint-Jean-Cap-Ferrat",
+                "idNazione": 24,
+                "dsNazione": "France",
+                "flagViewContatore": "S"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Avenue Bellevue n. 23, 06230, Saint-Jean-Cap-Ferrat, France",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": null,
+                "dsCategoria": "Personali"
+            },
+            "valore": 4.4,
+            "tipoGestione": {
+                "idTipoGestione": 3,
+                "dsTipoGestione": "Immobile di una società partecipata"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 4,
+            "numAttivita": 2,
+            "numCantieri": 1
+        },
+        {
+            "immobile": {
+                "idImmobile": 5546,
+                "dsImmobile": "BO -  Via di Jano 9 - Loghetto",
+                "idIntestatario": 1372,
+                "dsIntestatario": "Seràgnoli Isabella",
+                "latitudine": 44.477259243955,
+                "longitudine": 11.319514455763,
+                "indirizzo": "Via di Jano ",
+                "cap": "40136",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via di Jano , 40136, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 2.64,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 1,
+            "numAttivita": 4,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5550,
+                "dsImmobile": "Cortina - Via Riva (IS/SS)",
+                "idIntestatario": 95780,
+                "dsIntestatario": "IS/SS",
+                "latitudine": 46.538877917241,
+                "longitudine": 12.135501563327,
+                "indirizzo": "In Riva ",
+                "cap": "32043",
+                "idCitta": 52,
+                "dsCitta": "Cortina D'Ampezzo (BL)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "In Riva , 32043, Cortina D'Ampezzo (BL), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 2.24,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 4,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5563,
+                "dsImmobile": "Milano Marittima - Vle Matteotti 134",
+                "idIntestatario": 95780,
+                "dsIntestatario": "IS/SS",
+                "latitudine": 44.287441961701,
+                "longitudine": 12.346231769619,
+                "indirizzo": "Viale Matteotti n. 134 - Via XI Traversa Pineta",
+                "cap": "44200",
+                "idCitta": 1421,
+                "dsCitta": "Milano Marittima (RA)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Viale Matteotti n. 134 - Via XI Traversa Pineta, 44200, Milano Marittima (RA), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 2.04,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 2,
+            "numAttivita": 3,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5548,
+                "dsImmobile": "BO - Via Begatto 22",
+                "idIntestatario": 8782,
+                "dsIntestatario": "Imm. Gelsy",
+                "latitudine": 44.493707487925,
+                "longitudine": 11.353430684599,
+                "indirizzo": "Via Begatto n. 22",
+                "cap": "40125",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via Begatto n. 22, 40125, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 0.46,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 2,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5540,
+                "dsImmobile": "Londra - Portman Square",
+                "idIntestatario": 1372,
+                "dsIntestatario": "Seràgnoli Isabella",
+                "latitudine": 51.51631360729,
+                "longitudine": -0.156033959352,
+                "indirizzo": "Portman Square",
+                "cap": " ",
+                "idCitta": 78,
+                "dsCitta": "London",
+                "idNazione": 23,
+                "dsNazione": "United Kingdom",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Portman Square,  , London, United Kingdom",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 0.44,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 1,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5538,
+                "dsImmobile": "Calderara - Via 1° Maggio 1",
+                "idIntestatario": 8782,
+                "dsIntestatario": "Imm. Gelsy",
+                "latitudine": 44.563262884241,
+                "longitudine": 11.272532284601,
+                "indirizzo": "Via 1° Maggio ,1",
+                "cap": "40100",
+                "idCitta": 36,
+                "dsCitta": "Calderara di Reno (Bo)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via 1° Maggio ,1, 40100, Calderara di Reno (Bo), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 0.3,
+            "tipoGestione": {
+                "idTipoGestione": 1,
+                "dsTipoGestione": "Immobile di proprietà"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 1,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 37386,
+                "dsImmobile": "BO - Via Osservanza 62 ",
+                "idIntestatario": 184522,
+                "dsIntestatario": "Osservanza 62",
+                "latitudine": null,
+                "longitudine": null,
+                "indirizzo": "Via Osservanza 62",
+                "cap": "40100",
+                "idCitta": 2,
+                "dsCitta": "Bologna",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Via Osservanza 62, 40100, Bologna, Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": "Immobili e Terreni Personali",
+                "dsCategoria": "Personali"
+            },
+            "valore": 0,
+            "tipoGestione": {
+                "idTipoGestione": null,
+                "dsTipoGestione": null
+            },
+            "gestioneFo": 1,
+            "numProgetti": 0,
+            "numAttivita": 0,
+            "numCantieri": 0
+        },
+        {
+            "immobile": {
+                "idImmobile": 5532,
+                "dsImmobile": "Lucignano - Canonica Lucignano",
+                "idIntestatario": null,
+                "dsIntestatario": null,
+                "latitudine": 43.120915529645,
+                "longitudine": 11.592522884901,
+                "indirizzo": "Borgo - Lucignano",
+                "cap": " ",
+                "idCitta": 382,
+                "dsCitta": "Lucignano d'Asso (SI)",
+                "idNazione": 1,
+                "dsNazione": "Italia",
+                "flagViewContatore": "N"
+            },
+            "immaginePrincipale": null,
+            "indirizzoCompleto": "Borgo - Lucignano,  , Lucignano d'Asso (SI), Italia",
+            "categoria": {
+                "idNodo": 5721,
+                "dsNodo": null,
+                "dsCategoria": "Personali"
+            },
+            "valore": 0,
+            "tipoGestione": {
+                "idTipoGestione": 4,
+                "dsTipoGestione": "Immobile di terzi"
+            },
+            "gestioneFo": 1,
+            "numProgetti": 1,
+            "numAttivita": 4,
+            "numCantieri": 0
+        }
+    ]
+}

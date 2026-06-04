@@ -1,6 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import Svg, { Path, Ellipse } from 'react-native-svg';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
 import HighlightedText from './HighlightedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -14,17 +13,17 @@ import {
 // ─── Mapeo de categorías → gradientes ────────────────────────────────────────
 
 const CATEGORY_GRADIENTS: Record<string, readonly [string, string]> = {
-    'comunicacion':        ['#FF6E00', '#CC4400'],
-    'psicologia':          ['#FF6E00', '#CC4400'],
-    'negocios':            ['#FF6E00', '#CC4400'],
-    'desarrollo-personal': ['#FF6E00', '#CC4400'],
-    'finanzas':            ['#FF6E00', '#CC4400'],
-    'liderazgo':           ['#FF6E00', '#CC4400'],
-    'habitos':             ['#FF6E00', '#CC4400'],
-    'productividad':       ['#FF6E00', '#CC4400'],
+    'comunicacion':        ['#6C63FF', '#3F3D9E'],
+    'psicologia':          ['#E91E63', '#9C27B0'],
+    'negocios':            ['#FF9800', '#F44336'],
+    'desarrollo-personal': ['#4CAF50', '#2E7D32'],
+    'finanzas':            ['#00BCD4', '#006064'],
+    'liderazgo':           ['#FFC107', '#FF6F00'],
+    'habitos':             ['#26C6DA', '#00838F'],
+    'productividad':       ['#7C4DFF', '#304FFE'],
 };
 
-const DEFAULT_GRADIENT: readonly [string, string] = ['#FF6E00', '#CC4400'];
+const DEFAULT_GRADIENT: readonly [string, string] = ['#546E7A', '#263238'];
 
 // ─── 4 direcciones posibles del gradiente principal ──────────────────────────
 // La semilla elige cuál → mismo ML siempre tiene la misma dirección.
@@ -208,47 +207,21 @@ function MicroDecoration({ seed }: { seed: number }) {
     );
 }
 
-// ─── Nugget shape SVG ─────────────────────────────────────────────────────────
+// ─── Nugget image ─────────────────────────────────────────────────────────────
 
-// Elongated nugget in 120x80 viewBox
-// Nugget desde 0: 8 puntos ancla + bumps que sobresalen del óvalo base (rx=48,ry=32,center 60,40)
-const NUGGET_PATH = [
-    "M 58 4",
-    "C 70 2, 82 8, 88 16",    // → upper-right: bump up (CP y=2)
-    "C 94 22, 112 28, 110 42", // → right bump (CP x=112 sobresale)
-    "C 108 54, 100 66, 86 70", // → lower-right
-    "C 76 74, 64 77, 52 76",   // → bottom bump (CP y=77)
-    "C 40 72, 28 68, 18 58",   // → lower-left
-    "C 10 50, 8 38, 14 28",    // → left bump (CP x=8 sobresale)
-    "C 18 20, 28 12, 40 10",   // → upper-left lobe
-    "C 48 8, 54 6, 58 4 Z",    // → top close
-].join(" ");
+const NUGGET_BASE_W = 230;
+const NUGGET_BASE_H = 154;
 
-function NuggetIcon({ children }: { children: React.ReactNode }) {
+function NuggetIcon({ children, scale = 1 }: { children: React.ReactNode; scale?: number }) {
+    const w = Math.round(NUGGET_BASE_W * scale);
+    const h = Math.round(NUGGET_BASE_H * scale);
     return (
-        <View style={nuggetStyles.wrapper}>
-            <Svg width={230} height={154} viewBox="0 0 120 80" style={nuggetStyles.svg}>
-                {/* Sombra sutil */}
-                <Path d={NUGGET_PATH} fill="#B35800" stroke="none" opacity={0.3} />
-                {/* Cuerpo base */}
-                <Path d={NUGGET_PATH} fill="#E8920A" stroke="#8C4A00" strokeWidth={2.5} />
-                {/* Capa dorada */}
-                <Path d={NUGGET_PATH} fill="#FDB838" stroke="none" opacity={0.45} />
-                {/* Textura rebozado: puntos oscuros por toda la superficie */}
-                <Ellipse cx={36} cy={20} rx={5} ry={3} fill="#B36000" opacity={0.55} />
-                <Ellipse cx={56} cy={16} rx={4} ry={3} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={76} cy={19} rx={5} ry={3} fill="#B36000" opacity={0.55} />
-                <Ellipse cx={92} cy={30} rx={4} ry={5} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={94} cy={50} rx={4} ry={5} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={78} cy={62} rx={5} ry={3} fill="#B36000" opacity={0.55} />
-                <Ellipse cx={58} cy={66} rx={5} ry={3} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={38} cy={62} rx={5} ry={3} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={22} cy={50} rx={4} ry={5} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={22} cy={30} rx={4} ry={5} fill="#B36000" opacity={0.5} />
-                <Ellipse cx={48} cy={36} rx={5} ry={4} fill="#B36000" opacity={0.4} />
-                <Ellipse cx={72} cy={38} rx={5} ry={4} fill="#B36000" opacity={0.4} />
-                <Ellipse cx={60} cy={50} rx={5} ry={4} fill="#B36000" opacity={0.38} />
-            </Svg>
+        <View style={[nuggetStyles.wrapper, { width: w, height: h, marginBottom: Math.round(12 * scale) }]}>
+            <Image
+                source={require('../../assets/img/nuggeto.png')}
+                style={{ position: 'absolute', width: w, height: h }}
+                resizeMode="contain"
+            />
             <View style={nuggetStyles.iconCenter}>{children}</View>
         </View>
     );
@@ -256,15 +229,9 @@ function NuggetIcon({ children }: { children: React.ReactNode }) {
 
 const nuggetStyles = StyleSheet.create({
     wrapper: {
-        width: 230,
-        height: 154,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
         transform: [{ rotate: '-37.5deg' }],
-    },
-    svg: {
-        position: 'absolute',
     },
     iconCenter: {
         alignItems: 'center',
@@ -318,6 +285,10 @@ export default function GeneratedCover({
     const showText = !hideText;
 
     // ── Microlearning ──────────────────────────────────────────────────────────
+    const [containerH, setContainerH] = useState(0);
+    const nuggetScale = containerH > 0 ? Math.min(1, (containerH * 0.50) / NUGGET_BASE_H) : 1;
+    const titleFontSize = containerH > 0 ? Math.min(20, Math.max(10, Math.round(containerH / 13))) : 20;
+
     if (type === 'microlearning') {
         const titleBg = title.split(/\s+/).slice(0, 4).join(' ');
         return (
@@ -326,6 +297,7 @@ export default function GeneratedCover({
                 start={gradientDir.start}
                 end={gradientDir.end}
                 style={containerStyle}
+                onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
             >
                 {/* Capa de profundidad: círculos grandes superpuestos */}
                 <View style={[deco.circle, { width: 260, height: 260, top: -80, left: -80 }]} />
@@ -357,8 +329,8 @@ export default function GeneratedCover({
                     grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
                 ]}>
                     {!hideIcon && (
-                        <NuggetIcon>
-                            <Icon size={38} color="#FFFFFF" strokeWidth={1.5} />
+                        <NuggetIcon scale={nuggetScale}>
+                            <Icon size={Math.round(38 * nuggetScale)} color="#FFFFFF" strokeWidth={1.5} />
                         </NuggetIcon>
                     )}
 
@@ -367,7 +339,7 @@ export default function GeneratedCover({
                             text={title}
                             start={titleHighlight?.start ?? -1}
                             length={titleHighlight?.length ?? 0}
-                            baseStyle={styles.mlTitle}
+                            baseStyle={[styles.mlTitle, { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.35) }]}
                             highlightBg="rgba(255,255,255,0.35)"
                             numberOfLines={3}
                         />
@@ -396,9 +368,11 @@ export default function GeneratedCover({
                     )}
                 </View>
 
-                <View style={styles.mlBranding}>
-                    <Text style={styles.mlBrandingText}>nuggeto</Text>
-                </View>
+                {(containerH === 0 || containerH >= 200) && (
+                    <View style={styles.mlBranding}>
+                        <Text style={styles.mlBrandingText}>nuggeto</Text>
+                    </View>
+                )}
             </LinearGradient>
         );
     }

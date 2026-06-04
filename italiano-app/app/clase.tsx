@@ -18,6 +18,7 @@ interface Phrase {
 interface Level {
     id: string;
     title: string;
+    subtopicKey?: string;
     explanation?: string;
     subSections?: { label: string; items: string[] }[];
     groups?: { label: string; subSections: { label: string; items: string[] }[] }[];
@@ -58,7 +59,7 @@ function LevelCard({
             pathname: '/reto-rapido',
             params: {
                 lessonId,
-                subtopic: level.title
+                subtopic: level.subtopicKey ?? level.title
             }
         });
     };
@@ -81,43 +82,21 @@ function LevelCard({
                         {title} <Text style={{ fontSize: 14, fontWeight: 'normal', color: theme.muted }}>({lessonLevel})</Text>
                     </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable
-                        style={[
-                            styles.practicarButton,
-                            {
-                                backgroundColor: '#f0f9ff',
-                                borderWidth: 1,
-                                borderColor: theme.primary,
-                                paddingHorizontal: isNarrow ? 8 : 12
-                            }
-                        ]}
-                        onPress={startPractice}
-                    >
-                        <RotateCcw size={14} color={theme.primary} />
-                        {!isNarrow && <Text style={[styles.practicarText, { color: theme.primary }]}>Reto Rápido</Text>}
-                    </Pressable>
-                    {level.phrases.length > 0 && (
-                        <Pressable
-                            style={[
-                                styles.practicarButton,
-                                {
-                                    backgroundColor: theme.primary,
-                                    paddingHorizontal: isNarrow ? 8 : 12
-                                }
-                            ]}
-                            onPress={() => {
-                                // Redirection logic remains same but could be improved
-                                if (lessonId === '0') router.push('/pratica/fonetica');
-                                else if (lessonId === '1') router.push('/pratica/saluti');
-                                // ... (rest of practice routes)
-                            }}
-                        >
-                            <Play size={14} color="white" fill="white" />
-                            {!isNarrow && <Text style={styles.practicarText}>Sesión Total</Text>}
-                        </Pressable>
-                    )}
-                </View>
+                <Pressable
+                    style={[
+                        styles.practicarButton,
+                        {
+                            backgroundColor: '#f0f9ff',
+                            borderWidth: 1,
+                            borderColor: theme.primary,
+                            paddingHorizontal: isNarrow ? 8 : 12
+                        }
+                    ]}
+                    onPress={startPractice}
+                >
+                    <RotateCcw size={14} color={theme.primary} />
+                    {!isNarrow && <Text style={[styles.practicarText, { color: theme.primary }]}>Reto Rápido</Text>}
+                </Pressable>
             </View>
 
             {level.groups ? (
@@ -340,6 +319,7 @@ export default function ClaseScreen() {
 
     const { width: screenWidth } = useWindowDimensions();
     const isDesktop = screenWidth >= 768;
+    const isNarrow = screenWidth < 420;
 
     const contentAlignment = 'left';
     const cardItemsAlignment = 'flex-start';
@@ -368,6 +348,24 @@ export default function ClaseScreen() {
         <>
             <Stack.Screen options={{
                 title: title || 'Clase',
+                headerRight: () => (
+                    <Pressable
+                        onPress={() => router.push(`/pratica/${lessonId}` as any)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: theme.primary,
+                            paddingHorizontal: isNarrow ? 10 : 14,
+                            paddingVertical: 6,
+                            borderRadius: 20,
+                            gap: 6,
+                            marginRight: 4,
+                        }}
+                    >
+                        <Play size={13} color="white" fill="white" />
+                        {!isNarrow && <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Sesión Total</Text>}
+                    </Pressable>
+                ),
             }} />
             <ScrollView
                 style={[styles.container, { backgroundColor: theme.surface }]}

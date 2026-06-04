@@ -1,7 +1,8 @@
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Theme } from '@/constants/Theme';
-import { exercises } from '@/constants/mockData';
+import { Exercise } from '@/constants/mockData';
+import { getAllExercises } from '@/services/firestoreService';
 import * as Speech from 'expo-speech';
 import { AlertCircle, CheckCircle2, ChevronRight, RotateCcw, Trophy, Volume2, XCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ export default function PracticaRapidaScreen() {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
 
+    const [allExercises, setAllExercises] = useState<Exercise[]>([]);
     const [sessionExercises, setSessionExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -22,8 +24,9 @@ export default function PracticaRapidaScreen() {
 
     const progressAnim = React.useRef(new Animated.Value(0)).current;
 
-    const startNewSession = () => {
-        const shuffled = [...exercises].sort(() => 0.5 - Math.random());
+    const startNewSession = (pool: Exercise[] = allExercises) => {
+        if (pool.length === 0) return;
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
         setSessionExercises(shuffled.slice(0, SESSION_LENGTH));
         setCurrentIndex(0);
         setSelectedOption(null);
@@ -33,7 +36,12 @@ export default function PracticaRapidaScreen() {
     };
 
     useEffect(() => {
-        startNewSession();
+        getAllExercises()
+            .then(data => {
+                setAllExercises(data);
+                startNewSession(data);
+            })
+            .catch(err => console.error('Error loading exercises:', err));
     }, []);
 
     useEffect(() => {
@@ -69,7 +77,7 @@ export default function PracticaRapidaScreen() {
 
                     <Pressable
                         style={[styles.primaryButton, { backgroundColor: theme.primary, width: '100%', marginTop: 24 }]}
-                        onPress={startNewSession}
+                        onPress={() => startNewSession()}
                     >
                         <RotateCcw size={20} color="white" />
                         <Text style={styles.primaryButtonText}>Nueva Sesión</Text>
