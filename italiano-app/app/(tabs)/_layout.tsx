@@ -6,6 +6,16 @@ import { LayoutDashboard, Library, Menu, Milestone, Zap } from 'lucide-react-nat
 import React, { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 
+function Tricolor({ colors }: { colors: typeof Colors['light'] }) {
+  return (
+    <View style={{ height: 4, flexDirection: 'row', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <View style={{ flex: 1, backgroundColor: colors.triGreen }} />
+      <View style={{ flex: 1, backgroundColor: colors.triWhite }} />
+      <View style={{ flex: 1, backgroundColor: colors.triRed }} />
+    </View>
+  );
+}
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
@@ -23,10 +33,24 @@ export default function TabLayout() {
             fontWeight: 'bold',
             color: theme.text,
           },
+          headerBackground: () => (
+            <View style={{ flex: 1, backgroundColor: theme.background }}>
+              <Tricolor colors={theme} />
+            </View>
+          ),
           tabBarStyle: {
             backgroundColor: theme.background,
-            borderTopColor: theme.border,
+            borderTopWidth: 0,
           },
+          tabBarBackground: () => (
+            <View style={{ flex: 1, backgroundColor: theme.background }}>
+              <View style={{ height: 3, flexDirection: 'row', position: 'absolute', top: 0, left: 0, right: 0 }}>
+                <View style={{ flex: 1, backgroundColor: theme.triGreen }} />
+                <View style={{ flex: 1, backgroundColor: theme.triWhite }} />
+                <View style={{ flex: 1, backgroundColor: theme.triRed }} />
+              </View>
+            </View>
+          ),
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => setIsMenuOpen(true)}

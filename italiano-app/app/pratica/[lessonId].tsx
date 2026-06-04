@@ -2,6 +2,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Theme } from '@/constants/Theme';
 import { getDialogueExercisesByLessonId } from '@/services/firestoreService';
+import { Audio } from 'expo-av';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { CheckCircle2, Info, Lightbulb, RotateCcw, Trophy, Volume2 } from 'lucide-react-native';
@@ -81,6 +82,25 @@ export default function GenericPraticaScreen() {
     Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9 });
   };
 
+  const speakSuccess = async (text: string, onDone?: () => void) => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/success.wav')
+      );
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+          Speech.stop();
+          Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9, onDone });
+        }
+      });
+      await sound.playAsync();
+    } catch {
+      Speech.stop();
+      Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9, onDone });
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.surface, justifyContent: 'center', alignItems: 'center' }]}>
@@ -121,9 +141,11 @@ export default function GenericPraticaScreen() {
 
   const handleVerifica = () => {
     if (!isCorrect) return;
-    speak(expectedAnswer);
+    const fullText = isDialogue(currentEx)
+      ? currentEx.dialogue.map(seg => seg.hasInput ? expectedAnswer : seg.text).join('')
+      : (currentEx as SentenceExercise).sentence.map(seg => seg.hasInput ? expectedAnswer : seg.text).join('');
     setIsVerifying(true);
-    setTimeout(() => {
+    speakSuccess(fullText, () => {
       if (currentIndex < exercises.length - 1) {
         setCurrentIndex(currentIndex + 1);
         setUserInput('');
@@ -134,7 +156,7 @@ export default function GenericPraticaScreen() {
         setIsVerifying(false);
         Animated.timing(progressAnim, { toValue: 1, duration: 300, useNativeDriver: false }).start();
       }
-    }, 700);
+    });
   };
 
   const ricomincia = () => {

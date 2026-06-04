@@ -68,23 +68,23 @@ export default function PanelScreen() {
                 <Text style={[styles.summaryTitle, { color: theme.text }]}>Resumen general</Text>
                 <View style={styles.summaryRow}>
                     <StatBox label="Lecciones" value={rows.length} color={theme.primary} bg={theme.surface} textColor={theme.text} />
-                    <StatBox label="Quiz" value={totalExercises} color="#3B82F6" bg={theme.surface} textColor={theme.text} />
-                    <StatBox label="Diálogo" value={totalDialogue} color="#8B5CF6" bg={theme.surface} textColor={theme.text} />
-                    <StatBox label="Vocab" value={totalVocab} color="#10B981" bg={theme.surface} textColor={theme.text} />
+                    <StatBox label="Quiz" value={totalExercises} color={theme.quiz} bg={theme.surface} textColor={theme.text} />
+                    <StatBox label="Diálogo" value={totalDialogue} color={theme.dialogue} bg={theme.surface} textColor={theme.text} />
+                    <StatBox label="Vocab" value={totalVocab} color={theme.vocab} bg={theme.surface} textColor={theme.text} />
                 </View>
             </View>
 
             <View style={[styles.legend, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: theme.quiz }]} />
                     <Text style={[styles.legendText, { color: theme.muted }]}>Quiz — opción múltiple</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#8B5CF6' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: theme.dialogue }]} />
                     <Text style={[styles.legendText, { color: theme.muted }]}>Diálogo — completar texto</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: theme.vocab }]} />
                     <Text style={[styles.legendText, { color: theme.muted }]}>Vocabulario</Text>
                 </View>
             </View>
@@ -135,13 +135,13 @@ function VocabularyCard({ vocabByCategory, totalVocab, expanded, onToggle, theme
         <View style={[styles.lessonCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TouchableOpacity style={styles.lessonHeader} onPress={onToggle} activeOpacity={0.7}>
                 <View style={styles.lessonHeaderLeft}>
-                    <View style={[styles.levelBadge, { backgroundColor: '#10B981' }]}>
+                    <View style={[styles.levelBadge, { backgroundColor: theme.vocab }]}>
                         <Text style={styles.levelBadgeText}>VOCAB</Text>
                     </View>
                     <Text style={[styles.lessonTitle, { color: theme.text }]}>Vocabulario</Text>
                 </View>
                 <View style={styles.countsRow}>
-                    <CountPill value={totalVocab} color="#10B981" />
+                    <CountPill value={totalVocab} color={theme.vocab} />
                     {vocabByCategory.size > 0
                         ? <ChevronDown size={16} color={theme.muted} style={expanded ? {} : { transform: [{ rotate: '-90deg' }] }} />
                         : <ChevronRight size={16} color={theme.muted} style={{ opacity: 0.3 }} />
@@ -155,7 +155,7 @@ function VocabularyCard({ vocabByCategory, totalVocab, expanded, onToggle, theme
                         {[...vocabByCategory.keys()].map((cat, idx) => (
                             <View key={cat} style={idx > 0 ? { borderTopWidth: 1, borderTopColor: theme.border, marginTop: 6, paddingTop: 8 } : undefined}>
                                 <TouchableOpacity onPress={() => goToVocabEditor(cat)} activeOpacity={0.7}>
-                                    <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: '#10B981' }]}>
+                                    <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: theme.vocab }]}>
                                         {cat.toUpperCase()} ›
                                     </Text>
                                 </TouchableOpacity>
@@ -184,7 +184,7 @@ function LessonCard({ row, theme, onToggle }: { row: LessonRow; theme: any; onTo
         <View style={[styles.lessonCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TouchableOpacity style={styles.lessonHeader} onPress={onToggle} activeOpacity={0.7}>
                 <View style={styles.lessonHeaderLeft}>
-                    <View style={[styles.levelBadge, { backgroundColor: levelColor(row.lesson.level) }]}>
+                    <View style={[styles.levelBadge, { backgroundColor: levelColor(row.lesson.level, theme) }]}>
                         <Text style={styles.levelBadgeText}>{row.lesson.level}</Text>
                     </View>
                     <Text style={[styles.lessonTitle, { color: theme.text }]} numberOfLines={1}>
@@ -192,8 +192,8 @@ function LessonCard({ row, theme, onToggle }: { row: LessonRow; theme: any; onTo
                     </Text>
                 </View>
                 <View style={styles.countsRow}>
-                    <CountPill value={row.total} color="#3B82F6" />
-                    <CountPill value={dialogueCount} color="#8B5CF6" />
+                    <CountPill value={row.total} color={theme.quiz} />
+                    <CountPill value={dialogueCount} color={theme.dialogue} />
                     {hasExpandable
                         ? <ChevronDown size={16} color={theme.muted} style={row.expanded ? {} : { transform: [{ rotate: '-90deg' }] }} />
                         : <ChevronRight size={16} color={theme.muted} style={{ opacity: 0.3 }} />
@@ -206,7 +206,7 @@ function LessonCard({ row, theme, onToggle }: { row: LessonRow; theme: any; onTo
                     {row.subtopics.length > 0 && (
                         <View style={styles.section}>
                             <TouchableOpacity onPress={() => goToEditor('quiz')} activeOpacity={0.7}>
-                                <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: '#3B82F6' }]}>
+                                <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: theme.quiz }]}>
                                     QUIZ — RETO RÁPIDO ›
                                 </Text>
                             </TouchableOpacity>
@@ -215,7 +215,7 @@ function LessonCard({ row, theme, onToggle }: { row: LessonRow; theme: any; onTo
 
                     <View style={[styles.section, row.subtopics.length > 0 && { borderTopWidth: 1, borderTopColor: theme.border, marginTop: 4, paddingTop: 10 }]}>
                         <TouchableOpacity onPress={() => goToEditor('dialogue')} activeOpacity={0.7}>
-                            <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: '#8B5CF6' }]}>
+                            <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: theme.dialogue }]}>
                                 {dialogueCount > 0
                                     ? `SESIÓN TOTAL — COMPLETAR TEXTO ›`
                                     : `SESIÓN TOTAL — CREAR NUEVO ›`}
@@ -225,7 +225,7 @@ function LessonCard({ row, theme, onToggle }: { row: LessonRow; theme: any; onTo
 
                     <View style={[styles.section, { borderTopWidth: 1, borderTopColor: theme.border, marginTop: 4, paddingTop: 10 }]}>
                         <TouchableOpacity onPress={() => goToEditor('content')} activeOpacity={0.7}>
-                            <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: '#F59E0B' }]}>
+                            <Text style={[styles.sectionLabel, styles.sectionLabelLink, { color: theme.vocab }]}>
                                 CONTENIDO — EJEMPLOS ›
                             </Text>
                         </TouchableOpacity>
@@ -280,11 +280,16 @@ function groupExercises(lessons: Lesson[], exercises: Exercise[], dialogueMap: R
     });
 }
 
-function levelColor(level: string): string {
+function levelColor(level: string, theme: any): string {
+    // Progresión bandera italiana: Verde (principiante) → Oro (intermedio) → Rojo (avanzado)
     const map: Record<string, string> = {
-        A1: '#3B82F6', A2: '#06B6D4', B1: '#8B5CF6', B2: '#EC4899', 'C1/C2': '#F59E0B',
+        A1:     theme.primary,    // Verde italiano — principiante
+        A2:     '#00A855',        // Verde claro — pre-intermedio
+        B1:     theme.vocab,      // Oro italiano — intermedio
+        B2:     '#D4820A',        // Ámbar oscuro — pre-avanzado
+        'C1/C2': theme.secondary, // Rojo italiano — avanzado
     };
-    return map[level] ?? '#6B7280';
+    return map[level] ?? theme.muted;
 }
 
 const styles = StyleSheet.create({

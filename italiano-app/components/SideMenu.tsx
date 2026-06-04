@@ -1,7 +1,8 @@
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/services/authContext';
-import { ChevronRight, LogOut, Mail, User, X } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ChevronRight, LogOut, Mail, Settings, User, X } from 'lucide-react-native';
 import React from 'react';
 import {
     Animated,
@@ -28,6 +29,7 @@ export default function SideMenu({ isOpen, onClose }: SideMenuProps) {
     const { user, logout, userData } = useAuth();
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
+    const router = useRouter();
 
     const [isVisible, setIsVisible] = React.useState(isOpen);
     const slideAnim = React.useRef(new Animated.Value(-MENU_WIDTH)).current;
@@ -119,6 +121,19 @@ export default function SideMenu({ isOpen, onClose }: SideMenuProps) {
                             <View style={styles.menuItemLeft}>
                                 <User size={20} color={colors.primary} />
                                 <Text style={[styles.menuItemText, { color: colors.text }]}>Perfil</Text>
+                            </View>
+                            <ChevronRight size={18} color={colors.muted} />
+                        </TouchableOpacity>
+
+                        <Text style={[styles.sectionTitle, { color: colors.muted, marginTop: 8 }]}>AJUSTES</Text>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => { onClose(); router.push('/settings'); }}
+                        >
+                            <View style={styles.menuItemLeft}>
+                                <Settings size={20} color={colors.primary} />
+                                <Text style={[styles.menuItemText, { color: colors.text }]}>Configuración</Text>
                             </View>
                             <ChevronRight size={18} color={colors.muted} />
                         </TouchableOpacity>

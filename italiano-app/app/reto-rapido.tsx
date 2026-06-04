@@ -64,20 +64,37 @@ export default function RetoRapidoScreen() {
         Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9 });
     };
 
-    const playErrorSound = async () => {
+    const speakSuccess = async (answer: string) => {
         try {
             const { sound } = await Audio.Sound.createAsync(
-                { uri: 'https://www.soundjay.com/buttons/beep-10.mp3' }
+                require('../assets/sounds/success.wav')
             );
-            await sound.playAsync();
-            // Automatically unload sound to prevent memory leaks
             sound.setOnPlaybackStatusUpdate((status) => {
                 if (status.isLoaded && status.didJustFinish) {
                     sound.unloadAsync();
+                    speak(answer);
                 }
             });
-        } catch (error) {
-            console.log('Error playing sound', error);
+            await sound.playAsync();
+        } catch {
+            speak(answer);
+        }
+    };
+
+    const speakError = async (correctAnswer: string) => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(
+                require('../assets/sounds/error.wav')
+            );
+            sound.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                    sound.unloadAsync();
+                    speak(correctAnswer);
+                }
+            });
+            await sound.playAsync();
+        } catch {
+            speak(correctAnswer);
         }
     };
 
@@ -89,12 +106,15 @@ export default function RetoRapidoScreen() {
         setIsCorrect(correct);
         if (correct) {
             setScore(prev => prev + 1);
-            // Replace the blank and strip "A: " / "B: " labels for natural reading
-            const rawDialogue = filteredExercises[currentStep].question.replace('_______', option);
-            const cleanDialogue = rawDialogue.replace(/A: |B: /g, '');
-            speak(cleanDialogue);
+            if (!subtopic) {
+                const raw = filteredExercises[currentStep].question.replace('_______', option);
+                const fullDialogue = raw.replace(/A: |B: /g, '');
+                speakSuccess(fullDialogue);
+            } else {
+                speakSuccess(option);
+            }
         } else {
-            playErrorSound();
+            speakError(filteredExercises[currentStep].correctAnswer);
         }
     };
 

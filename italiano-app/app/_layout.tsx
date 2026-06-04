@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { ThemeProvider as AppThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider, useAuth } from '@/services/authContext';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -49,9 +50,11 @@ export default function RootLayout() {
   }
 
   return (
+    <AppThemeProvider>
       <AuthProvider>
         <RootLayoutNav />
       </AuthProvider>
+    </AppThemeProvider>
   );
 }
 
@@ -128,6 +131,7 @@ function RootLayoutNav() {
         <Stack.Screen name="pratica" options={{ headerShown: false }} />
         <Stack.Screen name="reto-rapido" options={{ title: 'Reto Rápido' }} />
         <Stack.Screen name="vocab-detail" options={{ title: 'Detalle' }} />
+        <Stack.Screen name="settings" options={{ title: 'Configuración' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

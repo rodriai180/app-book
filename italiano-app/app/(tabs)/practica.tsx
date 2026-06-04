@@ -3,6 +3,7 @@ import { Colors } from '@/constants/Colors';
 import { Theme } from '@/constants/Theme';
 import { Exercise } from '@/constants/mockData';
 import { getAllExercises } from '@/services/firestoreService';
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { AlertCircle, CheckCircle2, ChevronRight, RotateCcw, Trophy, Volume2, XCircle } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -59,6 +60,23 @@ export default function PracticaRapidaScreen() {
         Speech.speak(text, { language: 'it-IT', pitch: 1, rate: 0.9 });
     };
 
+    const speakSuccess = async (text: string) => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(
+                require('../../assets/sounds/success.wav')
+            );
+            sound.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                    sound.unloadAsync();
+                    speak(text);
+                }
+            });
+            await sound.playAsync();
+        } catch {
+            speak(text);
+        }
+    };
+
     if (sessionExercises.length === 0) return null;
 
     if (isFinished) {
@@ -96,7 +114,9 @@ export default function PracticaRapidaScreen() {
         setShowFeedback(true);
         if (option === currentExercise.correctAnswer) {
             setScore(prev => prev + 1);
-            speak(option);
+            const raw = currentExercise.question.replace('_______', option);
+            const fullDialogue = raw.replace(/A: |B: /g, '');
+            speakSuccess(fullDialogue);
         }
     };
 
