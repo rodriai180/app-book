@@ -155,6 +155,7 @@ interface GeneratedCoverProps {
     contentHighlight?: { start: number; length: number };
     questionHighlight?: { start: number; length: number };
     hideText?: boolean;
+    hideBgTitle?: boolean;
     hideIcon?: boolean;
     topAligned?: boolean;
     topAlignedPadding?: number;
@@ -255,6 +256,7 @@ export default function GeneratedCover({
     contentHighlight,
     questionHighlight,
     hideText = false,
+    hideBgTitle = false,
     hideIcon = false,
     topAligned = false,
     topAlignedPadding,
@@ -307,7 +309,7 @@ export default function GeneratedCover({
                 <View style={[deco.circle, { width: 55,  height: 55,  top: '18%', right: '20%', opacity: 0.14 }]} />
 
                 {/* Título como elemento tipográfico de fondo */}
-                <Text style={styles.mlBgTitle} numberOfLines={3} allowFontScaling={false}>{titleBg}</Text>
+                {!hideBgTitle && <Text style={styles.mlBgTitle} numberOfLines={3} allowFontScaling={false}>{titleBg}</Text>}
 
                 {/* Decoraciones geométricas variables por seed */}
                 <MicroDecoration seed={seed} />
