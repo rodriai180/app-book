@@ -11,9 +11,11 @@
 1. fer como va afuncionar la app limiste de resumens y nugget guardadas (si o no ?),
 2. subscripcion par ael contenido generado o se lo damos gratis y funciono solo como afilaido
 
-//Tecnico
+//Tecnico 0. generar la informacion de reels lo mas autmoatizado psillee
 
 1. deploy app en web, ver si puedo gestioanr el hecho de que cuando la abran se vea full schreem en mobile
 2. deploy en mi pagian eb
 3. deploy e n app nativa androoid o ios, encesito ve tema costos.
 4. la app necesita limpearse a nivel de codigo hay cosas quqe ya no usamos como el smart reader
+
+//api key openai opnepaisk-proj-PFd92N0_CicrUZJO8vXL-XHe7v_tKuugTI0FLrxjWaxm_MFs7dShSf4M-Ghh4K8EfWQbgmPxCLT3BlbkFJ_e-Yh7zN50gkiLj2Zg9eUpSkdZ-aUD4945QGI\_\_QDNr4MdxGcBsOhb37uxY98GF-55oXW54hYA
