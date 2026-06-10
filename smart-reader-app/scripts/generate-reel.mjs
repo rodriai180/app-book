@@ -5,6 +5,7 @@
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import OpenAI from 'openai';
 import { ElevenLabsClient } from 'elevenlabs';
 import puppeteer from 'puppeteer';
@@ -19,9 +20,6 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 
-// Nugget image encoded once at startup
-const NUGGET_B64 = readFileSync(join(ROOT, 'assets', 'img', 'nuggeto.png')).toString('base64');
-const NUGGET_IMG = `data:image/png;base64,${NUGGET_B64}`;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -84,26 +82,6 @@ const GRADIENTS = {
 const DEFAULT_GRADIENT = ['#546E7A', '#263238'];
 const getGradient = (cat) => GRADIENTS[cat?.toLowerCase()] ?? DEFAULT_GRADIENT;
 
-// ─── Lucide icon SVGs por categoría (viewBox 0 0 24 24, stroke only) ──────────
-
-const ICON_SVGS = {
-  'comunicacion':        `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
-  'psicologia':          `<path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 18h6a2 2 0 0 1 2 2v1"/><path d="M12 8h8"/><path d="M16 8V5a2 2 0 0 1 2-2"/><circle cx="16" cy="13" r=".5"/><circle cx="18" cy="3" r=".5"/><circle cx="20" cy="21" r=".5"/><circle cx="20" cy="8" r=".5"/>`,
-  'negocios':            `<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>`,
-  'desarrollo-personal': `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
-  'finanzas':            `<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>`,
-  'liderazgo':           `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
-  'habitos':             `<path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/>`,
-  'productividad':       `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`,
-};
-const DEFAULT_ICON_SVG = `<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>`;
-
-function getCategoryIconSvg(category) {
-  const key = (category ?? '').toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '-');
-  return ICON_SVGS[key] ?? DEFAULT_ICON_SVG;
-}
-
 // ─── Visual seed (espeja GeneratedCover.tsx) ──────────────────────────────────
 
 function hashString(str) {
@@ -150,10 +128,6 @@ function slideDisplayText(ml, slide) {
   return slide.text;
 }
 
-// ─── Tamaño del nugget en el reel (escala 3× del tamaño base de la app) ───────
-const REEL_NUGGET_W  = 690;  // 230 * 3
-const REEL_NUGGET_H  = 462;  // 154 * 3
-const REEL_ICON_SIZE = 114;  //  38 * 3
 
 // ─── HTML helpers ─────────────────────────────────────────────────────────────
 
@@ -202,14 +176,16 @@ const DECO_CSS = `
 .dr{position:absolute;border-radius:50%;border:1.5px solid rgba(255,255,255,0.12)}
 `;
 
-function titleSlideHtml(ml, gradient, start, length, seed) {
+function titleSlideHtml(ml, gradient, start, length, seed, imageUrl) {
   const [c1, c2] = gradient;
-  const iconSvg = getCategoryIconSvg(ml.category);
+  const bgCss = imageUrl
+    ? `linear-gradient(135deg,${c1}99,${c2}99),url('${imageUrl}') center/cover no-repeat`
+    : `linear-gradient(135deg,${c1},${c2})`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   width:${W}px;height:${H}px;overflow:hidden;
-  background:linear-gradient(135deg,${c1},${c2});
+  background:${bgCss};
   font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:80px 70px;
@@ -230,16 +206,6 @@ mark{background:rgba(255,255,255,0.35);border-radius:8px;padding:0 6px;color:#ff
 ${BASE_DECOS_HTML}
 ${microDecoHtml(seed)}
 <div class="wrap">
-  <div class="nugget">
-    <img src="${NUGGET_IMG}">
-    <div class="ni">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"
-           stroke-linecap="round" stroke-linejoin="round"
-           style="width:${REEL_ICON_SIZE}px;height:${REEL_ICON_SIZE}px">
-        ${iconSvg}
-      </svg>
-    </div>
-  </div>
   <div class="title">${hlHtml(ml.title, start, length)}</div>
   <div class="divider"></div>
   <div class="book">${esc(ml.bookTitle)}</div>
@@ -249,13 +215,16 @@ ${microDecoHtml(seed)}
 </body></html>`;
 }
 
-function contentSlideHtml(text, gradient, start, length, isReflection, seed) {
+function contentSlideHtml(text, gradient, start, length, isReflection, seed, imageUrl) {
   const [c1, c2] = gradient;
+  const bgCss = imageUrl
+    ? `linear-gradient(135deg,${c1}99,${c2}99),url('${imageUrl}') center/cover no-repeat`
+    : `linear-gradient(135deg,${c1},${c2})`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   width:${W}px;height:${H}px;overflow:hidden;
-  background:linear-gradient(135deg,${c1},${c2});
+  background:${bgCss};
   font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:100px 80px;
@@ -268,6 +237,7 @@ ${DECO_CSS}
   font-weight:${isReflection ? 500 : 600};
   font-style:${isReflection ? 'italic' : 'normal'};
   color:#fff;line-height:1.45;letter-spacing:-0.3px;
+  background:rgba(0,0,0,0.52);border-radius:16px;padding:28px 40px;
 }
 mark{background:rgba(255,255,255,0.35);border-radius:8px;padding:0 6px;color:#fff}
 .brand{position:absolute;bottom:44px;font-size:22px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:3px}
@@ -304,9 +274,11 @@ function mapWords(displayText, whisperWords) {
 
 // ─── Firebase ─────────────────────────────────────────────────────────────────
 
+const STORAGE_BUCKET = 'smart-reader-app-3665c.firebasestorage.app';
+
 function initFirebase() {
   const sa = JSON.parse(readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
-  initializeApp({ credential: cert(sa) });
+  initializeApp({ credential: cert(sa), storageBucket: STORAGE_BUCKET });
 }
 
 async function fetchML(id) {
@@ -314,6 +286,69 @@ async function fetchML(id) {
   const doc = await db.collection('microlearnings').doc(id).get();
   if (!doc.exists) throw new Error(`Microlearning no encontrado: ${id}`);
   return { id: doc.id, ...doc.data() };
+}
+
+async function uploadAudio(localPath, storagePath) {
+  const bucket = getStorage().bucket(STORAGE_BUCKET);
+  await bucket.upload(localPath, {
+    destination: storagePath,
+    metadata: { contentType: 'audio/mpeg' },
+  });
+  // Guardamos el path (no URL) — la app lo resuelve con getDownloadURL
+  return storagePath;
+}
+
+async function saveToFirestore(mlId, updates) {
+  await getFirestore().collection('microlearnings').doc(mlId).update(updates);
+}
+
+// ─── Image generation ─────────────────────────────────────────────────────────
+
+function buildImagePrompt(ml, gradient) {
+  const [c1, c2] = gradient;
+  const firstSentence = (ml.content ?? '').split(/[.!?]/)[0].trim();
+  const concept = firstSentence || ml.title;
+  return (
+    `Minimalist digital illustration for a mobile learning app card. ` +
+    `Visual concept inspired by: "${concept}". ` +
+    `Color palette: tones of ${c1} transitioning to ${c2}. ` +
+    `Style: abstract, soft geometric shapes, symbolic imagery, clean modern design. ` +
+    `No text, no letters, no words anywhere in the image. ` +
+    `Mood: inspiring, thoughtful, calm. ` +
+    `High quality, suitable as a card thumbnail.`
+  );
+}
+
+async function generateAndUploadImage(ml, gradient) {
+  const prompt = buildImagePrompt(ml, gradient);
+
+  process.stdout.write('🎨  gpt-image-2... ');
+  const response = await ai.images.generate({
+    model: 'gpt-image-2',
+    prompt,
+    n: 1,
+    size: '1024x1024',
+    quality: 'medium',
+  });
+  console.log('✓');
+
+  const b64 = response.data[0].b64_json;
+  const localPath = join(TEMP_DIR, 'cover.png');
+  process.stdout.write('    💾 Guardando imagen... ');
+  writeFileSync(localPath, Buffer.from(b64, 'base64'));
+  console.log('✓');
+
+  const storagePath = `images/microlearnings/${ML_ID}.png`;
+  const bucket = getStorage().bucket(STORAGE_BUCKET);
+  process.stdout.write('    ☁️  Subiendo... ');
+  await bucket.upload(localPath, {
+    destination: storagePath,
+    metadata: { contentType: 'image/png' },
+  });
+  await bucket.file(storagePath).makePublic();
+  console.log('✓');
+
+  return `https://storage.googleapis.com/${STORAGE_BUCKET}/${storagePath}`;
 }
 
 // ─── ElevenLabs TTS ───────────────────────────────────────────────────────────
@@ -351,7 +386,7 @@ async function getTimestamps(audioPath) {
 
 // ─── Rendering de frames ──────────────────────────────────────────────────────
 
-async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient) {
+async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient, imageUrl) {
   const displayText  = slideDisplayText(ml, slide);
   const isTitle      = slide.type === 'title';
   const isReflection = slide.type === 'reflection';
@@ -366,8 +401,8 @@ async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient) {
   for (let i = 0; i < keyframes.length; i++) {
     const kf = keyframes[i];
     const html = isTitle
-      ? titleSlideHtml(ml, gradient, kf.start, kf.length, seed)
-      : contentSlideHtml(displayText, gradient, kf.start, kf.length, isReflection, seed);
+      ? titleSlideHtml(ml, gradient, kf.start, kf.length, seed, imageUrl)
+      : contentSlideHtml(displayText, gradient, kf.start, kf.length, isReflection, seed, imageUrl);
 
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const framePath = join(TEMP_DIR, `s${slideIdx}_f${String(i).padStart(3, '0')}.png`);
@@ -451,60 +486,116 @@ async function main() {
 
   const slides   = buildSlides(ml);
   const gradient = getGradient(ml.category);
-  console.log(`📋  ${slides.length} slides (${slides.map(s => s.type).join(', ')})\n`);
 
-  console.log('🌐  Iniciando browser...');
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+  const hasAudio = Array.isArray(ml.audioSlides) && ml.audioSlides.length === slides.length;
 
-  const parts = [];
+  const firestoreUpdates = {};
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide     = slides[i];
-    const spoken    = slideSpokenText(ml, slide);
-    const display   = slideDisplayText(ml, slide);
-    const audioPath = join(TEMP_DIR, `s${i}.mp3`);
-    const concatPath = join(TEMP_DIR, `s${i}.concat`);
-    const partPath  = join(TEMP_DIR, `s${i}.mp4`);
-
-    console.log(`━━  Slide ${i + 1}/${slides.length}  [${slide.type}]`);
-
-    process.stdout.write('    🔊 TTS... ');
-    await generateTTS(spoken, audioPath);
-    console.log('✓');
-
-    process.stdout.write('    📝 Whisper... ');
-    const allWords = await getTimestamps(audioPath);
-    console.log(`✓  (${allWords.length} palabras)`);
-
-    // Para el slide de título, solo mapeamos las palabras del título (no del libro/autor)
-    const titleWordCount = ml.title.split(/\s+/).length;
-    const wordsToMap = slide.type === 'title'
-      ? allWords.slice(0, titleWordCount)
-      : allWords;
-
-    const wordMap = mapWords(display, wordsToMap);
-
-    process.stdout.write(`    🖼️  ${keyframeCount(wordMap)} frames... `);
-    const frames = await renderFrames(browser, ml, slide, i, wordMap, gradient);
-    console.log('✓');
-
-    writeConcatFile(frames, concatPath);
-
-    process.stdout.write('    🎞️  Ensamblando slide... ');
-    await buildSlideVideo(concatPath, audioPath, partPath);
-    console.log('✓\n');
-
-    parts.push(partPath);
+  // ── Imagen ────────────────────────────────────────────────────────────────────
+  let effectiveImageUrl = ml.microlearningImageUrl ?? null;
+  if (effectiveImageUrl) {
+    console.log(`🖼️  Imagen ya existe, omitiendo generación.\n`);
+  } else {
+    console.log('🎨  Generando imagen de portada...');
+    effectiveImageUrl = await generateAndUploadImage(ml, gradient);
+    firestoreUpdates.microlearningImageUrl = effectiveImageUrl;
+    console.log();
   }
 
-  await browser.close();
+  // ── Reel + Audio ──────────────────────────────────────────────────────────────
+  const outPath    = join(OUTPUT_DIR, `${ML_ID}.mp4`);
+  const videoExists = existsSync(outPath);
 
-  const outPath = join(OUTPUT_DIR, `${ML_ID}.mp4`);
-  process.stdout.write('🔗  Uniendo slides... ');
-  await joinVideos(parts, outPath);
-  console.log('✓');
+  if (hasAudio && videoExists) {
+    console.log('⏭️  Audio y video ya existen, omitiendo generación.\n');
+  } else {
+    console.log(`📋  ${slides.length} slides (${slides.map(s => s.type).join(', ')})\n`);
+    console.log('🌐  Iniciando browser...');
+    const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
 
-  console.log(`\n✅  Listo → ${outPath}\n`);
+    const parts       = [];
+    const audioSlides = [];
+
+    for (let i = 0; i < slides.length; i++) {
+      const slide      = slides[i];
+      const display    = slideDisplayText(ml, slide);
+      const audioPath  = join(TEMP_DIR, `s${i}.mp3`);
+      const concatPath = join(TEMP_DIR, `s${i}.concat`);
+      const partPath   = join(TEMP_DIR, `s${i}.mp4`);
+
+      console.log(`━━  Slide ${i + 1}/${slides.length}  [${slide.type}]`);
+
+      let wordMap;
+
+      if (hasAudio) {
+        // Reusar audio y timestamps ya almacenados en Firestore
+        if (!existsSync(audioPath)) {
+          process.stdout.write('    ⬇️  Descargando audio... ');
+          const storagePath = ml.audioSlides[i].audioPath;
+          await getStorage().bucket(STORAGE_BUCKET).file(storagePath).download({ destination: audioPath });
+          console.log('✓');
+        } else {
+          console.log('    🔊 Audio local encontrado, reutilizando.');
+        }
+        wordMap = (ml.audioSlides[i].words ?? []).map(w => ({
+          start: w.charIndex, length: w.charLength, time: w.time, endTime: w.endTime,
+        }));
+      } else {
+        // Generar TTS + timestamps desde cero
+        process.stdout.write('    🔊 TTS... ');
+        await generateTTS(slideSpokenText(ml, slide), audioPath);
+        console.log('✓');
+
+        process.stdout.write('    📝 Whisper... ');
+        const allWords = await getTimestamps(audioPath);
+        console.log(`✓  (${allWords.length} palabras)`);
+
+        const titleWordCount = ml.title.split(/\s+/).length;
+        const wordsToMap = slide.type === 'title' ? allWords.slice(0, titleWordCount) : allWords;
+        wordMap = mapWords(display, wordsToMap);
+
+        process.stdout.write('    ☁️  Subiendo audio... ');
+        const storagePath = await uploadAudio(audioPath, `audio/microlearnings/${ML_ID}/slide_${i}.mp3`);
+        console.log('✓');
+
+        audioSlides.push({
+          type: slide.type,
+          audioPath: storagePath,
+          words: wordMap.map(w => ({ charIndex: w.start, charLength: w.length, time: w.time, endTime: w.endTime })),
+        });
+      }
+
+      process.stdout.write(`    🖼️  ${keyframeCount(wordMap)} frames... `);
+      const frames = await renderFrames(browser, ml, slide, i, wordMap, gradient, effectiveImageUrl);
+      console.log('✓');
+
+      writeConcatFile(frames, concatPath);
+
+      process.stdout.write('    🎞️  Ensamblando slide... ');
+      await buildSlideVideo(concatPath, audioPath, partPath);
+      console.log('✓\n');
+
+      parts.push(partPath);
+    }
+
+    await browser.close();
+
+    process.stdout.write('🔗  Uniendo slides... ');
+    await joinVideos(parts, outPath);
+    console.log('✓');
+
+    if (audioSlides.length > 0) firestoreUpdates.audioSlides = audioSlides;
+    console.log(`\n📹  Reel → ${outPath}\n`);
+  }
+
+  // ── Guardar en Firestore ──────────────────────────────────────────────────────
+  if (Object.keys(firestoreUpdates).length > 0) {
+    process.stdout.write('💾  Guardando en Firestore... ');
+    await saveToFirestore(ML_ID, firestoreUpdates);
+    console.log('✓');
+  }
+
+  console.log('\n✅  Listo\n');
 }
 
 function keyframeCount(wordMap) { return wordMap.length + 1; }

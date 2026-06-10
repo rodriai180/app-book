@@ -1,197 +1,100 @@
-import React, { useState, useCallback } from 'react';
-import {
-    View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, Platform, useWindowDimensions,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Square, Plus } from 'lucide-react-native';
-import { useRouter, useNavigation, useFocusEffect } from 'expo-router';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { db } from '../../constants/firebaseConfig';
-import { AudioService } from '../../src/services/AudioService';
-import SmartImage from '../../src/components/SmartImage';
+import { useRouter } from 'expo-router';
+import { BookOpen, Plus, Zap } from 'lucide-react-native';
 import { useTheme } from '../../src/services/themeContext';
-import { useSettings } from '../../src/services/settingsContext';
 
-interface Summary {
-    id: string;
-    title: string;
-    author?: string;
-    coverUrl?: string;
-    summaryText: string;
-}
-
-export default function ResumenesScreen() {
+export default function AdminDashboard() {
     const { colors, isDark } = useTheme();
-    const { settings } = useSettings();
     const router = useRouter();
-    const navigation = useNavigation();
     const { width } = useWindowDimensions();
     const isDesktop = Platform.OS === 'web' && width >= 768;
-    const [summaries, setSummaries] = useState<Summary[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [playingId, setPlayingId] = useState<string | null>(null);
 
-    React.useLayoutEffect(() => {
-        navigation.setOptions({
-            headerRight: () => (
-                <TouchableOpacity onPress={() => router.push('/add-summary')} style={{ marginRight: 16 }}>
-                    <Plus size={24} color={colors.tint} />
-                </TouchableOpacity>
-            ),
-        });
-    }, [navigation, colors.tint]);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadSummaries();
-            return () => { AudioService.stop(); setPlayingId(null); };
-        }, [])
-    );
-
-    const loadSummaries = async () => {
-        setLoading(true);
-        try {
-            const q = query(collection(db, 'summaries'), orderBy('createdAt', 'desc'));
-            const snap = await getDocs(q);
-            setSummaries(snap.docs.map(d => ({ id: d.id, ...d.data() } as Summary)));
-        } catch {
-            const snap = await getDocs(collection(db, 'summaries'));
-            setSummaries(snap.docs.map(d => ({ id: d.id, ...d.data() } as Summary)));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePlay = (item: Summary) => {
-        if (playingId === item.id) {
-            AudioService.stop();
-            setPlayingId(null);
-            return;
-        }
-        AudioService.stop();
-        setPlayingId(item.id);
-        AudioService.speak(item.summaryText, {
-            rate: settings.rate,
-            language: settings.language,
-            onDone: () => setPlayingId(null),
-            onError: () => setPlayingId(null),
-        });
-    };
-
-    const renderItem = ({ item }: { item: Summary }) => {
-        const isPlaying = playingId === item.id;
-        return (
-            <TouchableOpacity
-                onPress={() => router.push({ pathname: '/summary-detail', params: { id: item.id } })}
-                activeOpacity={0.7}
-                style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
-            >
-                {item.coverUrl ? (
-                    <SmartImage uri={item.coverUrl} style={styles.cover} resizeMode="cover" />
-                ) : (
-                    <View style={[styles.coverPlaceholder, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
-                        <Text style={[styles.coverInitial, { color: colors.secondaryText }]}>
-                            {item.title.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-                )}
-
-                <View style={styles.info}>
-                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-                    {item.author ? (
-                        <Text style={[styles.author, { color: colors.secondaryText }]} numberOfLines={1}>{item.author}</Text>
-                    ) : null}
-                </View>
-
-                <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); handlePlay(item); }}
-                    style={[styles.playBtn, { backgroundColor: isPlaying ? colors.tint : (isDark ? '#2C2C2E' : '#F2F2F7') }]}
-                >
-                    {isPlaying
-                        ? <Square size={16} color="#FFF" fill="#FFF" />
-                        : <Play size={16} color={colors.tint} fill={colors.tint} />
-                    }
-                </TouchableOpacity>
-            </TouchableOpacity>
-        );
-    };
+    const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
+    const borderColor = isDark ? '#3A3A3C' : '#E5E5EA';
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
-            {isDesktop && (
-                <View style={[styles.desktopHeader, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.desktopTitle, { color: colors.text }]}>Resúmenes</Text>
-                    <TouchableOpacity onPress={() => router.push('/add-summary')} style={[styles.desktopAddBtn, { backgroundColor: colors.tint }]}>
-                        <Plus size={18} color="#FFF" />
-                        <Text style={styles.desktopAddText}>Agregar</Text>
+        <SafeAreaView style={[styles.root, { backgroundColor: colors.backgroundSecondary }]} edges={['bottom']}>
+            <View style={[styles.content, isDesktop && styles.contentDesktop]}>
+                <Text style={[styles.heading, { color: colors.text }]}>Admin</Text>
+                <Text style={[styles.sub, { color: colors.secondaryText }]}>
+                    Gestioná el contenido de la app
+                </Text>
+
+                <View style={styles.cards}>
+                    <TouchableOpacity
+                        style={[styles.card, { backgroundColor: cardBg, borderColor }]}
+                        activeOpacity={0.7}
+                        onPress={() => router.push('/admin-books')}
+                    >
+                        <View style={[styles.iconWrap, { backgroundColor: colors.tint + '18' }]}>
+                            <BookOpen size={26} color={colors.tint} />
+                        </View>
+                        <View style={styles.cardText}>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>Ver / editar libros</Text>
+                            <Text style={[styles.cardDesc, { color: colors.secondaryText }]}>
+                                Buscá, editá o eliminá libros subidos
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.card, { backgroundColor: cardBg, borderColor }]}
+                        activeOpacity={0.7}
+                        onPress={() => router.push('/add-summary')}
+                    >
+                        <View style={[styles.iconWrap, { backgroundColor: colors.tint + '18' }]}>
+                            <Plus size={26} color={colors.tint} />
+                        </View>
+                        <View style={styles.cardText}>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>Agregar libro</Text>
+                            <Text style={[styles.cardDesc, { color: colors.secondaryText }]}>
+                                Subí un nuevo libro desde un JSON
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.card, { backgroundColor: cardBg, borderColor }]}
+                        activeOpacity={0.7}
+                        onPress={() => router.push('/admin-microlearnings')}
+                    >
+                        <View style={[styles.iconWrap, { backgroundColor: colors.tint + '18' }]}>
+                            <Zap size={26} color={colors.tint} />
+                        </View>
+                        <View style={styles.cardText}>
+                            <Text style={[styles.cardTitle, { color: colors.text }]}>Ver microlearnings</Text>
+                            <Text style={[styles.cardDesc, { color: colors.secondaryText }]}>
+                                Explorá y buscá todos los microlearnings de la app
+                            </Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
-            )}
-            {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={colors.tint} />
-                </View>
-            ) : summaries.length === 0 ? (
-                <View style={styles.center}>
-                    <Text style={[styles.empty, { color: colors.secondaryText }]}>
-                        Todavía no hay resúmenes.{'\n'}Agregá el primero con el botón +
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={summaries}
-                    keyExtractor={item => item.id}
-                    renderItem={renderItem}
-                    contentContainerStyle={styles.list}
-                />
-            )}
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    desktopHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
+    root: { flex: 1 },
+    content: { flex: 1, padding: 24 },
+    contentDesktop: {},
+    heading: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
+    sub: { fontSize: 14, marginBottom: 32 },
+    cards: { gap: 14 },
+    card: {
+        flexDirection: 'row', alignItems: 'center', gap: 16,
+        borderWidth: 1, borderRadius: 14,
+        padding: 18,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     },
-    desktopTitle: { fontSize: 22, fontWeight: '700' },
-    desktopAddBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 20,
-    },
-    desktopAddText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-    empty: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-    list: { paddingVertical: 8 },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 0.5,
-        gap: 12,
-    },
-    cover: { width: 52, height: 72, borderRadius: 6 },
-    coverPlaceholder: {
-        width: 52, height: 72, borderRadius: 6,
+    iconWrap: {
+        width: 52, height: 52, borderRadius: 14,
         justifyContent: 'center', alignItems: 'center',
     },
-    coverInitial: { fontSize: 22, fontWeight: '700' },
-    info: { flex: 1 },
-    title: { fontSize: 15, fontWeight: '600', marginBottom: 3 },
-    author: { fontSize: 13 },
-    playBtn: {
-        width: 40, height: 40, borderRadius: 20,
-        justifyContent: 'center', alignItems: 'center',
-    },
+    cardText: { flex: 1 },
+    cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 3 },
+    cardDesc: { fontSize: 13, lineHeight: 18 },
 });

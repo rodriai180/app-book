@@ -222,6 +222,7 @@ export default function LibraryScreen() {
                             title={item.title}
                             category={item.category}
                             tags={item.tags}
+                            imageUrl={item.microlearningImageUrl}
                             hideText
                             style={{ ...styles.savedCover, width: coverWidth, height: coverHeight }}
                         />

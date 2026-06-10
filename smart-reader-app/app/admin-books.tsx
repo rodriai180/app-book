@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, Alert,
+    ActivityIndicator, Alert, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react-native';
+import { ArrowLeft, Pencil, Trash2, Plus, Search } from 'lucide-react-native';
 import { getAllBooks, deleteBook } from '../src/services/bookContentService';
 import { BookData } from '../src/models/BookModels';
 import { useTheme } from '../src/services/themeContext';
@@ -18,6 +18,17 @@ export default function AdminBooksScreen() {
     const [books, setBooks] = useState<BookData[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+
+    const filteredBooks = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return books;
+        return books.filter(b =>
+            b.title.toLowerCase().includes(q) ||
+            (b.author ?? '').toLowerCase().includes(q) ||
+            (b.category ?? '').toLowerCase().includes(q)
+        );
+    }, [books, search]);
 
     const loadBooks = useCallback(async () => {
         setLoading(true);
@@ -125,13 +136,27 @@ export default function AdminBooksScreen() {
                 </TouchableOpacity>
             </View>
 
+            <View style={[styles.searchRow, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                <Search size={16} color={colors.secondaryText} />
+                <TextInput
+                    style={[styles.searchInput, { color: colors.text }]}
+                    placeholder="Buscar por título, autor o categoría..."
+                    placeholderTextColor={colors.secondaryText}
+                    value={search}
+                    onChangeText={setSearch}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    clearButtonMode="while-editing"
+                />
+            </View>
+
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.tint} />
                 </View>
             ) : (
                 <FlatList
-                    data={books}
+                    data={filteredBooks}
                     keyExtractor={item => item.id!}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
@@ -140,7 +165,9 @@ export default function AdminBooksScreen() {
                     ListEmptyComponent={
                         <View style={styles.center}>
                             <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
-                                No hay libros subidos todavía.
+                                {search.trim()
+                                    ? 'No se encontraron libros con esa búsqueda.'
+                                    : 'No hay libros subidos todavía.'}
                             </Text>
                         </View>
                     }
@@ -163,6 +190,13 @@ const styles = StyleSheet.create({
         width: 34, height: 34, borderRadius: 17,
         justifyContent: 'center', alignItems: 'center',
     },
+    searchRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+        borderWidth: 1, borderRadius: 10,
+        paddingHorizontal: 12, paddingVertical: 8,
+    },
+    searchInput: { flex: 1, fontSize: 14 },
     list: { padding: 16, paddingBottom: 32 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
     emptyText: { fontSize: 15, textAlign: 'center' },

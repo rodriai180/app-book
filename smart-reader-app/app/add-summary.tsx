@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../src/services/themeContext';
 import { uploadBookFromJSON } from '../src/services/bookContentService';
-import { ImageIcon, X, BookOpen, Layers, ChevronRight, Library } from 'lucide-react-native';
+import { ImageIcon, X, BookOpen, Layers, ChevronRight } from 'lucide-react-native';
 
 interface ParsedPreview {
     title: string;
@@ -127,16 +127,6 @@ export default function AddSummaryScreen() {
                 contentContainerStyle={styles.content}
                 keyboardShouldPersistTaps="handled"
             >
-                {/* ── Botón ver/editar libros existentes ── */}
-                <TouchableOpacity
-                    style={[styles.libBtn, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF', borderColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}
-                    onPress={() => router.push('/admin-books')}
-                >
-                    <Library size={16} color={colors.tint} />
-                    <Text style={[styles.libBtnText, { color: colors.tint }]}>Ver / editar libros subidos</Text>
-                    <ChevronRight size={15} color={colors.tint} />
-                </TouchableOpacity>
-
                 {/* ── JSON input ── */}
                 <Text style={[styles.label, { color: colors.text }]}>JSON del libro *</Text>
                 <TextInput
@@ -270,13 +260,6 @@ const styles = StyleSheet.create({
     input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
     jsonArea: { minHeight: 200, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: 12 },
     error: { color: '#FF3B30', fontSize: 13, marginTop: 6 },
-
-    // Lib btn
-    libBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        borderWidth: 1, borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14,
-    },
-    libBtnText: { flex: 1, fontWeight: '600', fontSize: 14 },
 
     // Previsualizar btn
     previewBtn: {

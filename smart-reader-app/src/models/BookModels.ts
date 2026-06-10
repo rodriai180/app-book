@@ -73,6 +73,19 @@ export interface ChapterData {
     chapterImageUrl?: string;
 }
 
+export interface AudioWordTimestamp {
+    charIndex: number;
+    charLength: number;
+    time: number;
+    endTime: number;
+}
+
+export interface AudioSlideData {
+    type: string;
+    audioPath: string;
+    words: AudioWordTimestamp[];
+}
+
 export interface MicrolearningData {
     id?: string;
     title: string;
@@ -90,6 +103,7 @@ export interface MicrolearningData {
     chapterTitle: string;
     chapterNumber: number;
     category: string;
+    audioSlides?: AudioSlideData[];
 }
 
 export interface BookProgress {

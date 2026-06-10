@@ -31,6 +31,14 @@ export default function WebSidebar() {
     const isActive = (name: string) => {
         if (name === 'index') return pathname === '/' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
         if (name === 'settings') return pathname === '/settings';
+        if (name === 'resumenes') return (
+            pathname === '/(tabs)/resumenes' ||
+            pathname === '/resumenes' ||
+            pathname === '/add-summary' ||
+            pathname === '/admin-books' ||
+            pathname === '/edit-book' ||
+            pathname === '/admin-microlearnings'
+        );
         return pathname === `/${name}` || pathname === `/(tabs)/${name}`;
     };
 

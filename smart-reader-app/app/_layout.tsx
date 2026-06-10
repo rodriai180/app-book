@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { LogBox, View, ActivityIndicator, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import { AuthProvider, useAuth } from '../src/services/authContext';
-import { ThemeProvider } from '../src/services/themeContext';
+import { ThemeProvider, useTheme } from '../src/services/themeContext';
 import { SettingsProvider } from '../src/services/settingsContext';
 import WebSidebar from '../components/WebSidebar';
 
@@ -17,6 +17,7 @@ const FULL_SCREEN_ROUTES = ['/reader', '/login', '/register'];
 
 function RootNavigator() {
     const { user, loading } = useAuth();
+    const { colors } = useTheme();
     const router = useRouter();
     const segments = useSegments();
     const pathname = usePathname();
@@ -62,7 +63,17 @@ function RootNavigator() {
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
-            <Stack.Screen name="microlearning-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="microlearning-detail" options={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }} />
+            <Stack.Screen name="admin-microlearnings" options={{ headerShown: false }} />
+            <Stack.Screen
+                name="add-summary"
+                options={{
+                    title: 'add-summary',
+                    headerStyle: { backgroundColor: colors.background },
+                    headerTintColor: colors.text,
+                    headerTitleStyle: { color: colors.text, fontWeight: '700' },
+                }}
+            />
         </Stack>
     );
 

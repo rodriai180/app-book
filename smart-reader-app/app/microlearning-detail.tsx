@@ -19,6 +19,7 @@ import GeneratedCover from '../src/components/GeneratedCover';
 import MlCommentsModal from '../src/components/MlCommentsModal';
 import { getFeed, updateFeedIndex } from '../src/services/microlearningStore';
 import { MicrolearningData } from '../src/models/BookModels';
+import { PrerecordedAudioService } from '../src/services/PrerecordedAudioService';
 
 
 function speakOne(
@@ -221,6 +222,7 @@ export default function MicrolearningDetailScreen() {
     const stopTTS = () => {
         tokenRef.current.active = false;
         if (cancelSpeakRef.current) { cancelSpeakRef.current(); cancelSpeakRef.current = null; }
+        PrerecordedAudioService.stop();
         playingIdRef.current = null;
         setPlayingId(null);
         setHighlightRange(null);
@@ -313,25 +315,46 @@ export default function MicrolearningDetailScreen() {
         const offset = charOffset ?? 0;
         const text = offset > 0 ? fullText.slice(offset) : fullText;
 
-        cancelSpeakRef.current = speakOne(
-            text,
-            settings.rate,
-            settings.language,
-            () => {
-                if (!token.active) return;
-                setHighlightRange(null);
-                highlightRangeRef.current = null;
-                playingIdRef.current = null;
-                setPlayingId(null);
-            },
-            (charIndex, charLength) => {
+        const onDone = () => {
+            if (!token.active) return;
+            setHighlightRange(null);
+            highlightRangeRef.current = null;
+            playingIdRef.current = null;
+            setPlayingId(null);
+        };
+
+        const onBoundaryLegacy = (charIndex: number, charLength: number) => {
+            if (token.active) {
+                const range = { start: offset + charIndex, length: charLength };
+                setHighlightRange(range);
+                highlightRangeRef.current = range;
+            }
+        };
+
+        const audioSlide = item.audioSlides?.[slideIdx];
+
+        if (PrerecordedAudioService.isAvailable() && audioSlide) {
+            cancelSpeakRef.current = () => PrerecordedAudioService.stop();
+            PrerecordedAudioService.play(
+                audioSlide,
+                (charIndex, charLength) => {
+                    if (token.active) {
+                        const range = { start: charIndex, length: charLength };
+                        setHighlightRange(range);
+                        highlightRangeRef.current = range;
+                    }
+                },
+                onDone,
+                offset,
+            ).catch(() => {
+                // Si falla la carga del audio, fallback al TTS del navegador
                 if (token.active) {
-                    const range = { start: offset + charIndex, length: charLength };
-                    setHighlightRange(range);
-                    highlightRangeRef.current = range;
+                    cancelSpeakRef.current = speakOne(text, settings.rate, settings.language, onDone, onBoundaryLegacy);
                 }
-            },
-        );
+            });
+        } else {
+            cancelSpeakRef.current = speakOne(text, settings.rate, settings.language, onDone, onBoundaryLegacy);
+        }
     };
 
     handlePlayRef.current = handlePlay;
@@ -396,22 +419,26 @@ export default function MicrolearningDetailScreen() {
         const hlLen = isPlaying && highlightRange ? highlightRange.length : 0;
         const isDesktop = width >= 768;
 
+        const bleedX = Math.max(5, Math.ceil(width * 0.01));
+        const bleedY = Math.max(5, Math.ceil(height * 0.01));
+
         return (
             <View
                 style={{ width, height, overflow: 'hidden' }}
                 ref={(r) => { if (r) itemViewRefs.current.set(item.id!, r); else itemViewRefs.current.delete(item.id!); }}
             >
-                {/* Fondo fijo */}
+                {/* Fondo fijo — bleed proporcional (~1%) para cubrir gaps de subpíxel en cualquier pantalla */}
                 <GeneratedCover
                     type="microlearning"
                     title={item.title}
                     category={item.category}
                     tags={item.tags ?? []}
+                    imageUrl={item.microlearningImageUrl}
                     hideIcon
                     hideText
-                    width={width}
-                    height={height}
-                    style={{ position: 'absolute', top: 0, left: 0 }}
+                    width={width + bleedX * 2}
+                    height={height + bleedY * 2}
+                    style={{ position: 'absolute', top: -bleedY, left: -bleedX }}
                 />
 
                 {/* Carrusel horizontal de slides */}
@@ -450,9 +477,10 @@ export default function MicrolearningDetailScreen() {
                                         title={item.title}
                                         category={item.category}
                                         tags={item.tags ?? []}
-                                        width={width}
-                                        height={height}
-                                        style={{ position: 'absolute', top: 0, left: 0 }}
+                                        imageUrl={item.microlearningImageUrl}
+                                        width={width + bleedX * 2}
+                                        height={height + bleedY * 2}
+                                        style={{ position: 'absolute', top: -bleedY, left: -bleedX }}
                                         titleHighlight={isHl ? { start: hlStart, length: hlLen } : undefined}
                                         content={item.bookTitle ?? undefined}
                                         reflectionQuestion={item.bookAuthor ?? undefined}
@@ -472,11 +500,14 @@ export default function MicrolearningDetailScreen() {
 
                         const slideContent = (() => {
                             const showHl = isCurrentSlide && hlStart >= 0 && hlStart < text.length;
+                            const baseStyle = slide.type === 'reflection' ? styles.slideReflectionText : styles.slideContentText;
                             return <>
                                 {slide.type === 'reflection' && <Text style={styles.reflectionIcon}>💭</Text>}
-                                <Text style={slide.type === 'reflection' ? styles.slideReflectionText : styles.slideContentText}>
-                                    {showHl ? <>{text.slice(0, hlStart)}<Text style={styles.highlightWord}>{text.slice(hlStart, hlStart + hlLen)}</Text>{text.slice(hlStart + hlLen)}</> : text}
-                                </Text>
+                                <View style={styles.slideTextBackdrop}>
+                                    <Text style={baseStyle}>
+                                        {showHl ? <>{text.slice(0, hlStart)}<Text style={styles.highlightWord}>{text.slice(hlStart, hlStart + hlLen)}</Text>{text.slice(hlStart + hlLen)}</> : text}
+                                    </Text>
+                                </View>
                             </>;
                         })();
 
@@ -559,6 +590,7 @@ export default function MicrolearningDetailScreen() {
                 extraData={{ playingId, highlightRange, savedIds, slideIndexMap, socialData }}
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
+                style={{ backgroundColor: '#000' }}
                 initialScrollIndex={startIndex}
                 getItemLayout={(_data, index) => ({ length: height, offset: height * index, index })}
                 onScroll={handleScroll}
@@ -754,6 +786,13 @@ const styles = StyleSheet.create({
         right: 32,
         alignItems: 'center',
         gap: 4,
+    },
+    slideTextBackdrop: {
+        backgroundColor: 'rgba(0,0,0,0.52)',
+        borderRadius: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        alignSelf: 'center',
     },
     slideArrowLeft: {
         position: 'absolute',

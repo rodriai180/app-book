@@ -144,6 +144,7 @@ export default function SummariesScreen() {
                     title={item.title}
                     category={item.category}
                     tags={item.tags}
+                    imageUrl={item.microlearningImageUrl}
                     hideBgTitle
                     style={{ flex: 1 }}
                 />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, Image, ImageBackground, Platform } from 'react-native';
 import HighlightedText from './HighlightedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -154,6 +154,7 @@ interface GeneratedCoverProps {
     titleHighlight?: { start: number; length: number };
     contentHighlight?: { start: number; length: number };
     questionHighlight?: { start: number; length: number };
+    imageUrl?: string;
     hideText?: boolean;
     hideBgTitle?: boolean;
     hideIcon?: boolean;
@@ -255,6 +256,7 @@ export default function GeneratedCover({
     titleHighlight,
     contentHighlight,
     questionHighlight,
+    imageUrl,
     hideText = false,
     hideBgTitle = false,
     hideIcon = false,
@@ -293,6 +295,98 @@ export default function GeneratedCover({
 
     if (type === 'microlearning') {
         const titleBg = title.split(/\s+/).slice(0, 4).join(' ');
+        const contentViewStyle = [
+            styles.mlContent,
+            (topAligned || (content && !centerContent)) ? { justifyContent: 'flex-start' } : null,
+            topAligned ? { paddingTop: topAlignedPadding ?? 48 } : null,
+            grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
+        ];
+        const textContent = (
+            <>
+                {showText && (
+                    <HighlightedText
+                        text={title}
+                        start={titleHighlight?.start ?? -1}
+                        length={titleHighlight?.length ?? 0}
+                        baseStyle={[styles.mlTitle, { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.35) }]}
+                        highlightBg="rgba(255,255,255,0.35)"
+                        numberOfLines={3}
+                    />
+                )}
+                {showText && content && (
+                    <>
+                        {centerContent && <View style={styles.mlDivider} />}
+                        <HighlightedText
+                            text={content}
+                            start={contentHighlight?.start ?? -1}
+                            length={contentHighlight?.length ?? 0}
+                            baseStyle={centerContent ? styles.mlBookTitle : styles.mlBodyText}
+                            highlightBg="rgba(255,255,255,0.35)"
+                        />
+                    </>
+                )}
+                {showText && reflectionQuestion && (
+                    <HighlightedText
+                        text={reflectionQuestion}
+                        start={questionHighlight?.start ?? -1}
+                        length={questionHighlight?.length ?? 0}
+                        baseStyle={styles.mlReflectionText}
+                        highlightBg="rgba(255,255,255,0.35)"
+                    />
+                )}
+            </>
+        );
+        const branding = (containerH === 0 || containerH >= 200) && (
+            <View style={styles.mlBranding}>
+                <Text style={styles.mlBrandingText}>nuggeto</Text>
+            </View>
+        );
+
+        // ── Image mode ────────────────────────────────────────────────────────
+        if (imageUrl) {
+            const imageChildren = (
+                <>
+                    {showText && (
+                        <LinearGradient
+                            colors={['transparent', 'rgba(0,0,0,0.72)']}
+                            style={StyleSheet.absoluteFill}
+                            pointerEvents="none"
+                        />
+                    )}
+                    <View style={contentViewStyle}>{textContent}</View>
+                    {branding}
+                </>
+            );
+
+            if (Platform.OS === 'web') {
+                return (
+                    <View
+                        style={[containerStyle, {
+                            backgroundColor: gradient[0],
+                            backgroundImage: `url(${imageUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                        } as any]}
+                        onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
+                    >
+                        {imageChildren}
+                    </View>
+                );
+            }
+
+            return (
+                <ImageBackground
+                    source={{ uri: imageUrl }}
+                    resizeMode="cover"
+                    style={[containerStyle, { backgroundColor: gradient[0] }]}
+                    onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
+                >
+                    {imageChildren}
+                </ImageBackground>
+            );
+        }
+
+        // ── Gradient mode ─────────────────────────────────────────────────────
         return (
             <LinearGradient
                 colors={gradient as [string, string]}
@@ -301,80 +395,28 @@ export default function GeneratedCover({
                 style={containerStyle}
                 onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
             >
-                {/* Capa de profundidad: círculos grandes superpuestos */}
                 <View style={[deco.circle, { width: 260, height: 260, top: -80, left: -80 }]} />
                 <View style={[deco.circle, { width: 200, height: 200, bottom: -60, right: -60 }]} />
                 <View style={[deco.ring,   { width: 220, height: 220, bottom: -90, left: -70, borderWidth: 1 }]} />
                 <View style={[deco.ring,   { width: 110, height: 110, top: '25%', right: -20 }]} />
                 <View style={[deco.circle, { width: 55,  height: 55,  top: '18%', right: '20%', opacity: 0.14 }]} />
-
-                {/* Título como elemento tipográfico de fondo */}
                 {!hideBgTitle && <Text style={styles.mlBgTitle} numberOfLines={3} allowFontScaling={false}>{titleBg}</Text>}
-
-                {/* Decoraciones geométricas variables por seed */}
                 <MicroDecoration seed={seed} />
-
-                {/* Banda de brillo diagonal */}
                 <View style={styles.mlShimmer} />
-
-                {/* Ícono grande translúcido en modo tarjeta */}
                 {hideIcon && (
                     <View style={styles.bgIcon} pointerEvents="none">
                         <Icon size={200} color="rgba(255,255,255,0.07)" strokeWidth={0.5} />
                     </View>
                 )}
-
-                <View style={[
-                    styles.mlContent,
-                    (topAligned || (content && !centerContent)) ? { justifyContent: 'flex-start' } : null,
-                    topAligned ? { paddingTop: topAlignedPadding ?? 48 } : null,
-                    grow ? { flex: 0, paddingTop: 64, paddingBottom: 72 } : null,
-                ]}>
+                <View style={contentViewStyle}>
                     {!hideIcon && (
                         <NuggetIcon scale={nuggetScale}>
                             <Icon size={Math.round(38 * nuggetScale)} color="#FFFFFF" strokeWidth={1.5} />
                         </NuggetIcon>
                     )}
-
-                    {showText && (
-                        <HighlightedText
-                            text={title}
-                            start={titleHighlight?.start ?? -1}
-                            length={titleHighlight?.length ?? 0}
-                            baseStyle={[styles.mlTitle, { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.35) }]}
-                            highlightBg="rgba(255,255,255,0.35)"
-                            numberOfLines={3}
-                        />
-                    )}
-
-                    {showText && content && (
-                        <>
-                            {centerContent && <View style={styles.mlDivider} />}
-                            <HighlightedText
-                                text={content}
-                                start={contentHighlight?.start ?? -1}
-                                length={contentHighlight?.length ?? 0}
-                                baseStyle={centerContent ? styles.mlBookTitle : styles.mlBodyText}
-                                highlightBg="rgba(255,255,255,0.35)"
-                            />
-                        </>
-                    )}
-                    {showText && reflectionQuestion && (
-                        <HighlightedText
-                            text={reflectionQuestion}
-                            start={questionHighlight?.start ?? -1}
-                            length={questionHighlight?.length ?? 0}
-                            baseStyle={styles.mlReflectionText}
-                            highlightBg="rgba(255,255,255,0.35)"
-                        />
-                    )}
+                    {textContent}
                 </View>
-
-                {(containerH === 0 || containerH >= 200) && (
-                    <View style={styles.mlBranding}>
-                        <Text style={styles.mlBrandingText}>nuggeto</Text>
-                    </View>
-                )}
+                {branding}
             </LinearGradient>
         );
     }
