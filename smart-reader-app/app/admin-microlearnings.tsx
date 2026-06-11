@@ -1,47 +1,39 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, TextInput, Platform, Modal, ScrollView,
+    ActivityIndicator, TextInput, ScrollView, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, Search, BookOpen, Layers, ChevronRight, ChevronDown, Check, Copy } from 'lucide-react-native';
+import { ArrowLeft, Search, BookOpen, Layers, ChevronRight, Check, Copy, ChevronDown } from 'lucide-react-native';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../constants/firebaseConfig';
 import { MicrolearningData } from '../src/models/BookModels';
 import { useTheme } from '../src/services/themeContext';
 import { setFeed } from '../src/services/microlearningStore';
+import { ALL_CATEGORIES, CATEGORY_COLORS } from '../src/services/settingsContext';
+
+// ─── Book dropdown ────────────────────────────────────────────────────────────
 
 type Book = { id: string; title: string };
 
-function BookSelect({
-    books,
-    value,
-    onChange,
-    colors,
-    isDark,
-}: {
-    books: Book[];
-    value: string;
-    onChange: (v: string) => void;
-    colors: any;
-    isDark: boolean;
+function BookSelect({ books, value, onChange, colors, isDark }: {
+    books: Book[]; value: string; onChange: (v: string) => void;
+    colors: any; isDark: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const triggerRef = useRef<View>(null);
-    const [triggerLayout, setTriggerLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
+    const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
-    const selected = books.find(b => b.id === value);
-    const label = selected ? selected.title : 'Todos los libros';
-
-    const borderColor = isDark ? '#3A3A3C' : '#E5E5EA';
+    const label = books.find(b => b.id === value)?.title ?? 'Todos los libros';
+    const border = isDark ? '#3A3A3C' : '#E5E5EA';
     const bg = isDark ? '#1C1C1E' : '#F2F2F7';
-    const dropdownBg = isDark ? '#2C2C2E' : '#FFFFFF';
+    const dropBg = isDark ? '#2C2C2E' : '#FFFFFF';
     const hoverBg = isDark ? '#3A3A3C' : '#F2F2F7';
 
     const handleOpen = () => {
-        triggerRef.current?.measure((_fx, _fy, width, height, px, py) => {
-            setTriggerLayout({ x: px, y: py, width, height });
+        triggerRef.current?.measure((_fx, _fy, w, h, px, py) => {
+            setLayout({ x: px, y: py, width: w, height: h });
             setOpen(true);
         });
     };
@@ -54,12 +46,9 @@ function BookSelect({
                 ref={triggerRef}
                 onPress={handleOpen}
                 activeOpacity={0.8}
-                style={[styles.selectTrigger, { backgroundColor: bg, borderColor }]}
+                style={[styles.selectTrigger, { backgroundColor: bg, borderColor: border }]}
             >
-                <Text
-                    style={{ fontSize: 14, color: value ? colors.text : colors.secondaryText, flex: 1 }}
-                    numberOfLines={1}
-                >
+                <Text style={{ fontSize: 14, flex: 1, color: value ? colors.text : colors.secondaryText }} numberOfLines={1}>
                     {label}
                 </Text>
                 <ChevronDown size={15} color={colors.secondaryText} />
@@ -67,53 +56,28 @@ function BookSelect({
 
             {open && (
                 <Modal transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-                    {/* Overlay to close */}
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFill}
-                        activeOpacity={1}
-                        onPress={() => setOpen(false)}
-                    />
-                    {/* Dropdown panel */}
-                    <View style={[
-                        styles.dropdown,
-                        {
-                            top: triggerLayout.y + triggerLayout.height + 4,
-                            left: triggerLayout.x,
-                            width: Math.max(triggerLayout.width, 220),
-                            backgroundColor: dropdownBg,
-                            borderColor,
-                            shadowColor: isDark ? '#000' : '#00000030',
-                        },
-                    ]}>
-                        <ScrollView
-                            style={{ maxHeight: 280 }}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                        >
+                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setOpen(false)} />
+                    <View style={[styles.dropdown, {
+                        top: layout.y + layout.height + 4,
+                        left: layout.x,
+                        width: Math.max(layout.width, 220),
+                        backgroundColor: dropBg,
+                        borderColor: border,
+                    }]}>
+                        <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                             {options.map(opt => {
-                                const isSelected = opt.id === value;
+                                const active = opt.id === value;
                                 return (
                                     <TouchableOpacity
                                         key={opt.id || '__all__'}
                                         onPress={() => { onChange(opt.id); setOpen(false); }}
                                         activeOpacity={0.7}
-                                        style={[
-                                            styles.dropdownItem,
-                                            isSelected && { backgroundColor: hoverBg },
-                                        ]}
+                                        style={[styles.dropdownItem, active && { backgroundColor: hoverBg }]}
                                     >
-                                        <Text
-                                            style={{
-                                                fontSize: 14,
-                                                flex: 1,
-                                                color: isSelected ? colors.tint : colors.text,
-                                                fontWeight: isSelected ? '600' : '400',
-                                            }}
-                                            numberOfLines={2}
-                                        >
+                                        <Text style={{ fontSize: 14, flex: 1, color: active ? colors.tint : colors.text, fontWeight: active ? '600' : '400' }} numberOfLines={2}>
                                             {opt.title}
                                         </Text>
-                                        {isSelected && <Check size={15} color={colors.tint} />}
+                                        {active && <Check size={15} color={colors.tint} />}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -125,6 +89,8 @@ function BookSelect({
     );
 }
 
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function AdminMicrolearningsScreen() {
     const { colors, isDark } = useTheme();
     const router = useRouter();
@@ -132,7 +98,8 @@ export default function AdminMicrolearningsScreen() {
     const [items, setItems] = useState<MicrolearningData[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [selectedBook, setSelectedBook] = useState<string>('');
+    const [selectedBook, setSelectedBook] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const loadAll = useCallback(async () => {
@@ -153,30 +120,36 @@ export default function AdminMicrolearningsScreen() {
     const books = useMemo(() => {
         const seen = new Map<string, string>();
         for (const m of items) {
-            if (m.bookId && m.bookTitle && !seen.has(m.bookId)) {
-                seen.set(m.bookId, m.bookTitle);
-            }
+            if (m.bookId && m.bookTitle && !seen.has(m.bookId)) seen.set(m.bookId, m.bookTitle);
         }
-        return Array.from(seen.entries())
-            .map(([id, title]) => ({ id, title }))
-            .sort((a, b) => a.title.localeCompare(b.title));
+        return Array.from(seen.entries()).map(([id, title]) => ({ id, title })).sort((a, b) => a.title.localeCompare(b.title));
+    }, [items]);
+
+    const availableCategories = useMemo(() => {
+        const keys = new Set(items.map(m => m.category).filter(Boolean));
+        return ALL_CATEGORIES.filter(c => keys.has(c.key));
     }, [items]);
 
     const filtered = useMemo(() => {
         let result = items;
         if (selectedBook) result = result.filter(m => m.bookId === selectedBook);
+        if (selectedCategory) result = result.filter(m => m.category === selectedCategory);
         const q = search.trim().toLowerCase();
         if (q) result = result.filter(m =>
             m.title.toLowerCase().includes(q) ||
             (m.bookTitle ?? '').toLowerCase().includes(q) ||
             (m.chapterTitle ?? '').toLowerCase().includes(q) ||
-            (m.category ?? '').toLowerCase().includes(q)
+            (m.category ?? '').toLowerCase().includes(q) ||
+            (m.content ?? '').toLowerCase().includes(q) ||
+            (m.reflectionQuestion ?? '').toLowerCase().includes(q) ||
+            (m.quickExercise ?? '').toLowerCase().includes(q) ||
+            (m.tags ?? []).some(t => t.toLowerCase().includes(q))
         );
         return result;
-    }, [items, selectedBook, search]);
+    }, [items, selectedBook, selectedCategory, search]);
 
     const handleCopyId = (id: string) => {
-        if (Platform.OS === 'web' && navigator?.clipboard) {
+        if (typeof navigator !== 'undefined' && navigator?.clipboard) {
             navigator.clipboard.writeText(id);
         }
         setCopiedId(id);
@@ -205,16 +178,13 @@ export default function AdminMicrolearningsScreen() {
                     <Text style={[styles.mlTitle, { color: colors.text }]} numberOfLines={2}>
                         {item.title}
                     </Text>
-
                     <View style={styles.meta}>
-                        {!selectedBook && (
-                            <View style={styles.metaRow}>
-                                <BookOpen size={13} color={colors.tint} />
-                                <Text style={[styles.metaText, { color: colors.secondaryText }]} numberOfLines={1}>
-                                    {item.bookTitle}
-                                </Text>
-                            </View>
-                        )}
+                        <View style={styles.metaRow}>
+                            <BookOpen size={13} color={colors.tint} />
+                            <Text style={[styles.metaText, { color: colors.secondaryText }]} numberOfLines={1}>
+                                {item.bookTitle}
+                            </Text>
+                        </View>
                         <View style={styles.metaRow}>
                             <Layers size={13} color={colors.secondaryText} />
                             <Text style={[styles.metaText, { color: colors.secondaryText }]} numberOfLines={1}>
@@ -222,24 +192,24 @@ export default function AdminMicrolearningsScreen() {
                             </Text>
                         </View>
                     </View>
-
                     {item.category ? (
-                        <View style={[styles.tag, { backgroundColor: colors.tint + '18' }]}>
-                            <Text style={[styles.tagText, { color: colors.tint }]}>{item.category}</Text>
+                        <View style={[styles.tag, { backgroundColor: (CATEGORY_COLORS[item.category] ?? colors.tint) + '22' }]}>
+                            <Text style={[styles.tagText, { color: CATEGORY_COLORS[item.category] ?? colors.tint }]}>
+                                {item.category}
+                            </Text>
                         </View>
                     ) : null}
                 </View>
 
                 <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation?.(); handleCopyId(item.id!); }}
+                    onPress={(e) => { (e as any).stopPropagation?.(); handleCopyId(item.id!); }}
                     activeOpacity={0.6}
                     style={[styles.copyBtn, { backgroundColor: copiedId === item.id ? colors.tint + '20' : 'transparent' }]}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                     {copiedId === item.id
                         ? <Check size={15} color={colors.tint} />
-                        : <Copy size={15} color={colors.secondaryText} />
-                    }
+                        : <Copy size={15} color={colors.secondaryText} />}
                 </TouchableOpacity>
 
                 <ChevronRight size={18} color={colors.secondaryText} />
@@ -256,19 +226,17 @@ export default function AdminMicrolearningsScreen() {
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Microlearnings</Text>
                 {!loading && (
-                    <Text style={[styles.count, { color: colors.secondaryText }]}>
-                        {filtered.length}
-                    </Text>
+                    <Text style={[styles.count, { color: colors.secondaryText }]}>{filtered.length}</Text>
                 )}
             </View>
 
-            {/* Filtros */}
+            {/* Fila: búsqueda + libro */}
             <View style={styles.filtersRow}>
                 <View style={[styles.searchRow, { backgroundColor: inputBg, borderColor: inputBorder, flex: 1 }]}>
                     <Search size={16} color={colors.secondaryText} />
                     <TextInput
                         style={[styles.searchInput, { color: colors.text }]}
-                        placeholder="Buscar título, capítulo, categoría..."
+                        placeholder="Buscar en título, contenido, tags..."
                         placeholderTextColor={colors.secondaryText}
                         value={search}
                         onChangeText={setSearch}
@@ -277,7 +245,6 @@ export default function AdminMicrolearningsScreen() {
                         clearButtonMode="while-editing"
                     />
                 </View>
-
                 {books.length > 0 && (
                     <BookSelect
                         books={books}
@@ -288,6 +255,49 @@ export default function AdminMicrolearningsScreen() {
                     />
                 )}
             </View>
+
+            {/* Chips de categoría */}
+            {availableCategories.length > 0 && (
+                <View style={styles.chipsWrapper}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.chips}
+                    >
+                        <TouchableOpacity
+                            style={[styles.chip, selectedCategory === ''
+                                ? { backgroundColor: colors.text, borderColor: colors.text }
+                                : { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA', borderColor: 'transparent' }]}
+                            onPress={() => setSelectedCategory('')}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.chipText, { color: selectedCategory === '' ? colors.background : colors.secondaryText }]}>
+                                Todos
+                            </Text>
+                        </TouchableOpacity>
+
+                        {availableCategories.map(({ key, label }) => {
+                            const color = CATEGORY_COLORS[key] ?? colors.tint;
+                            const active = selectedCategory === key;
+                            return (
+                                <TouchableOpacity
+                                    key={key}
+                                    style={[styles.chip, {
+                                        backgroundColor: active ? color : color + '28',
+                                        borderColor: active ? color : color + '60',
+                                    }]}
+                                    onPress={() => setSelectedCategory(prev => prev === key ? '' : key)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[styles.chipText, { color: active ? '#FFF' : color }]}>
+                                        {label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
 
             {loading ? (
                 <View style={styles.center}>
@@ -304,7 +314,7 @@ export default function AdminMicrolearningsScreen() {
                     ListEmptyComponent={
                         <View style={styles.center}>
                             <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
-                                {search.trim() || selectedBook
+                                {search.trim() || selectedBook || selectedCategory
                                     ? 'No se encontraron microlearnings con ese filtro.'
                                     : 'No hay microlearnings todavía.'}
                             </Text>
@@ -329,7 +339,7 @@ const styles = StyleSheet.create({
 
     filtersRow: {
         flexDirection: 'row', alignItems: 'center', gap: 10,
-        paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4,
+        paddingHorizontal: 16, paddingTop: 12,
     },
     searchRow: {
         flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -344,22 +354,30 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12, paddingVertical: 8,
         flex: 1,
     },
-
     dropdown: {
         position: 'absolute',
-        borderWidth: 1,
-        borderRadius: 12,
+        borderWidth: 1, borderRadius: 12,
         overflow: 'hidden',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        zIndex: 9999,
+        shadowOpacity: 0.15, shadowRadius: 12,
+        elevation: 8, zIndex: 9999,
     },
     dropdownItem: {
         flexDirection: 'row', alignItems: 'center',
         paddingHorizontal: 14, paddingVertical: 11, gap: 8,
     },
+
+    chipsWrapper: { height: 50 },
+    chips: {
+        paddingHorizontal: 16, paddingVertical: 8,
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+    },
+    chip: {
+        paddingHorizontal: 14, paddingVertical: 6,
+        borderRadius: 20, borderWidth: 1, flexShrink: 0,
+    },
+    chipText: { fontSize: 13, fontWeight: '600' },
 
     list: { padding: 16, paddingBottom: 32 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
@@ -371,7 +389,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
     },
     cardInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    copyBtn: { padding: 6, borderRadius: 6 },
     cardContent: { flex: 1, gap: 6 },
     mlTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
     meta: { gap: 3 },
@@ -383,4 +400,5 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     tagText: { fontSize: 12, fontWeight: '600' },
+    copyBtn: { padding: 6, borderRadius: 6 },
 });

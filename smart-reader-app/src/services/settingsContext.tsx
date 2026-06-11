@@ -8,6 +8,18 @@ type ReadingSettings = {
     language: string;
 };
 
+export const CATEGORY_COLORS: Record<string, string> = {
+    'psicologia':          '#E91E63',
+    'comunicacion':        '#6C63FF',
+    'negocios':            '#FF9800',
+    'desarrollo-personal': '#4CAF50',
+    'finanzas':            '#00BCD4',
+    'liderazgo':           '#FFC107',
+    'habitos':             '#26C6DA',
+    'productividad':       '#7C4DFF',
+    'filosofia':           '#FF7043',
+};
+
 export const ALL_CATEGORIES = [
     { key: 'psicologia',          label: 'Psicología' },
     { key: 'comunicacion',        label: 'Comunicación' },

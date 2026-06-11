@@ -192,10 +192,6 @@ body{
 }
 ${DECO_CSS}
 .wrap{display:flex;flex-direction:column;align-items:center;gap:50px;width:100%;text-align:center}
-.nugget{position:relative;width:${REEL_NUGGET_W}px;height:${REEL_NUGGET_H}px;
-  display:flex;align-items:center;justify-content:center;transform:rotate(-37.5deg)}
-.nugget img{position:absolute;width:100%;height:100%;object-fit:contain}
-.ni{display:flex;align-items:center;justify-content:center;transform:rotate(37.5deg)}
 .title{font-size:58px;font-weight:700;color:#fff;line-height:1.22;letter-spacing:-1px}
 mark{background:rgba(255,255,255,0.35);border-radius:8px;padding:0 6px;color:#fff}
 .divider{width:52px;height:4px;background:rgba(255,255,255,0.35);border-radius:2px}
@@ -309,13 +305,18 @@ function buildImagePrompt(ml, gradient) {
   const firstSentence = (ml.content ?? '').split(/[.!?]/)[0].trim();
   const concept = firstSentence || ml.title;
   return (
-    `Minimalist digital illustration for a mobile learning app card. ` +
+    `Minimalist digital illustration, full-screen background for a mobile app. ` +
     `Visual concept inspired by: "${concept}". ` +
     `Color palette: tones of ${c1} transitioning to ${c2}. ` +
     `Style: abstract, soft geometric shapes, symbolic imagery, clean modern design. ` +
-    `No text, no letters, no words anywhere in the image. ` +
+    `CRITICAL REQUIREMENTS: ` +
+    `(1) Full bleed — colors and shapes extend completely to every edge of the canvas, no empty space at any border. ` +
+    `(2) No rounded corners, no card frame, no mockup, no device frame, no drop shadow, no vignette border. ` +
+    `(3) No white or light background showing through at edges. ` +
+    `(4) The illustration IS the background — it fills 100% of the image area. ` +
+    `No text, no letters, no words anywhere. ` +
     `Mood: inspiring, thoughtful, calm. ` +
-    `High quality, suitable as a card thumbnail.`
+    `Portrait orientation 2:3, high quality.`
   );
 }
 
@@ -327,7 +328,7 @@ async function generateAndUploadImage(ml, gradient) {
     model: 'gpt-image-2',
     prompt,
     n: 1,
-    size: '1024x1024',
+    size: '1024x1536',
     quality: 'medium',
   });
   console.log('✓');
@@ -385,6 +386,13 @@ async function getTimestamps(audioPath) {
 }
 
 // ─── Rendering de frames ──────────────────────────────────────────────────────
+
+function imageToDataUrl(imagePath) {
+  if (!imagePath || !existsSync(imagePath)) return null;
+  const ext = imagePath.split('.').pop().toLowerCase();
+  const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+  return `data:${mime};base64,${readFileSync(imagePath).toString('base64')}`;
+}
 
 async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient, imageUrl) {
   const displayText  = slideDisplayText(ml, slide);
@@ -471,6 +479,38 @@ async function joinVideos(paths, outPath) {
   );
 }
 
+// ─── Instagram caption ────────────────────────────────────────────────────────
+
+async function generateCaption(ml) {
+  const res = await ai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{
+      role: 'user',
+      content:
+        `Sos un experto en marketing de redes sociales para apps de lectura y desarrollo personal.\n` +
+        `Generá una descripción para un reel de Instagram basado en este microlearning:\n\n` +
+        `Título: ${ml.title}\n` +
+        `Libro: ${ml.bookTitle}\n` +
+        `Autor: ${ml.bookAuthor}\n` +
+        `Contenido: ${(ml.content ?? '').slice(0, 400)}\n` +
+        `Pregunta de reflexión: ${ml.reflectionQuestion ?? ''}\n\n` +
+        `Contexto de la app: Nuggeto es una app para dejar de scrollear sin sentido y empezar a consumir ` +
+        `"nuggets de conocimiento" — ideas poderosas de los mejores libros, en formato breve y digerible. ` +
+        `La idea es que en el tiempo que scrolleás, podés aprender algo que cambia cómo pensás.\n\n` +
+        `Requisitos:\n` +
+        `- Escribí en español, tono inspirador pero cercano\n` +
+        `- Empezá con un gancho corto que genere curiosidad (1-2 líneas)\n` +
+        `- Hacé referencia natural a los nuggets de conocimiento o a la idea de aprender mientras scrolleás\n` +
+        `- Terminá con una llamada a la acción mencionando "🔗 link en bio" para descargar Nuggeto\n` +
+        `- Terminá con 3 a 5 hashtags todos en minúscula (desarrollo personal, lectura, el tema del libro)\n` +
+        `- Máximo 180 palabras en total, máximo 3 emojis\n` +
+        `- Devolvé SOLO la descripción, sin explicaciones adicionales`,
+    }],
+    max_tokens: 400,
+  });
+  return res.choices[0].message.content.trim();
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -491,9 +531,13 @@ async function main() {
 
   const firestoreUpdates = {};
 
+  // ── Flags ─────────────────────────────────────────────────────────────────────
+  const forceAll   = process.argv.includes('--force');
+  const forceImage = forceAll || process.argv.includes('--force-image');
+
   // ── Imagen ────────────────────────────────────────────────────────────────────
   let effectiveImageUrl = ml.microlearningImageUrl ?? null;
-  if (effectiveImageUrl) {
+  if (effectiveImageUrl && !forceImage) {
     console.log(`🖼️  Imagen ya existe, omitiendo generación.\n`);
   } else {
     console.log('🎨  Generando imagen de portada...');
@@ -504,6 +548,10 @@ async function main() {
 
   // ── Reel + Audio ──────────────────────────────────────────────────────────────
   const outPath    = join(OUTPUT_DIR, `${ML_ID}.mp4`);
+  if (forceAll && existsSync(outPath)) {
+    const { unlinkSync } = await import('fs');
+    unlinkSync(outPath);
+  }
   const videoExists = existsSync(outPath);
 
   if (hasAudio && videoExists) {
@@ -566,7 +614,9 @@ async function main() {
       }
 
       process.stdout.write(`    🖼️  ${keyframeCount(wordMap)} frames... `);
-      const frames = await renderFrames(browser, ml, slide, i, wordMap, gradient, effectiveImageUrl);
+      const localImagePath = join(TEMP_DIR, 'cover.png');
+      const imageDataUrl = imageToDataUrl(localImagePath) ?? effectiveImageUrl;
+      const frames = await renderFrames(browser, ml, slide, i, wordMap, gradient, imageDataUrl);
       console.log('✓');
 
       writeConcatFile(frames, concatPath);
@@ -593,6 +643,21 @@ async function main() {
     process.stdout.write('💾  Guardando en Firestore... ');
     await saveToFirestore(ML_ID, firestoreUpdates);
     console.log('✓');
+  }
+
+  // ── Descripción para Instagram ──────────────────────────────────────────────
+  const captionPath = join(OUTPUT_DIR, `${ML_ID}.txt`);
+  if (existsSync(captionPath)) {
+    console.log('📝  Descripción ya existe:');
+    console.log('\n' + readFileSync(captionPath, 'utf8') + '\n');
+  } else {
+    process.stdout.write('📝  Generando descripción para Instagram... ');
+    const caption = await generateCaption(ml);
+    writeFileSync(captionPath, caption, 'utf8');
+    console.log('✓\n');
+    console.log('── Descripción ──────────────────────────────────────────────');
+    console.log(caption);
+    console.log('─────────────────────────────────────────────────────────────\n');
   }
 
   console.log('\n✅  Listo\n');

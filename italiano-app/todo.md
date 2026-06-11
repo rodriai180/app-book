@@ -5,4 +5,4 @@
 3. creo que estara bueno mostrarle esto al mudo.
 4. agregar un parte de cultura italaina y apredner desde ahi..
 5. pensare en italiano
-6.
+6. para aprender vocabulario crear hisotrias con emosiones

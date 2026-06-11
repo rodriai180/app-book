@@ -365,7 +365,7 @@ export default function GeneratedCover({
                             backgroundColor: gradient[0],
                             backgroundImage: `url(${imageUrl})`,
                             backgroundSize: 'cover',
-                            backgroundPosition: 'center',
+                            backgroundPosition: 'center top',
                         } as any]}
                         onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
                     >
@@ -379,6 +379,7 @@ export default function GeneratedCover({
                     source={{ uri: imageUrl }}
                     resizeMode="cover"
                     style={[containerStyle, { backgroundColor: gradient[0] }]}
+                    imageStyle={{ objectFit: 'cover', objectPosition: 'center top' } as any}
                     onLayout={(e) => setContainerH(e.nativeEvent.layout.height)}
                 >
                     {imageChildren}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Modal, Pressable, Platform } from 'react-native';
 import { ChevronRight, Volume2, Mic2, Languages, Moon, Sun, Play, Check, X } from 'lucide-react-native';
 import { useTheme } from '../src/services/themeContext';
-import { useSettings, ALL_CATEGORIES } from '../src/services/settingsContext';
+import { useSettings, ALL_CATEGORIES, CATEGORY_COLORS } from '../src/services/settingsContext';
 import { AudioService } from '../src/services/AudioService';
 
 const RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -189,7 +189,7 @@ export default function SettingsScreen() {
                                     style={[
                                         styles.chip,
                                         selected
-                                            ? { backgroundColor: colors.tint, borderColor: colors.tint }
+                                            ? { backgroundColor: CATEGORY_COLORS[key] ?? colors.tint, borderColor: CATEGORY_COLORS[key] ?? colors.tint }
                                             : { backgroundColor: 'transparent', borderColor: colors.border },
                                     ]}
                                 >
