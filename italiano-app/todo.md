@@ -1,4 +1,4 @@
-//Todo
+//Todo Analisis
 
 1. Hacer que esto enga formato juego, no se bien como
 2. trackear avance del usuario y crear una session donde practiqque en lo que mas falla
@@ -6,3 +6,7 @@
 4. agregar un parte de cultura italaina y apredner desde ahi..
 5. pensare en italiano
 6. para aprender vocabulario crear hisotrias con emosiones
+
+//Todo tecnico
+_) quando apreto ver ejemplo, que me los muestre e un popup no en el desplegable
+_) luego del anterior hacer uqe el contenido de las cards este alineado ( ver articulos y generos)

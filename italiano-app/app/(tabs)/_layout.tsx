@@ -1,6 +1,7 @@
 import SideMenu from '@/components/SideMenu';
 import { useColorScheme } from '@/components/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/services/authContext';
 import { Tabs } from 'expo-router';
 import { LayoutDashboard, Library, Menu, Milestone, Zap } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -20,6 +21,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAdmin } = useAuth();
 
   return (
     <View style={{ flex: 1 }}>
@@ -86,6 +88,7 @@ export default function TabLayout() {
           options={{
             title: 'Panel',
             tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
+            href: isAdmin ? undefined : null,
           }}
         />
       </Tabs>

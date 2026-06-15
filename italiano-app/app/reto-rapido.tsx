@@ -23,7 +23,8 @@ export default function RetoRapidoScreen() {
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [showTip, setShowTip] = useState(false);
     const [score, setScore] = useState(0);
-    const [isFinished, setIsFinished] = useState(false);
+    const [phase, setPhase] = useState<'quiz' | 'review' | 'results'>('quiz');
+    const [wrongExercises, setWrongExercises] = useState<Exercise[]>([]);
 
     const progressAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -49,15 +50,17 @@ export default function RetoRapidoScreen() {
         );
     }, [allExercises, subtopic]);
 
+    const activeExercises = phase === 'review' ? wrongExercises : filteredExercises;
+
     useEffect(() => {
-        if (filteredExercises.length > 0) {
+        if (activeExercises.length > 0) {
             Animated.timing(progressAnim, {
-                toValue: (currentStep) / filteredExercises.length,
+                toValue: currentStep / activeExercises.length,
                 duration: 400,
                 useNativeDriver: false,
             }).start();
         }
-    }, [currentStep, filteredExercises.length]);
+    }, [currentStep, activeExercises.length]);
 
     const speak = (text: string) => {
         Speech.stop();
@@ -99,33 +102,44 @@ export default function RetoRapidoScreen() {
     };
 
     const handleOptionSelect = (option: string) => {
-        if (selectedOption || isFinished) return;
+        if (selectedOption || phase === 'results') return;
 
         setSelectedOption(option);
-        const correct = option === filteredExercises[currentStep].correctAnswer;
+        const currentEx = activeExercises[currentStep];
+        const correct = option === currentEx.correctAnswer;
         setIsCorrect(correct);
         if (correct) {
             setScore(prev => prev + 1);
             if (!subtopic) {
-                const raw = filteredExercises[currentStep].question.replace('_______', option);
+                const raw = currentEx.question.replace('_______', option);
                 const fullDialogue = raw.replace(/A: |B: /g, '');
                 speakSuccess(fullDialogue);
             } else {
                 speakSuccess(option);
             }
         } else {
-            speakError(filteredExercises[currentStep].correctAnswer);
+            if (phase === 'quiz') {
+                setWrongExercises(prev => [...prev, currentEx]);
+            }
+            speakError(currentEx.correctAnswer);
         }
     };
 
     const nextStep = () => {
-        if (currentStep < filteredExercises.length - 1) {
+        if (currentStep < activeExercises.length - 1) {
             setCurrentStep(prev => prev + 1);
             setSelectedOption(null);
             setIsCorrect(null);
             setShowTip(false);
+        } else if (phase === 'quiz' && wrongExercises.length > 0) {
+            progressAnim.setValue(0);
+            setPhase('review');
+            setCurrentStep(0);
+            setSelectedOption(null);
+            setIsCorrect(null);
+            setShowTip(false);
         } else {
-            setIsFinished(true);
+            setPhase('results');
             Animated.timing(progressAnim, {
                 toValue: 1,
                 duration: 300,
@@ -140,7 +154,9 @@ export default function RetoRapidoScreen() {
         setIsCorrect(null);
         setShowTip(false);
         setScore(0);
-        setIsFinished(false);
+        setPhase('quiz');
+        setWrongExercises([]);
+        progressAnim.setValue(0);
     };
 
     if (loading) {
@@ -163,7 +179,7 @@ export default function RetoRapidoScreen() {
         );
     }
 
-    if (isFinished) {
+    if (phase === 'results') {
         return (
             <>
                 <Stack.Screen options={{ title: '¡Reto Completado!' }} />
@@ -199,16 +215,23 @@ export default function RetoRapidoScreen() {
         );
     }
 
-    const currentEx = filteredExercises[currentStep];
+    const currentEx = activeExercises[currentStep];
 
     return (
         <>
             <Stack.Screen options={{
-                title: 'Reto Rápido',
+                title: phase === 'review' ? 'Repasando errores' : 'Reto Rápido',
             }} />
             <ScrollView style={[styles.container, { backgroundColor: theme.surface }]}>
+                {phase === 'review' && (
+                    <View style={[styles.reviewBanner, { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }]}>
+                        <Text style={[styles.reviewBannerText, { color: '#92400e' }]}>
+                            Repasando respuestas incorrectas
+                        </Text>
+                    </View>
+                )}
                 <View style={[styles.progressCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.progressText, { color: theme.text }]}>Esercizio {currentStep + 1} di {filteredExercises.length}</Text>
+                    <Text style={[styles.progressText, { color: theme.text }]}>Esercizio {currentStep + 1} di {activeExercises.length}</Text>
                     <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
                         <Animated.View style={[styles.progressBarFill, {
                             backgroundColor: theme.primary,
@@ -464,5 +487,17 @@ const styles = StyleSheet.create({
     secondaryButtonText: {
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    reviewBanner: {
+        marginHorizontal: Theme.spacing.lg,
+        marginBottom: Theme.spacing.md,
+        padding: Theme.spacing.md,
+        borderRadius: Theme.roundness.lg,
+        borderWidth: 1,
+        alignItems: 'center',
+    },
+    reviewBannerText: {
+        fontSize: 14,
+        fontWeight: '700',
     },
 });

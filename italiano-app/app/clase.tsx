@@ -7,7 +7,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { ChevronLeft, Play, RotateCcw, Volume2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 interface Phrase {
     italian: string;
@@ -49,7 +49,7 @@ function LevelCard({
 }) {
     const { width } = useWindowDimensions();
     const isNarrow = width < 420;
-    const [isExpanded, setIsExpanded] = useState(level.phrases.length <= 3);
+    const [modalVisible, setModalVisible] = useState(false);
 
     const title = level.title;
     const explanation = level.explanation;
@@ -71,209 +71,206 @@ function LevelCard({
                 backgroundColor: theme.card,
                 borderColor: theme.success,
                 borderWidth: 3,
-                alignItems: cardItemsAlignment,
                 width: isDesktop ? '100%' : '95%',
                 ...(isDesktop && { flex: 1 }),
             }
         ]}>
-            <View style={[styles.levelHeader, { justifyContent: 'space-between' }]}>
-                <View style={{ flex: 1 }}>
-                    <Text style={[styles.levelTitle, { color: theme.primary, textAlign: contentAlignment }]}>
-                        {title} <Text style={{ fontSize: 14, fontWeight: 'normal', color: theme.muted }}>({lessonLevel})</Text>
-                    </Text>
-                </View>
-                <Pressable
-                    style={[
-                        styles.practicarButton,
-                        {
-                            backgroundColor: '#f0f9ff',
-                            borderWidth: 1,
-                            borderColor: theme.primary,
-                            paddingHorizontal: isNarrow ? 8 : 12
-                        }
-                    ]}
-                    onPress={startPractice}
-                >
-                    <RotateCcw size={14} color={theme.primary} />
-                    {!isNarrow && <Text style={[styles.practicarText, { color: theme.primary }]}>Reto Rápido</Text>}
-                </Pressable>
-            </View>
-
-            {level.groups ? (
-                <View style={{ marginBottom: Theme.spacing.md, width: '100%' }}>
-                    {explanation && (
-                        <Text style={[styles.explanationText, { color: theme.text, marginBottom: 10 }]}>
-                            {explanation}
+            {/* Contenido superior — crece para ocupar el espacio disponible (solo desktop) */}
+            <View style={{ flex: isDesktop ? 1 : undefined, width: '100%', alignItems: cardItemsAlignment }}>
+                <View style={[styles.levelHeader, { justifyContent: 'space-between' }]}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.levelTitle, { color: theme.primary, textAlign: contentAlignment }]}>
+                            {title} <Text style={{ fontSize: 14, fontWeight: 'normal', color: theme.muted }}>({lessonLevel})</Text>
                         </Text>
-                    )}
-                    <View style={{ gap: 12, width: '100%' }}>
-                        {level.groups.map((group, gi) => (
-                            <View key={gi} style={{ width: '100%' }}>
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.muted, letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>
-                                    {group.label}
-                                </Text>
-                                <View style={{ flexDirection: isDesktop ? 'row' : 'row', gap: 8, width: '100%' }}>
-                                    {group.subSections.map((section, si) => {
-                                        const isMasc = section.label === 'Masculino';
-                                        return (
-                                            <View
-                                                key={si}
-                                                style={{
-                                                    flex: 1,
-                                                    backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
-                                                    borderRadius: 8,
-                                                    padding: 10,
-                                                    borderLeftWidth: 3,
-                                                    borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
-                                                }}
-                                            >
-                                                <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
-                                                    {section.label}
-                                                </Text>
-                                                {section.items.map((item, j) => (
-                                                    <Text key={j} style={{ fontSize: 12, color: theme.text, lineHeight: 19 }}>
-                                                        • {item}
+                    </View>
+                    <Pressable
+                        style={[
+                            styles.practicarButton,
+                            {
+                                backgroundColor: '#f0f9ff',
+                                borderWidth: 1,
+                                borderColor: theme.primary,
+                                paddingHorizontal: isNarrow ? 8 : 12
+                            }
+                        ]}
+                        onPress={startPractice}
+                    >
+                        <RotateCcw size={14} color={theme.primary} />
+                        {!isNarrow && <Text style={[styles.practicarText, { color: theme.primary }]}>Reto Rápido</Text>}
+                    </Pressable>
+                </View>
+
+                {level.groups ? (
+                    <View style={{ flex: isDesktop ? 1 : undefined, width: '100%', marginBottom: isDesktop ? 0 : Theme.spacing.md }}>
+                        {explanation && (
+                            <Text style={[styles.explanationText, { color: theme.text, marginBottom: 10 }]}>
+                                {explanation}
+                            </Text>
+                        )}
+                        <View style={{ flex: isDesktop ? 1 : undefined, gap: 12, width: '100%' }}>
+                            {level.groups.map((group, gi) => (
+                                <View key={gi} style={{ flex: isDesktop ? 1 : undefined, width: '100%' }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: theme.muted, letterSpacing: 1, marginBottom: 6, textTransform: 'uppercase' }}>
+                                        {group.label}
+                                    </Text>
+                                    <View style={{ flex: isDesktop ? 1 : undefined, flexDirection: 'row', gap: 8, width: '100%' }}>
+                                        {group.subSections.map((section, si) => {
+                                            const isMasc = section.label === 'Masculino';
+                                            return (
+                                                <View
+                                                    key={si}
+                                                    style={{
+                                                        flex: isDesktop ? 1 : undefined,
+                                                        width: isDesktop ? undefined : '100%',
+                                                        backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
+                                                        borderRadius: 8,
+                                                        padding: 10,
+                                                        borderLeftWidth: 3,
+                                                        borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
+                                                    }}
+                                                >
+                                                    <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
+                                                        {section.label}
                                                     </Text>
-                                                ))}
-                                            </View>
-                                        );
-                                    })}
+                                                    {section.items.map((item, j) => (
+                                                        <Text key={j} style={{ fontSize: 12, color: theme.text, lineHeight: 19 }}>
+                                                            • {item}
+                                                        </Text>
+                                                    ))}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                ) : level.subSections ? (
+                    <View style={{ flex: isDesktop ? 1 : undefined, width: '100%', marginBottom: isDesktop ? 0 : Theme.spacing.md }}>
+                        {explanation && (
+                            <Text style={[styles.explanationText, { color: theme.text, marginBottom: 8 }]}>
+                                {explanation}
+                            </Text>
+                        )}
+                        <View style={{ flex: isDesktop ? 1 : undefined, flexDirection: isDesktop ? 'row' : 'column', gap: 8, width: '100%' }}>
+                            {level.subSections.map((section, i) => {
+                                const isMasc = section.label === 'Masculino';
+                                return (
+                                    <View
+                                        key={i}
+                                        style={{
+                                            flex: isDesktop ? 1 : undefined,
+                                            width: isDesktop ? undefined : '100%',
+                                            backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
+                                            borderRadius: 8,
+                                            padding: 10,
+                                            borderLeftWidth: 3,
+                                            borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
+                                        }}
+                                    >
+                                        <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
+                                            {section.label}
+                                        </Text>
+                                        {section.items.map((item, j) => (
+                                            <Text key={j} style={{ fontSize: 13, color: theme.text, lineHeight: 20 }}>
+                                                • {item}
+                                            </Text>
+                                        ))}
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </View>
+                ) : explanation ? (
+                    <Text style={[styles.explanationText, { color: theme.text, textAlign: contentAlignment }]}>
+                        {explanation}
+                    </Text>
+                ) : null}
+
+                {level.phrases.length > 0 && level.phrases.length <= 3 && (
+                    <View style={styles.phrasesContainer}>
+                        {level.phrases.map((p, i) => (
+                            <View key={i} style={[styles.phraseItem, { borderBottomColor: theme.border, alignItems: cardItemsAlignment }]}>
+                                <View style={styles.phraseHeaderRow}>
+                                    <Pressable onPress={() => speak(p.italian)} style={styles.speakerButtonSmall}>
+                                        <Volume2 size={16} color={theme.primary} />
+                                    </Pressable>
+                                    <Text style={[styles.italianText, { color: theme.text, textAlign: contentAlignment }]}>{p.italian}</Text>
+                                </View>
+                                <Text style={[styles.spanishText, { color: theme.muted, textAlign: contentAlignment }]}>{p.spanish}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {level.dialogue && (
+                    <View style={[styles.dialogueContainer, { marginTop: level.phrases.length > 0 && level.phrases.length <= 3 ? Theme.spacing.md : 0 }]}>
+                        {level.dialogue.map((d, i) => (
+                            <View key={i} style={styles.dialogueRow}>
+                                <View style={[styles.dialogueBubble, { justifyContent: 'flex-start' }]}>
+                                    <Pressable onPress={() => speak(d.personA_content)} style={styles.speakerButtonSmall}>
+                                        <Volume2 size={14} color={theme.primary} />
+                                    </Pressable>
+                                    <Text style={[styles.dialoguePerson, { color: theme.primary }]}>{d.personA}:</Text>
+                                    <Text style={[styles.dialogueContent, { color: theme.text, textAlign: contentAlignment }]}>{d.personA_content}</Text>
+                                </View>
+                                <View style={[styles.dialogueBubble, { justifyContent: 'flex-start' }]}>
+                                    <Pressable onPress={() => speak(d.personB_content)} style={styles.speakerButtonSmall}>
+                                        <Volume2 size={14} color={theme.primary} />
+                                    </Pressable>
+                                    <Text style={[styles.dialoguePerson, { color: theme.primary }]}>{d.personB}:</Text>
+                                    <Text style={[styles.dialogueContent, { color: theme.text, textAlign: contentAlignment }]}>{d.personB_content}</Text>
                                 </View>
                             </View>
                         ))}
                     </View>
-                </View>
-            ) : level.subSections ? (
-                <View style={{ marginBottom: Theme.spacing.md, width: '100%' }}>
-                    {explanation && (
-                        <Text style={[styles.explanationText, { color: theme.text, marginBottom: 8 }]}>
-                            {explanation}
-                        </Text>
-                    )}
-                    <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 8, width: '100%' }}>
-                        {level.subSections.map((section, i) => {
-                            const isMasc = section.label === 'Masculino';
-                            return (
-                                <View
-                                    key={i}
-                                    style={{
-                                        flex: 1,
-                                        minWidth: 120,
-                                        backgroundColor: isMasc ? 'rgba(33, 150, 243, 0.12)' : 'rgba(233, 30, 99, 0.12)',
-                                        borderRadius: 8,
-                                        padding: 10,
-                                        borderLeftWidth: 3,
-                                        borderLeftColor: isMasc ? '#2196F3' : '#E91E63',
-                                    }}
-                                >
-                                    <Text style={{ fontWeight: 'bold', color: isMasc ? '#2196F3' : '#E91E63', marginBottom: 6, fontSize: 13 }}>
-                                        {section.label}
-                                    </Text>
-                                    {section.items.map((item, j) => (
-                                        <Text key={j} style={{ fontSize: 13, color: theme.text, lineHeight: 20 }}>
-                                            • {item}
-                                        </Text>
-                                    ))}
-                                </View>
-                            );
-                        })}
-                    </View>
-                </View>
-            ) : explanation ? (
-                <Text style={[styles.explanationText, { color: theme.text, textAlign: contentAlignment }]}>
-                    {explanation}
-                </Text>
-            ) : null}
+                )}
+            </View>
 
-            {level.phrases.length > 0 && (
+            {/* Botón siempre al fondo de la card */}
+            {level.phrases.length > 3 && (
                 <>
-                    {level.phrases.length > 3 && (
-                        <Pressable
-                            onPress={() => setIsExpanded(!isExpanded)}
-                            style={[
-                                styles.expandButton,
-                                {
-                                    backgroundColor: theme.surface,
-                                    borderColor: theme.primary,
-                                    marginBottom: isExpanded ? Theme.spacing.md : 0
-                                }
-                            ]}
-                        >
-                            <Text style={[styles.expandButtonText, { color: theme.primary }]}>
-                                {isExpanded ? 'Ocultar ejemplos' : `Ver ejemplos (${level.phrases.length})`}
-                            </Text>
-                            <ChevronLeft
-                                size={16}
-                                color={theme.primary}
-                                style={{ transform: [{ rotate: isExpanded ? '90deg' : '-90deg' }] }}
-                            />
-                        </Pressable>
-                    )}
+                    <Pressable
+                        onPress={() => setModalVisible(true)}
+                        style={[styles.expandButton, { backgroundColor: theme.surface, borderColor: theme.primary, marginTop: Theme.spacing.md }]}
+                    >
+                        <Text style={[styles.expandButtonText, { color: theme.primary }]}>
+                            Ver ejemplos ({level.phrases.length})
+                        </Text>
+                        <ChevronLeft size={16} color={theme.primary} style={{ transform: [{ rotate: '-90deg' }] }} />
+                    </Pressable>
 
-                    {isExpanded && (
-                        <View style={styles.phrasesContainer}>
-                            {level.phrases.map((p, i) => (
-                                <View
-                                    key={i}
-                                    style={[
-                                        styles.phraseItem,
-                                        { borderBottomColor: theme.border, alignItems: cardItemsAlignment },
-                                    ]}
-                                >
-                                    <View style={styles.phraseHeaderRow}>
-                                        <Pressable
-                                            onPress={() => speak(p.italian)}
-                                            style={styles.speakerButtonSmall}
-                                        >
-                                            <Volume2 size={16} color={theme.primary} />
-                                        </Pressable>
-                                        <Text style={[
-                                            styles.italianText,
-                                            { color: theme.text, textAlign: contentAlignment },
-                                        ]}>
-                                            {p.italian}
-                                        </Text>
-                                    </View>
-                                    <Text style={[
-                                        styles.spanishText,
-                                        { color: theme.muted, textAlign: contentAlignment },
-                                    ]}>
-                                        {p.spanish}
-                                    </Text>
+                    <Modal
+                        visible={modalVisible}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setModalVisible(false)}
+                    >
+                        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+                            <Pressable style={[styles.modalContainer, { backgroundColor: theme.card }]} onPress={() => {}}>
+                                <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+                                    <Text style={[styles.modalTitle, { color: theme.text }]}>{title}</Text>
+                                    <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                                        <Text style={{ fontSize: 20, color: theme.muted, lineHeight: 22 }}>✕</Text>
+                                    </Pressable>
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                                <ScrollView contentContainerStyle={styles.modalContent}>
+                                    {level.phrases.map((p, i) => (
+                                        <View key={i} style={[styles.phraseItem, { borderBottomColor: theme.border, alignItems: 'flex-start' }]}>
+                                            <View style={styles.phraseHeaderRow}>
+                                                <Pressable onPress={() => speak(p.italian)} style={styles.speakerButtonSmall}>
+                                                    <Volume2 size={16} color={theme.primary} />
+                                                </Pressable>
+                                                <Text style={[styles.italianText, { color: theme.text }]}>{p.italian}</Text>
+                                            </View>
+                                            <Text style={[styles.spanishText, { color: theme.muted }]}>{p.spanish}</Text>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            </Pressable>
+                        </Pressable>
+                    </Modal>
                 </>
-            )}
-
-            {level.dialogue && (
-                <View style={[styles.dialogueContainer, { marginTop: level.phrases.length > 0 && isExpanded ? Theme.spacing.md : 0 }]}>
-                    {level.dialogue.map((d, i) => (
-                        <View key={i} style={styles.dialogueRow}>
-                            <View style={[styles.dialogueBubble, { justifyContent: 'flex-start' }]}>
-                                <Pressable
-                                    onPress={() => speak(d.personA_content)}
-                                    style={styles.speakerButtonSmall}
-                                >
-                                    <Volume2 size={14} color={theme.primary} />
-                                </Pressable>
-                                <Text style={[styles.dialoguePerson, { color: theme.primary }]}>{d.personA}:</Text>
-                                <Text style={[styles.dialogueContent, { color: theme.text, textAlign: contentAlignment }]}>{d.personA_content}</Text>
-                            </View>
-                            <View style={[styles.dialogueBubble, { justifyContent: 'flex-start' }]}>
-                                <Pressable
-                                    onPress={() => speak(d.personB_content)}
-                                    style={styles.speakerButtonSmall}
-                                >
-                                    <Volume2 size={14} color={theme.primary} />
-                                </Pressable>
-                                <Text style={[styles.dialoguePerson, { color: theme.primary }]}>{d.personB}:</Text>
-                                <Text style={[styles.dialogueContent, { color: theme.text, textAlign: contentAlignment }]}>{d.personB_content}</Text>
-                            </View>
-                        </View>
-                    ))}
-                </View>
             )}
         </View>
     );
@@ -523,6 +520,40 @@ const styles = StyleSheet.create({
     expandButtonText: {
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalContainer: {
+        width: '100%',
+        maxWidth: 520,
+        borderRadius: Theme.roundness.lg,
+        maxHeight: '80%',
+        ...Theme.shadows.light,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 20,
+        borderBottomWidth: 1,
+    },
+    modalTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        flex: 1,
+    },
+    modalCloseBtn: {
+        padding: 4,
+        marginLeft: 12,
+    },
+    modalContent: {
+        padding: 20,
+        gap: Theme.spacing.md,
     },
     scoreBadge: {
         paddingVertical: 8,

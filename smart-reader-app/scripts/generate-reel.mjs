@@ -479,6 +479,61 @@ async function joinVideos(paths, outPath) {
   );
 }
 
+// ─── Instagram publishing ─────────────────────────────────────────────────────
+
+async function uploadVideoToStorage(localPath) {
+  const storagePath = `reels/${ML_ID}.mp4`;
+  const bucket = getStorage().bucket(STORAGE_BUCKET);
+  process.stdout.write('    ☁️  Subiendo video a Firebase... ');
+  await bucket.upload(localPath, {
+    destination: storagePath,
+    metadata: { contentType: 'video/mp4' },
+  });
+  await bucket.file(storagePath).makePublic();
+  console.log('✓');
+  return `https://storage.googleapis.com/${STORAGE_BUCKET}/${storagePath}`;
+}
+
+async function publishToInstagram(videoUrl, caption) {
+  const igUserId = process.env.META_IG_USER_ID;
+  const token    = process.env.META_PAGE_TOKEN;
+
+  process.stdout.write('📱  Creando contenedor en Instagram... ');
+  const createRes  = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: true, access_token: token }),
+  });
+  const createData = await createRes.json();
+  if (createData.error) throw new Error(`Meta API: ${createData.error.message}`);
+  const containerId = createData.id;
+  console.log(`✓ (id: ${containerId})`);
+
+  process.stdout.write('⏳  Procesando video en Instagram');
+  let status = 'IN_PROGRESS';
+  while (status === 'IN_PROGRESS') {
+    await new Promise(r => setTimeout(r, 8000));
+    const r = await fetch(`https://graph.facebook.com/v25.0/${containerId}?fields=status_code&access_token=${token}`);
+    const d = await r.json();
+    status = d.status_code ?? 'IN_PROGRESS';
+    process.stdout.write('.');
+    if (status === 'ERROR') throw new Error('Error procesando video en Instagram');
+  }
+  console.log(` ✓ (${status})`);
+  if (status !== 'FINISHED') throw new Error(`Estado inesperado del contenedor: ${status}`);
+
+  process.stdout.write('🚀  Publicando reel... ');
+  const pubRes  = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/media_publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creation_id: containerId, access_token: token }),
+  });
+  const pubData = await pubRes.json();
+  if (pubData.error) throw new Error(`Meta API: ${pubData.error.message}`);
+  console.log('✓');
+  return pubData.id;
+}
+
 // ─── Instagram caption ────────────────────────────────────────────────────────
 
 async function generateCaption(ml) {
@@ -658,6 +713,22 @@ async function main() {
     console.log('── Descripción ──────────────────────────────────────────────');
     console.log(caption);
     console.log('─────────────────────────────────────────────────────────────\n');
+  }
+
+  // ── Publicar en Instagram ────────────────────────────────────────────────────
+  const shouldPublish = process.argv.includes('--publish');
+  if (shouldPublish) {
+    if (!process.env.META_PAGE_TOKEN || !process.env.META_IG_USER_ID) {
+      console.log('⚠️  META_PAGE_TOKEN o META_IG_USER_ID no configurados, omitiendo publicación.\n');
+    } else if (!existsSync(outPath)) {
+      console.log('⚠️  No hay video para publicar.\n');
+    } else {
+      console.log('📤  Publicando en Instagram...');
+      const videoPublicUrl = await uploadVideoToStorage(outPath);
+      const caption = existsSync(captionPath) ? readFileSync(captionPath, 'utf8') : '';
+      const postId = await publishToInstagram(videoPublicUrl, caption);
+      console.log(`\n📱  Publicado! Post ID: ${postId}\n`);
+    }
   }
 
   console.log('\n✅  Listo\n');

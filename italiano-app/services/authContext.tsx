@@ -20,6 +20,7 @@ interface UserData {
 interface AuthContextType {
     user: User | null;
     userData: UserData | null;
+    isAdmin: boolean;
     loading: boolean;
     login: (email: string, pass: string) => Promise<void>;
     register: (email: string, pass: string, name: string, surname: string, nativeLanguage: string) => Promise<void>;
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [userData, setUserData] = useState<UserData | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -39,12 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             async (u) => {
                 setUser(u);
                 if (u) {
-                    const userDoc = await getDoc(doc(db, 'users', u.uid));
+                    const [userDoc, adminDoc] = await Promise.all([
+                        getDoc(doc(db, 'users', u.uid)),
+                        getDoc(doc(db, 'admins', u.uid)),
+                    ]);
                     if (userDoc.exists()) {
                         setUserData(userDoc.data() as UserData);
                     }
+                    setIsAdmin(adminDoc.exists());
                 } else {
                     setUserData(null);
+                    setIsAdmin(false);
                 }
                 setLoading(false);
             },
@@ -82,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, userData, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, userData, isAdmin, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

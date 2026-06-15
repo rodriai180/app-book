@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ── Contenido de la app (solo admins pueden escribir) ─────────────────────
+
+    match /lessons/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /exercises/{exerciseId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /vocabulary/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /levelContents/{contentId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /dialogueExercises/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── Datos personales del usuario ──────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Admins ────────────────────────────────────────────────────────────────
+
+    match /admins/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+  }
+}
