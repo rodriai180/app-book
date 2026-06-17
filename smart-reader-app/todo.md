@@ -20,3 +20,5 @@ _) podriamso usar elevenlabs y open para ya crear bien el audio y la sincronizac
 2. deploy en mi pagian eb
 3. deploy e n app nativa androoid o ios, encesito ve tema costos.
 4. la app necesita limpearse a nivel de codigo hay cosas quqe ya no usamos como el smart reader
+
+//EAAOYpZA4xaSMBRuV1zvpo0OGBVmaxzexcQcZB0bFDnQ1aWIZAgHWa1hOmdAY3HaiWybpHRXJVbGu7IXKpKJCiMenDE2qpBOfCyjEeVZByIGT2dzmmstBBZACmE2N4TLQFlj10n4HSErzLf6ZAqdQLNB6sEvyEPt195KSAll6ZBPAOT5oAdiEmTBRCUY6ZBja9sT6ZBR2o7QXoxZA2BIrn7V1mCh0ZCKQvYnlLY56L2mJaAXJ1fDYSVqtCmTweao9g1ZBpUoPd1mh5siZAzQNACukFAOrTCDQG

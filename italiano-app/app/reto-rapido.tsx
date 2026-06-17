@@ -52,6 +52,17 @@ export default function RetoRapidoScreen() {
 
     const activeExercises = phase === 'review' ? wrongExercises : filteredExercises;
 
+    const shuffledOptions = useMemo(() => {
+        const current = activeExercises[currentStep];
+        if (!current) return [];
+        const opts = [...current.options];
+        for (let i = opts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [opts[i], opts[j]] = [opts[j], opts[i]];
+        }
+        return opts;
+    }, [currentStep, activeExercises]);
+
     useEffect(() => {
         if (activeExercises.length > 0) {
             Animated.timing(progressAnim, {
@@ -258,7 +269,7 @@ export default function RetoRapidoScreen() {
                     )}
 
                     <View style={styles.optionsContainer}>
-                        {currentEx.options.map((option, idx) => {
+                        {shuffledOptions.map((option, idx) => {
                             const isSelected = selectedOption === option;
                             const isCorrectAnswer = option === currentEx.correctAnswer;
 

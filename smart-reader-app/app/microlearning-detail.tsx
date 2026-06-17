@@ -5,9 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MessageCircle } from 'lucide-react-native';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import { Bookmark, ChevronLeft, ChevronRight, Heart, MessageCircle } from 'lucide-react-native';
 import * as Speech from 'expo-speech';
 import { useSettings } from '../src/services/settingsContext';
 import { useAuth } from '../src/services/authContext';
@@ -196,28 +194,6 @@ export default function MicrolearningDetailScreen() {
         }
     }).current;
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
-
-    const handleDownload = async () => {
-        if (!visibleItemId) return;
-        const viewRef = itemViewRefs.current.get(visibleItemId);
-        if (!viewRef) return;
-        try {
-            if (Platform.OS === 'web') {
-                const dataUri = await captureRef(viewRef, { format: 'png', quality: 1, result: 'data-uri' });
-                const link = document.createElement('a');
-                link.href = dataUri;
-                link.download = 'nuggeto.png';
-                link.click();
-            } else {
-                const uri = await captureRef(viewRef, { format: 'png', quality: 1 });
-                if (await Sharing.isAvailableAsync()) {
-                    await Sharing.shareAsync(uri, { mimeType: 'image/png' });
-                }
-            }
-        } catch (e) {
-            console.warn('capture error', e);
-        }
-    };
 
     const stopTTS = () => {
         tokenRef.current.active = false;
@@ -604,12 +580,6 @@ export default function MicrolearningDetailScreen() {
                 <ChevronLeft size={22} color="#FFF" />
             </TouchableOpacity>
 
-            {isAdmin && (
-                <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.7}>
-                    <Download size={18} color="#FFF" />
-                </TouchableOpacity>
-            )}
-
             {commentsOpenId && user && (
                 <MlCommentsModal
                     mlId={commentsOpenId}
@@ -742,17 +712,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 14,
         left: 14,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    downloadBtn: {
-        position: 'absolute',
-        top: 14,
-        right: 14,
         width: 36,
         height: 36,
         borderRadius: 18,

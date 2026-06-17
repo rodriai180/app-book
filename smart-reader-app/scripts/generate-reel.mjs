@@ -479,6 +479,78 @@ async function joinVideos(paths, outPath) {
   );
 }
 
+// ─── YouTube publishing ───────────────────────────────────────────────────────
+
+async function getYouTubeAccessToken() {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     process.env.YOUTUBE_CLIENT_ID,
+      client_secret: process.env.YOUTUBE_CLIENT_SECRET,
+      refresh_token: process.env.YOUTUBE_REFRESH_TOKEN,
+      grant_type:    'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(`YouTube token error: ${data.error_description}`);
+  return data.access_token;
+}
+
+async function publishToYouTube(localPath, title, description, tags = [], scheduledAt = null) {
+  const accessToken = await getYouTubeAccessToken();
+  const fileBuffer  = readFileSync(localPath);
+  const fileSize    = fileBuffer.length;
+
+  // Step 1: iniciar upload resumable
+  process.stdout.write('▶️  Iniciando upload a YouTube... ');
+  const initRes = await fetch(
+    'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': 'video/mp4',
+        'X-Upload-Content-Length': String(fileSize),
+      },
+      body: JSON.stringify({
+        snippet: {
+          title: `${title} #Shorts`,
+          description: `${description}\n\n#Shorts`,
+          categoryId: '27', // Education
+          tags,
+          defaultLanguage: 'es',
+          defaultAudioLanguage: 'es',
+        },
+        status: {
+          privacyStatus: scheduledAt ? 'private' : 'public',
+          ...(scheduledAt ? { publishAt: scheduledAt.toISOString() } : {}),
+          selfDeclaredMadeForKids: false,
+        },
+      }),
+    }
+  );
+  const uploadUrl = initRes.headers.get('location');
+  if (!uploadUrl) throw new Error('YouTube no devolvió URL de upload');
+  console.log('✓');
+
+  // Step 2: subir el archivo
+  process.stdout.write('⬆️  Subiendo video a YouTube... ');
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'video/mp4',
+      'Content-Length': String(fileSize),
+    },
+    body: fileBuffer,
+  });
+  const uploadData = await uploadRes.json();
+  if (uploadData.error) throw new Error(`YouTube API: ${uploadData.error.message}`);
+  console.log('✓');
+  return uploadData.id;
+}
+
 // ─── Instagram publishing ─────────────────────────────────────────────────────
 
 async function uploadVideoToStorage(localPath) {
@@ -494,7 +566,7 @@ async function uploadVideoToStorage(localPath) {
   return `https://storage.googleapis.com/${STORAGE_BUCKET}/${storagePath}`;
 }
 
-async function publishToInstagram(videoUrl, caption) {
+async function publishToInstagram(videoUrl, caption, scheduledAt = null) {
   const igUserId = process.env.META_IG_USER_ID;
   const token    = process.env.META_PAGE_TOKEN;
 
@@ -502,7 +574,10 @@ async function publishToInstagram(videoUrl, caption) {
   const createRes  = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/media`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: true, access_token: token }),
+    body: JSON.stringify({
+      media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: true, access_token: token,
+      ...(scheduledAt ? { published: false, scheduled_publish_time: Math.floor(scheduledAt.getTime() / 1000) } : {}),
+    }),
   });
   const createData = await createRes.json();
   if (createData.error) throw new Error(`Meta API: ${createData.error.message}`);
@@ -557,13 +632,62 @@ async function generateCaption(ml) {
         `- Empezá con un gancho corto que genere curiosidad (1-2 líneas)\n` +
         `- Hacé referencia natural a los nuggets de conocimiento o a la idea de aprender mientras scrolleás\n` +
         `- Terminá con una llamada a la acción mencionando "🔗 link en bio" para descargar Nuggeto\n` +
-        `- Terminá con 3 a 5 hashtags todos en minúscula (desarrollo personal, lectura, el tema del libro)\n` +
-        `- Máximo 180 palabras en total, máximo 3 emojis\n` +
+        `- Terminá con 10 a 15 hashtags relevantes en minúscula: mezcla de hashtags amplios (#desarrollopersonal #lectura #libros #habitos) y específicos del tema del libro y el autor\n` +
+        `- Máximo 180 palabras en total (sin contar hashtags), máximo 3 emojis\n` +
         `- Devolvé SOLO la descripción, sin explicaciones adicionales`,
     }],
     max_tokens: 400,
   });
   return res.choices[0].message.content.trim();
+}
+
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+
+const SLOT_HOURS_UTC = [11, 16, 22]; // 08:00, 13:00, 19:00 hora Argentina (UTC-3)
+
+function loadSchedule() {
+  try { return JSON.parse(readFileSync(new URL('./schedule.json', import.meta.url))); }
+  catch { return { slots: [] }; }
+}
+
+function saveSchedule(s) {
+  writeFileSync(new URL('./schedule.json', import.meta.url), JSON.stringify(s, null, 2), 'utf8');
+}
+
+function nextAvailableSlot(schedule) {
+  const taken  = new Set(schedule.slots.map(s => s.scheduledAt));
+  const minTime = new Date(Date.now() + 15 * 60 * 1000); // al menos 15 min en el futuro
+  const now    = new Date();
+  for (let day = 0; day <= 30; day++) {
+    for (const h of SLOT_HOURS_UTC) {
+      const slot = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + day, h, 0, 0));
+      if (slot > minTime && !taken.has(slot.toISOString())) return slot;
+    }
+  }
+  throw new Error('No hay slots libres en los próximos 30 días');
+}
+
+function printCalendar(schedule) {
+  if (!schedule.slots.length) return;
+  const arOpts = { timeZone: 'America/Argentina/Buenos_Aires' };
+  const dayKey = d => new Date(d).toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', ...arOpts });
+  const timeStr = d => new Date(d).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', ...arOpts });
+  const byDay = {};
+  for (const s of schedule.slots) {
+    const k = dayKey(s.scheduledAt);
+    (byDay[k] = byDay[k] ?? []).push(s);
+  }
+  console.log('\n📅  Calendario de publicación');
+  console.log('─'.repeat(58));
+  for (const [day, slots] of Object.entries(byDay)) {
+    console.log(` ${day}`);
+    for (const s of slots) {
+      const plat  = [s.yt && 'YT', s.ig && 'IG'].filter(Boolean).join('+') || '?';
+      const title = (s.title ?? s.mlId ?? '').slice(0, 36);
+      console.log(`   ✅  ${timeStr(s.scheduledAt)}  [${plat}]  ${title}`);
+    }
+  }
+  console.log('─'.repeat(58) + '\n');
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -715,20 +839,84 @@ async function main() {
     console.log('─────────────────────────────────────────────────────────────\n');
   }
 
-  // ── Publicar en Instagram ────────────────────────────────────────────────────
-  const shouldPublish = process.argv.includes('--publish');
-  if (shouldPublish) {
-    if (!process.env.META_PAGE_TOKEN || !process.env.META_IG_USER_ID) {
-      console.log('⚠️  META_PAGE_TOKEN o META_IG_USER_ID no configurados, omitiendo publicación.\n');
-    } else if (!existsSync(outPath)) {
-      console.log('⚠️  No hay video para publicar.\n');
-    } else {
-      console.log('📤  Publicando en Instagram...');
-      const videoPublicUrl = await uploadVideoToStorage(outPath);
-      const caption = existsSync(captionPath) ? readFileSync(captionPath, 'utf8') : '';
-      const postId = await publishToInstagram(videoPublicUrl, caption);
-      console.log(`\n📱  Publicado! Post ID: ${postId}\n`);
+  // ── Publicar ─────────────────────────────────────────────────────────────────
+  const shouldPublish   = process.argv.includes('--publish');
+  const shouldPublishYT = process.argv.includes('--publish-yt');
+  const publishNow      = process.argv.includes('--now');
+
+  if (shouldPublish || shouldPublishYT) {
+    const schedule = loadSchedule();
+    const slot     = publishNow ? null : nextAvailableSlot(schedule);
+
+    if (slot) {
+      const slotAR = slot.toLocaleString('es-AR', {
+        weekday: 'short', day: '2-digit', month: '2-digit',
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
+      });
+      console.log(`\n📅  Programando para ${slotAR} (AR)\n`);
     }
+
+    let igId = null, ytId = null;
+
+    if (shouldPublish) {
+      if (ml.igPostId && !publishNow) {
+        console.log(`⏭️  IG ya publicado (${ml.igPostId}), omitiendo.\n`);
+      } else if (!process.env.META_PAGE_TOKEN || !process.env.META_IG_USER_ID) {
+        console.log('⚠️  META_PAGE_TOKEN o META_IG_USER_ID no configurados, omitiendo.\n');
+      } else if (!existsSync(outPath)) {
+        console.log('⚠️  No hay video para publicar en IG.\n');
+      } else {
+        const caption        = existsSync(captionPath) ? readFileSync(captionPath, 'utf8') : '';
+        const videoPublicUrl = await uploadVideoToStorage(outPath);
+        igId = await publishToInstagram(videoPublicUrl, caption, slot);
+        console.log(`\n📱  ${slot ? 'Programado en IG' : 'Publicado en IG'}! ID: ${igId}\n`);
+      }
+    }
+
+    if (shouldPublishYT) {
+      if (ml.ytVideoId && !publishNow) {
+        console.log(`⏭️  YT ya publicado (${ml.ytVideoId}), omitiendo.\n`);
+      } else if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_REFRESH_TOKEN) {
+        console.log('⚠️  YOUTUBE_CLIENT_ID / YOUTUBE_REFRESH_TOKEN no configurados, omitiendo.\n');
+      } else if (!existsSync(outPath)) {
+        console.log('⚠️  No hay video para publicar en YT.\n');
+      } else {
+        const caption = existsSync(captionPath) ? readFileSync(captionPath, 'utf8') : '';
+        const mlTags  = [
+          ...(Array.isArray(ml.tags) ? ml.tags : []),
+          ml.bookTitle, ml.bookAuthor,
+          'Shorts', 'resumen', 'lectura', 'habitos', 'desarrollo personal',
+        ].filter(Boolean);
+        ytId = await publishToYouTube(outPath, ml.title, caption, mlTags, slot);
+        console.log(`\n▶️   ${slot ? 'Programado en YT' : 'Publicado en YT'}! ID: ${ytId}`);
+        if (!slot) console.log(`    https://youtube.com/shorts/${ytId}`);
+        console.log();
+      }
+    }
+
+    if (igId || ytId) {
+      const publishUpdates = {};
+      if (ytId)  publishUpdates.ytVideoId    = ytId;
+      if (igId)  publishUpdates.igPostId     = igId;
+      if (slot)  publishUpdates.scheduledAt  = slot.toISOString();
+      process.stdout.write('💾  Guardando publicación en Firestore... ');
+      await saveToFirestore(ML_ID, publishUpdates);
+      console.log('✓');
+    }
+
+    if ((igId || ytId) && slot) {
+      schedule.slots.push({
+        scheduledAt: slot.toISOString(),
+        mlId: ML_ID,
+        title: ml.title,
+        ...(ytId ? { yt: ytId } : {}),
+        ...(igId ? { ig: igId } : {}),
+      });
+      schedule.slots.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+      saveSchedule(schedule);
+    }
+
+    printCalendar(schedule);
   }
 
   console.log('\n✅  Listo\n');

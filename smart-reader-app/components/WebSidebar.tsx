@@ -50,9 +50,7 @@ export default function WebSidebar() {
         paddingHorizontal: 10,
         borderRadius: 9,
         marginBottom: 2,
-        backgroundColor: active
-            ? (isDark ? 'rgba(77,159,255,0.14)' : 'rgba(0,122,255,0.09)')
-            : 'transparent',
+        backgroundColor: active ? 'rgba(255,110,0,0.13)' : 'transparent',
     });
 
     const navTextStyle = (active: boolean) => ({
@@ -66,7 +64,7 @@ export default function WebSidebar() {
     return (
         <View style={{
             width: 240,
-            backgroundColor: isDark ? '#111113' : '#F5F5F7',
+            backgroundColor: colors.background,
             borderRightWidth: 1,
             borderRightColor: colors.border,
             paddingTop: 28,

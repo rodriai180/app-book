@@ -80,7 +80,7 @@ export default function SettingsScreen() {
                             return (
                                 <TouchableOpacity
                                     key={val}
-                                    style={[styles.optionItem, isSelected && { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+                                    style={[styles.optionItem, isSelected && { backgroundColor: colors.card }]}
                                     onPress={() => {
                                         onSelect(val);
                                         onClose();
@@ -103,7 +103,7 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.item} onPress={onPress}>
             <View style={styles.itemLeft}>
                 <TouchableOpacity
-                    style={[styles.iconContainer, { backgroundColor: iconBg || (isDark ? '#2C2C2E' : '#E6F4FE') }]}
+                    style={[styles.iconContainer, { backgroundColor: iconBg || colors.card }]}
                     onPress={showPreview ? (e) => { e.stopPropagation(); playPreview(); } : undefined}
                     disabled={!showPreview}
                 >
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.itemRight}>
                 <Text style={[styles.itemValue, { color: colors.secondaryText }]}>{value}</Text>
-                <ChevronRight size={18} color={isDark ? '#444' : '#C7C7CC'} />
+                <ChevronRight size={18} color={colors.secondaryText} />
             </View>
         </TouchableOpacity>
     );

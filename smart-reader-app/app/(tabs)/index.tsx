@@ -182,7 +182,7 @@ export default function LibraryScreen() {
             : 0;
         return (
             <TouchableOpacity
-                style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+                style={[styles.savedCard, { width: cardWidth, backgroundColor: colors.background }]}
                 onPress={() => router.push({ pathname: '/summary-detail', params: { bookId: item.id } })}
                 activeOpacity={0.75}
             >
@@ -211,7 +211,7 @@ export default function LibraryScreen() {
     const renderSavedMicrolearning = ({ item }: { item: MicrolearningData }) => {
         return (
             <TouchableOpacity
-                style={[styles.savedCard, { width: cardWidth, backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
+                style={[styles.savedCard, { width: cardWidth, backgroundColor: colors.background }]}
                 onPress={() => router.push({ pathname: '/chapter-detail', params: { bookId: item.bookId, chapterId: item.chapterId } })}
                 activeOpacity={0.75}
             >
@@ -253,12 +253,12 @@ export default function LibraryScreen() {
                 {item.cover ? (
                     <SmartImage uri={item.cover} style={styles.coverImage} />
                 ) : (
-                    <View style={[styles.emptyCover, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
+                    <View style={[styles.emptyCover, { backgroundColor: colors.card }]}>
                         <Text style={[styles.emptyCoverText, { color: colors.tint }]}>{item.title.charAt(0)}</Text>
                     </View>
                 )}
                 <TouchableOpacity
-                    style={[styles.deleteButton, { backgroundColor: isDark ? 'rgba(44,44,46,0.9)' : 'rgba(255,255,255,0.9)' }]}
+                    style={[styles.deleteButton, { backgroundColor: 'rgba(35,49,90,0.85)' }]}
                     onPress={() => handleDeleteBook(item.id, item.title)}
                 >
                     <Trash2 size={14} color="#FF3B30" />
@@ -267,7 +267,7 @@ export default function LibraryScreen() {
             <Text style={[styles.bookTitle, { color: colors.text, fontSize: fs(16) }]} numberOfLines={1}>{item.title}</Text>
             <Text style={[styles.bookAuthor, { color: colors.secondaryText, fontSize: fs(14) }]} numberOfLines={1}>{item.author}</Text>
             {item.currentParagraph > 0 && (
-                <View style={[styles.progressBadge, { backgroundColor: isDark ? '#2C2C2E' : '#E6F4FE' }]}>
+                <View style={[styles.progressBadge, { backgroundColor: colors.card }]}>
                     <Text style={[styles.progressText, { color: colors.tint, fontSize: fs(12) }]}>
                         {Math.round((item.currentParagraph / item.totalParagraphs) * 100)}%
                     </Text>
@@ -286,7 +286,7 @@ export default function LibraryScreen() {
         );
     }
 
-    const dividerColor = isDark ? '#2C2C2E' : '#F2F2F7';
+    const dividerColor = colors.border;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
