@@ -23,18 +23,18 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: scripts/package-lock.json
+          cache-dependency-path: smart-reader-app/scripts/package-lock.json
 
       - name: Install dependencies
-        run: cd scripts && npm ci
+        run: cd smart-reader-app/scripts && npm ci
 
       - name: Write Firebase service account
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: echo "$SA_JSON" > firebase-service-account.json
+        run: echo "$SA_JSON" > smart-reader-app/firebase-service-account.json
 
       - name: Publish due slots
         env:
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
           META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
-        run: node scripts/publish-due-slots.mjs ${{ inputs.mlId || '' }}
+        run: node smart-reader-app/scripts/publish-due-slots.mjs ${{ inputs.mlId || '' }}
