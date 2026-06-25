@@ -952,7 +952,15 @@ async function main() {
   }
 
   // ── Descripción para Instagram ──────────────────────────────────────────────
-  const captionPath = join(OUTPUT_DIR, `${ML_ID}.txt`);
+  function findCaptionPath(mlId) {
+    const flat = join(OUTPUT_DIR, `${mlId}.txt`);
+    if (existsSync(flat)) return flat;
+    const loteFiles = readdirSync(OUTPUT_DIR, { withFileTypes: true })
+      .filter(e => e.isDirectory() && e.name.startsWith('lote-'))
+      .map(e => join(OUTPUT_DIR, e.name, `${mlId}.txt`));
+    return loteFiles.find(p => existsSync(p)) ?? flat;
+  }
+  const captionPath = findCaptionPath(ML_ID);
   if (existsSync(captionPath)) {
     console.log('📝  Descripción ya existe:');
     console.log('\n' + readFileSync(captionPath, 'utf8') + '\n');
