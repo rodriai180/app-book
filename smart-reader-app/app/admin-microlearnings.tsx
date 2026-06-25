@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    ActivityIndicator, TextInput, ScrollView, Modal,
+    ActivityIndicator, TextInput, ScrollView, Modal, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, Search, BookOpen, Layers, ChevronRight, Check, Copy, ChevronDown } from 'lucide-react-native';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { ArrowLeft, Search, BookOpen, Layers, ChevronRight, Check, Copy, ChevronDown, Pencil, Save, X } from 'lucide-react-native';
+import { collection, getDocs, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../constants/firebaseConfig';
 import { MicrolearningData } from '../src/models/BookModels';
 import { useTheme } from '../src/services/themeContext';
@@ -101,6 +101,9 @@ export default function AdminMicrolearningsScreen() {
     const [selectedBook, setSelectedBook] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [editingItem, setEditingItem] = useState<MicrolearningData | null>(null);
+    const [editFields, setEditFields] = useState<Partial<MicrolearningData>>({});
+    const [saving, setSaving] = useState(false);
 
     const loadAll = useCallback(async () => {
         setLoading(true);
@@ -154,6 +157,35 @@ export default function AdminMicrolearningsScreen() {
         }
         setCopiedId(id);
         setTimeout(() => setCopiedId(null), 1500);
+    };
+
+    const handleEdit = (item: MicrolearningData) => {
+        setEditFields({
+            hookText: item.hookText ?? '',
+            title: item.title ?? '',
+            content: item.content ?? '',
+            reflectionQuestion: item.reflectionQuestion ?? '',
+            quickExercise: item.quickExercise ?? '',
+        });
+        setEditingItem(item);
+    };
+
+    const handleSave = async () => {
+        if (!editingItem?.id) return;
+        setSaving(true);
+        try {
+            const updates: Record<string, any> = {};
+            for (const [k, v] of Object.entries(editFields)) {
+                if (v !== undefined) updates[k] = v;
+            }
+            await updateDoc(doc(db, 'microlearnings', editingItem.id), updates);
+            setItems(prev => prev.map(m => m.id === editingItem.id ? { ...m, ...updates } : m));
+            setEditingItem(null);
+        } catch (e: any) {
+            Alert.alert('Error al guardar', e.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleOpen = (item: MicrolearningData) => {
@@ -210,6 +242,15 @@ export default function AdminMicrolearningsScreen() {
                     {copiedId === item.id
                         ? <Check size={15} color={colors.tint} />
                         : <Copy size={15} color={colors.secondaryText} />}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    onPress={(e) => { (e as any).stopPropagation?.(); handleEdit(item); }}
+                    activeOpacity={0.6}
+                    style={[styles.copyBtn, { backgroundColor: 'transparent' }]}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                    <Pencil size={15} color={colors.tint} />
                 </TouchableOpacity>
 
                 <ChevronRight size={18} color={colors.secondaryText} />
@@ -298,6 +339,63 @@ export default function AdminMicrolearningsScreen() {
                     </ScrollView>
                 </View>
             )}
+
+            {/* ── Edit Modal ─────────────────────────────────────────────── */}
+            <Modal
+                visible={!!editingItem}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setEditingItem(null)}
+            >
+                <View style={styles.editOverlay}>
+                    <View style={[styles.editSheet, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+                        {/* Header */}
+                        <View style={[styles.editHeader, { borderBottomColor: isDark ? '#3A3A3C' : '#E5E5EA' }]}>
+                            <TouchableOpacity onPress={() => setEditingItem(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <X size={20} color={colors.secondaryText} />
+                            </TouchableOpacity>
+                            <Text style={[styles.editTitle, { color: colors.text }]} numberOfLines={1}>
+                                {editingItem?.title}
+                            </Text>
+                            <TouchableOpacity onPress={handleSave} disabled={saving} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                {saving
+                                    ? <ActivityIndicator size="small" color={colors.tint} />
+                                    : <Save size={20} color={colors.tint} />}
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+                            {([
+                                { key: 'hookText', label: 'Hook', lines: 3 },
+                                { key: 'title', label: 'Título', lines: 2 },
+                                { key: 'content', label: 'Contenido', lines: 6 },
+                                { key: 'reflectionQuestion', label: 'Pregunta de reflexión', lines: 2 },
+                                { key: 'quickExercise', label: 'Ejercicio rápido', lines: 3 },
+                            ] as { key: keyof typeof editFields; label: string; lines: number }[]).map(({ key, label, lines }) => (
+                                <View key={key} style={{ gap: 6 }}>
+                                    <Text style={[styles.editLabel, { color: colors.secondaryText }]}>{label}</Text>
+                                    <TextInput
+                                        value={(editFields[key] as string) ?? ''}
+                                        onChangeText={v => setEditFields(prev => ({ ...prev, [key]: v }))}
+                                        multiline
+                                        numberOfLines={lines}
+                                        style={[styles.editInput, {
+                                            color: colors.text,
+                                            backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
+                                            borderColor: key === 'hookText' ? colors.tint + '80' : (isDark ? '#3A3A3C' : '#E5E5EA'),
+                                            minHeight: lines * 22,
+                                        }]}
+                                        placeholderTextColor={colors.secondaryText}
+                                        placeholder={`Sin ${label.toLowerCase()}`}
+                                        textAlignVertical="top"
+                                    />
+                                </View>
+                            ))}
+                            <View style={{ height: 40 }} />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
 
             {loading ? (
                 <View style={styles.center}>
@@ -401,4 +499,27 @@ const styles = StyleSheet.create({
     },
     tagText: { fontSize: 12, fontWeight: '600' },
     copyBtn: { padding: 6, borderRadius: 6 },
+
+    editOverlay: {
+        flex: 1, justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    editSheet: {
+        borderTopLeftRadius: 20, borderTopRightRadius: 20,
+        maxHeight: '88%',
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15, shadowRadius: 20, elevation: 20,
+    },
+    editHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 16, paddingVertical: 14,
+        borderBottomWidth: 1,
+    },
+    editTitle: { flex: 1, fontSize: 15, fontWeight: '600' },
+    editLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    editInput: {
+        borderWidth: 1, borderRadius: 10,
+        paddingHorizontal: 12, paddingVertical: 10,
+        fontSize: 14, lineHeight: 20,
+    },
 });

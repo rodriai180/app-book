@@ -10,8 +10,11 @@ scripts/generate-batch.bat
 scripts/scheduler.bat
 scripts/utils/generate-queue.bat
 scripts/utils/update-hooks.bat
+scripts/google-oauth.json
+scripts/client_secret_*.json
 scripts/utils/google-oauth.json
 scripts/utils/client_secret_*.json
+scripts/get-youtube-token.mjs
 
 # dependencies
 node_modules/

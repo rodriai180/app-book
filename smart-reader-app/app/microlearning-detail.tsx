@@ -125,31 +125,36 @@ function speakOne(
 
 type SlideData =
     | { type: 'title' }
+    | { type: 'hook'; text: string }
     | { type: 'content'; text: string }
-    | { type: 'reflection'; text: string };
+    | { type: 'reflection'; text: string }
+    | { type: 'cta' };
 
-function buildSlides(item: MicrolearningData): SlideData[] {
-    const slides: SlideData[] = [{ type: 'title' }];
+const CTA_TEXT = 'Dejá que el conocimiento te encuentre.';
+
+function buildSlides(item: MicrolearningData, showCta = false): SlideData[] {
+    const slides: SlideData[] = [];
+    if (item.hookText?.trim()) slides.push({ type: 'hook', text: item.hookText.trim() });
+    slides.push({ type: 'title' });
     const content = (item.content ?? '').trim();
     if (content) {
         const sentences = (content.match(/[^.!?]+[.!?]+/g) ?? [content])
             .map(s => s.trim())
             .filter(s => s.length > 0);
-        for (let i = 0; i < sentences.length; i += 2) {
-            const text = i + 1 < sentences.length
-                ? sentences[i] + ' ' + sentences[i + 1]
-                : sentences[i];
-            slides.push({ type: 'content', text });
+        for (const sentence of sentences) {
+            slides.push({ type: 'content', text: sentence });
         }
     }
     if (item.reflectionQuestion?.trim()) {
         slides.push({ type: 'reflection', text: item.reflectionQuestion.trim() });
     }
+    if (showCta) slides.push({ type: 'cta' });
     return slides;
 }
 
 function slideText(item: MicrolearningData, slide: SlideData): string {
     if (slide.type === 'title') return `${item.title}. ${item.bookTitle}, por ${item.bookAuthor}`;
+    if (slide.type === 'cta') return `Nuggeto. ${CTA_TEXT}`;
     return slide.text;
 }
 
@@ -284,7 +289,7 @@ export default function MicrolearningDetailScreen() {
         setHighlightRange(null);
         highlightRangeRef.current = null;
 
-        const slides = buildSlides(item);
+        const slides = buildSlides(item, isAdmin);
         const slideIdx = forceSlideIdx ?? (slideIndexMap.get(item.id!) ?? 0);
         const slide = slides[slideIdx] ?? slides[0];
         const fullText = slideText(item, slide);
@@ -389,7 +394,7 @@ export default function MicrolearningDetailScreen() {
         const isPlaying = playingId === item.id;
         const isSaved = savedIds.has(item.id!);
         const social = socialData.get(item.id!) ?? { likesCount: 0, commentsCount: 0, liked: false };
-        const slides = buildSlides(item);
+        const slides = buildSlides(item, isAdmin);
         const currentSlideIdx = slideIndexMap.get(item.id!) ?? 0;
         const hlStart = isPlaying && highlightRange ? highlightRange.start : -1;
         const hlLen = isPlaying && highlightRange ? highlightRange.length : 0;
@@ -439,7 +444,7 @@ export default function MicrolearningDetailScreen() {
                 >
                     {slides.map((slide, i) => {
                         const isCurrentSlide = i === currentSlideIdx;
-                        const text = slide.type !== 'title' ? slide.text : '';
+                        const text = 'text' in slide ? slide.text : '';
                         const isHl = isCurrentSlide && hlStart >= 0;
 
                         // Title slide: full GeneratedCover (icon + title) + book info overlay
@@ -474,9 +479,40 @@ export default function MicrolearningDetailScreen() {
                             );
                         }
 
+                        if (slide.type === 'cta') {
+                            const showHl = isCurrentSlide && hlStart >= 0 && hlStart < CTA_TEXT.length;
+                            return (
+                                <View key={i} style={[styles.slide, { width, height }]}>
+                                    <View style={styles.slideOverlay} />
+                                    <View style={{ alignItems: 'center', gap: 24 }}>
+                                        <Text style={styles.ctaBrandText}>Nuggeto</Text>
+                                        <View style={styles.slideTextBackdrop}>
+                                            <Text style={styles.ctaBodyText}>
+                                                {showHl
+                                                    ? <>{CTA_TEXT.slice(0, hlStart)}<Text style={styles.highlightWord}>{CTA_TEXT.slice(hlStart, hlStart + hlLen)}</Text>{CTA_TEXT.slice(hlStart + hlLen)}</>
+                                                    : CTA_TEXT}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.ctaLinkPill}>
+                                            <Text style={styles.ctaLinkText}>link en bio</Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => handlePlay(item)} activeOpacity={1} />
+                                    {isDesktop && i > 0 && (
+                                        <TouchableOpacity style={styles.slideArrowLeft} onPress={() => goToSlide(item, i - 1)} activeOpacity={0.7}>
+                                            <ChevronLeft size={22} color="rgba(255,255,255,0.7)" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            );
+                        }
+
                         const slideContent = (() => {
                             const showHl = isCurrentSlide && hlStart >= 0 && hlStart < text.length;
-                            const baseStyle = slide.type === 'reflection' ? styles.slideReflectionText : styles.slideContentText;
+                            const isHook = slide.type === 'hook';
+                            const baseStyle = slide.type === 'reflection' ? styles.slideReflectionText
+                                : isHook ? styles.slideHookText
+                                : styles.slideContentText;
                             return <>
                                 {slide.type === 'reflection' && <Text style={styles.reflectionIcon}>💭</Text>}
                                 <View style={styles.slideTextBackdrop}>
@@ -489,6 +525,7 @@ export default function MicrolearningDetailScreen() {
 
                         return (
                             <View key={i} style={[styles.slide, { width, height }]}>
+                                <View style={styles.slideOverlay} />
                                 {slideContent}
                                 <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => handlePlay(item)} activeOpacity={1} />
                                 {isDesktop && i > 0 && (
@@ -638,14 +675,29 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 6,
     },
+    slideOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.28)',
+    },
+    slideHookText: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        lineHeight: 34,
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
+    },
     slideContentText: {
         fontSize: 20,
         fontWeight: '600',
         color: '#FFFFFF',
         textAlign: 'center',
         lineHeight: 30,
-        textShadowColor: 'rgba(0,0,0,0.5)',
-        textShadowOffset: { width: 0, height: 1 },
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 8,
     },
     slideReflectionText: {
@@ -655,8 +707,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 28,
         fontStyle: 'italic',
-        textShadowColor: 'rgba(0,0,0,0.5)',
-        textShadowOffset: { width: 0, height: 1 },
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 8,
         marginTop: 12,
     },
@@ -747,11 +799,42 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     slideTextBackdrop: {
-        backgroundColor: 'rgba(0,0,0,0.52)',
         borderRadius: 8,
         paddingHorizontal: 14,
         paddingVertical: 12,
         alignSelf: 'center',
+    },
+    ctaBrandText: {
+        fontSize: 42,
+        fontWeight: '800',
+        color: '#FF9500',
+        letterSpacing: -1,
+    },
+    ctaBodyText: {
+        fontSize: 18,
+        fontWeight: '500',
+        color: 'rgba(255,255,255,0.92)',
+        textAlign: 'center',
+        lineHeight: 28,
+        textShadowColor: 'rgba(0,0,0,0.9)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 8,
+    },
+    ctaLinkPill: {
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 40,
+        paddingHorizontal: 28,
+        paddingVertical: 14,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+    },
+    ctaLinkText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(0,0,0,0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
     slideArrowLeft: {
         position: 'absolute',

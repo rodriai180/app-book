@@ -104,6 +104,7 @@ export interface MicrolearningData {
     chapterNumber: number;
     category: string;
     audioSlides?: AudioSlideData[];
+    hookText?: string;
 }
 
 export interface BookProgress {
