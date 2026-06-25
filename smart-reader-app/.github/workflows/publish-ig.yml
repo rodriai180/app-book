@@ -1,0 +1,40 @@
+name: Publish Instagram Reels
+
+on:
+  schedule:
+    - cron: '5 * * * *'   # cada hora a las :05 — chequea si hay slots pendientes
+  workflow_dispatch:
+    inputs:
+      mlId:
+        description: 'mlId específico a forzar (vacío = verificar schedule.json)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install dependencies
+        run: cd scripts && npm ci
+
+      - name: Write Firebase service account
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: echo "$SA_JSON" > firebase-service-account.json
+
+      - name: Publish due slots
+        env:
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+        run: node scripts/publish-due-slots.mjs ${{ inputs.mlId || '' }}

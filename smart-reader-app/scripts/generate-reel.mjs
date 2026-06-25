@@ -11,7 +11,7 @@ import { ElevenLabsClient } from 'elevenlabs';
 import puppeteer from 'puppeteer';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -51,6 +51,15 @@ const OUTPUT_DIR = join(ROOT, 'reel-output');
 const TEMP_DIR   = join(OUTPUT_DIR, 'temp', ML_ID);
 [OUTPUT_DIR, TEMP_DIR].forEach(d => { if (!existsSync(d)) mkdirSync(d, { recursive: true }); });
 
+function findVideoPath(mlId) {
+  const flat = join(OUTPUT_DIR, `${mlId}.mp4`);
+  if (existsSync(flat)) return flat;
+  const loteFiles = readdirSync(OUTPUT_DIR, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name.startsWith('lote-'))
+    .map(e => join(OUTPUT_DIR, e.name, `${mlId}.mp4`));
+  return loteFiles.find(p => existsSync(p)) ?? flat;
+}
+
 const W = 1080;
 const H = 1920;
 
@@ -64,8 +73,15 @@ const TTS_EL_MODEL  = 'eleven_multilingual_v2';
 
 // Segundos de pausa al final del slide de carátula (más tiempo para verla)
 const TITLE_SLIDE_END_PAUSE = 3.0;
+// Segundos de pausa al final del hook (tiempo para que el gancho "pegue")
+const HOOK_SLIDE_END_PAUSE = 3.5;
 // Segundos de pausa al final del resto de slides
 const SLIDE_END_PAUSE = 1.5;
+// Segundos de pausa al final del CTA (tiempo para que se lea)
+const CTA_SLIDE_END_PAUSE = 2.5;
+
+// Texto fijo del CTA (debe coincidir con la app)
+const CTA_TEXT = 'Dejá que el conocimiento te encuentre.';
 
 // ─── Category gradients (espeja GeneratedCover.tsx) ──────────────────────────
 
@@ -97,34 +113,36 @@ function getVisualSeed(tags, title) {
 
 // ─── Lógica de slides (espeja app/microlearning-detail.tsx) ───────────────────
 
-function buildSlides(ml) {
-  const slides = [{ type: 'title' }];
+function buildSlides(ml, hookText) {
+  const slides = [];
+  if (hookText) slides.push({ type: 'hook', text: hookText });
+  slides.push({ type: 'title' });
   const content = (ml.content ?? '').trim();
   if (content) {
     const sentences = (content.match(/[^.!?]+[.!?]+/g) ?? [content])
       .map(s => s.trim()).filter(Boolean);
-    for (let i = 0; i < sentences.length; i += 2) {
-      const text = i + 1 < sentences.length
-        ? `${sentences[i]} ${sentences[i + 1]}`
-        : sentences[i];
-      slides.push({ type: 'content', text });
+    for (const sentence of sentences) {
+      slides.push({ type: 'content', text: sentence });
     }
   }
   if (ml.reflectionQuestion?.trim()) {
     slides.push({ type: 'reflection', text: ml.reflectionQuestion.trim() });
   }
+  slides.push({ type: 'cta' });
   return slides;
 }
 
 // Texto que se habla (para TTS)
 function slideSpokenText(ml, slide) {
   if (slide.type === 'title') return ml.title;
+  if (slide.type === 'cta') return `Nuggeto. ${CTA_TEXT}`;
   return slide.text;
 }
 
 // Texto que se muestra en pantalla (para highlighting)
 function slideDisplayText(ml, slide) {
   if (slide.type === 'title') return ml.title;
+  if (slide.type === 'cta') return CTA_TEXT;
   return slide.text;
 }
 
@@ -207,15 +225,16 @@ ${microDecoHtml(seed)}
   <div class="book">${esc(ml.bookTitle)}</div>
   <div class="author">por ${esc(ml.bookAuthor)}</div>
 </div>
-<div class="brand">nuggeto</div>
+<div class="brand">Nuggeto</div>
 </body></html>`;
 }
 
-function contentSlideHtml(text, gradient, start, length, isReflection, seed, imageUrl) {
+function contentSlideHtml(text, gradient, start, length, isReflection, isHook, seed, imageUrl) {
   const [c1, c2] = gradient;
   const bgCss = imageUrl
     ? `linear-gradient(135deg,${c1}99,${c2}99),url('${imageUrl}') center/cover no-repeat`
     : `linear-gradient(135deg,${c1},${c2})`;
+  const fontSize = isReflection ? 44 : isHook ? 54 : 48;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -229,11 +248,11 @@ ${DECO_CSS}
 .wrap{display:flex;flex-direction:column;align-items:center;gap:44px;width:100%;text-align:center}
 .emoji{font-size:160px;line-height:1}
 .txt{
-  font-size:${isReflection ? 44 : 48}px;
-  font-weight:${isReflection ? 500 : 600};
+  font-size:${fontSize}px;
+  font-weight:${isReflection ? 500 : 700};
   font-style:${isReflection ? 'italic' : 'normal'};
   color:#fff;line-height:1.45;letter-spacing:-0.3px;
-  background:rgba(0,0,0,0.52);border-radius:16px;padding:28px 40px;
+  text-shadow:0 2px 16px rgba(0,0,0,0.55),0 1px 4px rgba(0,0,0,0.4);
 }
 mark{background:rgba(255,255,255,0.35);border-radius:8px;padding:0 6px;color:#fff}
 .brand{position:absolute;bottom:44px;font-size:22px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:3px}
@@ -244,7 +263,39 @@ ${microDecoHtml(seed)}
   ${isReflection ? '<div class="emoji">💭</div>' : ''}
   <div class="txt">${hlHtml(text, start, length)}</div>
 </div>
-<div class="brand">nuggeto</div>
+<div class="brand">Nuggeto</div>
+</body></html>`;
+}
+
+function ctaSlideHtml(gradient, start, length, seed, imageUrl) {
+  const [c1, c2] = gradient;
+  const bgCss = imageUrl
+    ? `linear-gradient(135deg,${c1}cc,${c2}cc),url('${imageUrl}') center/cover no-repeat`
+    : `linear-gradient(135deg,${c1},${c2})`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  width:${W}px;height:${H}px;overflow:hidden;
+  background:${bgCss};
+  font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:100px 80px;gap:60px;text-align:center;
+}
+${DECO_CSS}
+.brand{font-size:100px;font-weight:800;color:#FF9500;letter-spacing:-3px}
+.txt{font-size:44px;font-weight:500;color:rgba(255,255,255,0.92);line-height:1.4;
+  text-shadow:0 2px 16px rgba(0,0,0,0.55),0 1px 4px rgba(0,0,0,0.4)}
+mark{background:rgba(255,255,255,0.35);border-radius:8px;padding:0 6px;color:#fff}
+.pill{border:2.5px solid rgba(255,255,255,0.5);border-radius:80px;
+  padding:28px 70px;font-size:36px;font-weight:700;color:#fff;
+  text-shadow:0 2px 8px rgba(0,0,0,0.4);background:rgba(255,255,255,0.14)}
+.orange{color:#FF6E00}
+</style></head><body>
+${BASE_DECOS_HTML}
+${microDecoHtml(seed)}
+<div class="brand">Nuggeto</div>
+<div class="txt">${hlHtml(CTA_TEXT, start, length)}</div>
+<div class="pill">link en bio</div>
 </body></html>`;
 }
 
@@ -398,6 +449,8 @@ async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient, ima
   const displayText  = slideDisplayText(ml, slide);
   const isTitle      = slide.type === 'title';
   const isReflection = slide.type === 'reflection';
+  const isHook       = slide.type === 'hook';
+  const isCta        = slide.type === 'cta';
   const seed         = getVisualSeed(ml.tags, ml.title);
 
   // Primer keyframe sin highlight, luego uno por palabra
@@ -410,7 +463,9 @@ async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient, ima
     const kf = keyframes[i];
     const html = isTitle
       ? titleSlideHtml(ml, gradient, kf.start, kf.length, seed, imageUrl)
-      : contentSlideHtml(displayText, gradient, kf.start, kf.length, isReflection, seed, imageUrl);
+      : isCta
+      ? ctaSlideHtml(gradient, kf.start, kf.length, seed, imageUrl)
+      : contentSlideHtml(displayText, gradient, kf.start, kf.length, isReflection, isHook, seed, imageUrl);
 
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const framePath = join(TEMP_DIR, `s${slideIdx}_f${String(i).padStart(3, '0')}.png`);
@@ -419,7 +474,7 @@ async function renderFrames(browser, ml, slide, slideIdx, wordMap, gradient, ima
     const nextTime = i + 1 < keyframes.length ? keyframes[i + 1].time : null;
     const lastEnd  = wordMap.length > 0 ? (wordMap.at(-1).endTime + 0.4) : 3;
     const isLast   = i === keyframes.length - 1;
-    const endPause = isTitle ? TITLE_SLIDE_END_PAUSE : SLIDE_END_PAUSE;
+    const endPause = isTitle ? TITLE_SLIDE_END_PAUSE : isHook ? HOOK_SLIDE_END_PAUSE : isCta ? CTA_SLIDE_END_PAUSE : SLIDE_END_PAUSE;
     const duration = nextTime != null
       ? (nextTime - kf.time)
       : (lastEnd - kf.time) + (isLast ? endPause : 0);
@@ -532,7 +587,10 @@ async function publishToYouTube(localPath, title, description, tags = [], schedu
     }
   );
   const uploadUrl = initRes.headers.get('location');
-  if (!uploadUrl) throw new Error('YouTube no devolvió URL de upload');
+  if (!uploadUrl) {
+    const body = await initRes.text().catch(() => '(sin body)');
+    throw new Error(`YouTube no devolvió URL de upload (HTTP ${initRes.status}): ${body}`);
+  }
   console.log('✓');
 
   // Step 2: subir el archivo
@@ -548,6 +606,32 @@ async function publishToYouTube(localPath, title, description, tags = [], schedu
   const uploadData = await uploadRes.json();
   if (uploadData.error) throw new Error(`YouTube API: ${uploadData.error.message}`);
   console.log('✓');
+
+  // Step 3: setear thumbnail con el hook (primer frame del video)
+  const thumbPath = join(TEMP_DIR, '_thumb.jpg');
+  await new Promise((resolve, reject) => {
+    ffmpeg(localPath)
+      .seekInput(0.5)
+      .frames(1)
+      .output(thumbPath)
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
+  process.stdout.write('🖼️  Seteando thumbnail en YouTube... ');
+  const thumbBuffer = readFileSync(thumbPath);
+  const thumbRes = await fetch(
+    `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${uploadData.id}&uploadType=media`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'image/jpeg' },
+      body: thumbBuffer,
+    }
+  );
+  const thumbData = await thumbRes.json();
+  if (thumbData.error) console.log(`⚠️  Thumbnail falló: ${thumbData.error.message}`);
+  else console.log('✓');
+
   return uploadData.id;
 }
 
@@ -580,7 +664,7 @@ async function publishToInstagram(videoUrl, caption, scheduledAt = null) {
     }),
   });
   const createData = await createRes.json();
-  if (createData.error) throw new Error(`Meta API: ${createData.error.message}`);
+  if (createData.error) throw new Error(`Meta API: ${createData.error.message} (code: ${createData.error.code}, subcode: ${createData.error.error_subcode}, type: ${createData.error.type})\nFull: ${JSON.stringify(createData.error)}`);
   const containerId = createData.id;
   console.log(`✓ (id: ${containerId})`);
 
@@ -607,6 +691,30 @@ async function publishToInstagram(videoUrl, caption, scheduledAt = null) {
   if (pubData.error) throw new Error(`Meta API: ${pubData.error.message}`);
   console.log('✓');
   return pubData.id;
+}
+
+// ─── Hook generation ──────────────────────────────────────────────────────────
+
+async function generateHook(ml) {
+  const firstSentence = (ml.content ?? '').split(/[.!?]/)[0].trim();
+  const res = await ai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{
+      role: 'user',
+      content:
+        `Generá un gancho de 1 línea para un reel de Instagram sobre este tema.\n` +
+        `Título: ${ml.title}\n` +
+        `Primera idea: ${firstSentence}\n\n` +
+        `Requisitos:\n` +
+        `- Máximo 10 palabras\n` +
+        `- Una pregunta intrigante O una afirmación audaz que genere curiosidad\n` +
+        `- NO menciones el libro ni el autor\n` +
+        `- Escribí en español (Argentina)\n` +
+        `- Devolvé SOLO el texto del gancho, sin comillas ni explicaciones`,
+    }],
+    max_tokens: 60,
+  });
+  return res.choices[0].message.content.trim();
 }
 
 // ─── Instagram caption ────────────────────────────────────────────────────────
@@ -643,7 +751,12 @@ async function generateCaption(ml) {
 
 // ─── Schedule ─────────────────────────────────────────────────────────────────
 
-const SLOT_HOURS_UTC = [11, 16, 22]; // 08:00, 13:00, 19:00 hora Argentina (UTC-3)
+// 09:09, 13:13, 22:22 hora Argentina (UTC-3)
+const SLOT_SLOTS_UTC = [
+  { h:  1, m: 22 }, // 22:22 ARG → 01:22 UTC
+  { h: 12, m:  9 }, // 09:09 ARG → 12:09 UTC
+  { h: 16, m: 13 }, // 13:13 ARG → 16:13 UTC
+];
 
 function loadSchedule() {
   try { return JSON.parse(readFileSync(new URL('./schedule.json', import.meta.url))); }
@@ -659,8 +772,8 @@ function nextAvailableSlot(schedule) {
   const minTime = new Date(Date.now() + 15 * 60 * 1000); // al menos 15 min en el futuro
   const now    = new Date();
   for (let day = 0; day <= 30; day++) {
-    for (const h of SLOT_HOURS_UTC) {
-      const slot = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + day, h, 0, 0));
+    for (const { h, m } of SLOT_SLOTS_UTC) {
+      const slot = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + day, h, m, 0));
       if (slot > minTime && !taken.has(slot.toISOString())) return slot;
     }
   }
@@ -703,15 +816,27 @@ async function main() {
   const ml = await fetchML(ML_ID);
   console.log(`    "${ml.title}"\n    ${ml.bookTitle} — ${ml.bookAuthor}\n`);
 
-  const slides   = buildSlides(ml);
   const gradient = getGradient(ml.category);
+  const firestoreUpdates = {};
+
+  let hookText;
+  if (ml.hookText?.trim()) {
+    hookText = ml.hookText.trim();
+    console.log(`💡  Gancho existente: "${hookText}"\n`);
+  } else {
+    process.stdout.write('💡  Generando gancho... ');
+    hookText = await generateHook(ml);
+    console.log(`✓  "${hookText}"\n`);
+    firestoreUpdates.hookText = hookText;
+  }
+
+  const slides = buildSlides(ml, hookText);
 
   const hasAudio = Array.isArray(ml.audioSlides) && ml.audioSlides.length === slides.length;
 
-  const firestoreUpdates = {};
-
   // ── Flags ─────────────────────────────────────────────────────────────────────
   const forceAll   = process.argv.includes('--force');
+  const forceVideo = forceAll || process.argv.includes('--force-video');
   const forceImage = forceAll || process.argv.includes('--force-image');
 
   // ── Imagen ────────────────────────────────────────────────────────────────────
@@ -726,8 +851,8 @@ async function main() {
   }
 
   // ── Reel + Audio ──────────────────────────────────────────────────────────────
-  const outPath    = join(OUTPUT_DIR, `${ML_ID}.mp4`);
-  if (forceAll && existsSync(outPath)) {
+  const outPath    = findVideoPath(ML_ID);
+  if (forceVideo && existsSync(outPath)) {
     const { unlinkSync } = await import('fs');
     unlinkSync(outPath);
   }
@@ -755,17 +880,19 @@ async function main() {
       let wordMap;
 
       if (hasAudio) {
-        // Reusar audio y timestamps ya almacenados en Firestore
-        if (!existsSync(audioPath)) {
-          process.stdout.write('    ⬇️  Descargando audio... ');
-          const storagePath = ml.audioSlides[i].audioPath;
-          await getStorage().bucket(STORAGE_BUCKET).file(storagePath).download({ destination: audioPath });
-          console.log('✓');
-        } else {
-          console.log('    🔊 Audio local encontrado, reutilizando.');
-        }
+        // Siempre descargar desde Firebase — el cache local puede ser de una corrida
+        // anterior sin hook, causando que cada slide muestre el audio del siguiente.
+        process.stdout.write('    ⬇️  Descargando audio... ');
+        const storagePath = ml.audioSlides[i].audioPath;
+        await getStorage().bucket(STORAGE_BUCKET).file(storagePath).download({ destination: audioPath });
+        console.log('✓');
+        // update-hooks.mjs genera audio con texto diferente al display text:
+        //   title → "Título. Libro, por Autor"  (display: solo "Título")
+        //   cta   → "Nagueto. Dejá que..."      (display: "Dejá que...")
+        // El offset corrige los charIndex del CTA para que el karaoke sea correcto.
+        const ctaOffset = slide.type === 'cta' ? 'Nagueto. '.length : 0;
         wordMap = (ml.audioSlides[i].words ?? []).map(w => ({
-          start: w.charIndex, length: w.charLength, time: w.time, endTime: w.endTime,
+          start: w.charIndex - ctaOffset, length: w.charLength, time: w.time, endTime: w.endTime,
         }));
       } else {
         // Generar TTS + timestamps desde cero
@@ -891,6 +1018,7 @@ async function main() {
         console.log(`\n▶️   ${slot ? 'Programado en YT' : 'Publicado en YT'}! ID: ${ytId}`);
         if (!slot) console.log(`    https://youtube.com/shorts/${ytId}`);
         console.log();
+        await uploadVideoToStorage(outPath);
       }
     }
 
@@ -899,6 +1027,7 @@ async function main() {
       if (ytId)  publishUpdates.ytVideoId    = ytId;
       if (igId)  publishUpdates.igPostId     = igId;
       if (slot)  publishUpdates.scheduledAt  = slot.toISOString();
+      if (ytId && existsSync(captionPath)) publishUpdates.igCaption = readFileSync(captionPath, 'utf8');
       process.stdout.write('💾  Guardando publicación en Firestore... ');
       await saveToFirestore(ML_ID, publishUpdates);
       console.log('✓');

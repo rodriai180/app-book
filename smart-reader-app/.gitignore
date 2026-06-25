@@ -4,8 +4,14 @@
 firebase-service-account.json
 reel-output/
 
-# Script con API keys embebidas
+# Scripts con API keys embebidas (nunca commitear)
 scripts/generate-reel.bat
+scripts/generate-batch.bat
+scripts/scheduler.bat
+scripts/utils/generate-queue.bat
+scripts/utils/update-hooks.bat
+scripts/utils/google-oauth.json
+scripts/utils/client_secret_*.json
 
 # dependencies
 node_modules/
