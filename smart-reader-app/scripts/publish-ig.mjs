@@ -85,11 +85,14 @@ process.stdout.write('⏳  Procesando video en Instagram');
 let status = 'IN_PROGRESS';
 while (status === 'IN_PROGRESS') {
   await new Promise(r => setTimeout(r, 8000));
-  const r = await fetch(`https://graph.facebook.com/v25.0/${containerId}?fields=status_code&access_token=${token}`);
+  const r = await fetch(`https://graph.facebook.com/v25.0/${containerId}?fields=status_code,video_status&access_token=${token}`);
   const d = await r.json();
   status = d.status_code ?? 'IN_PROGRESS';
   process.stdout.write('.');
-  if (status === 'ERROR') throw new Error('Error procesando video en Instagram');
+  if (status === 'ERROR') {
+    const detail = d.video_status ? JSON.stringify(d.video_status) : 'sin detalle';
+    throw new Error(`Error procesando video en Instagram: ${detail}`);
+  }
 }
 console.log(` ✓ (${status})`);
 if (status !== 'FINISHED') throw new Error(`Estado inesperado: ${status}`);
