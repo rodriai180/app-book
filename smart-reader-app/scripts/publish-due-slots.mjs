@@ -12,7 +12,7 @@ const mlIdOverride = process.argv[2];
 
 const { slots } = JSON.parse(readFileSync(join(__dirname, 'schedule.json'), 'utf-8'));
 const now = Date.now();
-const WINDOW_MS = 120 * 60 * 1000; // ventana de 120 min: cubre retrasos del runner de GitHub Actions
+const WINDOW_MS = 24 * 60 * 60 * 1000; // ventana de 24h: cubre cualquier retraso del runner; publish-ig.mjs evita duplicados via igPostId
 
 let due;
 if (mlIdOverride) {
