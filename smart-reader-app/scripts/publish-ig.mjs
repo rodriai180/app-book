@@ -65,6 +65,9 @@ if (!igUserId || !token) {
 console.log(`\n📱  Publicando ${ML_ID} en Instagram...`);
 console.log(`    Video: ${videoUrl}\n`);
 
+const FETCH_TIMEOUT_MS  = 30_000;        // 30 s por request HTTP
+const POLL_TIMEOUT_MS   = 15 * 60_000;  // 15 min máximo esperando a Meta
+
 process.stdout.write('📱  Creando contenedor... ');
 const createRes = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/media`, {
   method: 'POST',
@@ -73,6 +76,7 @@ const createRes = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/medi
     media_type: 'REELS', video_url: videoUrl,
     caption: ml.igCaption, share_to_feed: true, access_token: token,
   }),
+  signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 });
 const createData = await createRes.json();
 if (createData.error) {
@@ -83,9 +87,15 @@ console.log(`✓ (id: ${containerId})`);
 
 process.stdout.write('⏳  Procesando video en Instagram');
 let status = 'IN_PROGRESS';
+const pollDeadline = Date.now() + POLL_TIMEOUT_MS;
 while (status === 'IN_PROGRESS') {
+  if (Date.now() > pollDeadline) {
+    throw new Error(`Timeout: Meta no terminó de procesar el video en ${POLL_TIMEOUT_MS / 60000} min. El próximo cron reintentará.`);
+  }
   await new Promise(r => setTimeout(r, 8000));
-  const r = await fetch(`https://graph.facebook.com/v25.0/${containerId}?fields=status_code,video_status&access_token=${token}`);
+  const r = await fetch(`https://graph.facebook.com/v25.0/${containerId}?fields=status_code,video_status&access_token=${token}`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   const d = await r.json();
   status = d.status_code ?? 'IN_PROGRESS';
   process.stdout.write('.');
@@ -102,6 +112,7 @@ const pubRes = await fetch(`https://graph.facebook.com/v25.0/${igUserId}/media_p
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ creation_id: containerId, access_token: token }),
+  signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 });
 const pubData = await pubRes.json();
 if (pubData.error) throw new Error(`Meta API: ${pubData.error.message}`);
