@@ -7,6 +7,7 @@ reel-output/
 # Scripts con API keys embebidas (nunca commitear)
 scripts/generate-reel.bat
 scripts/generate-batch.bat
+scripts/get-token.bat
 scripts/scheduler.bat
 scripts/utils/generate-queue.bat
 scripts/utils/update-hooks.bat
